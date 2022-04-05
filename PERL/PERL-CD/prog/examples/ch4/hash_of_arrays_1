@@ -1,0 +1,6 @@
+# we customarily omit quotes when keys are identifiers
+%HoL = (
+    flintstones    => [ "fred", "barney" ],
+    jetsons        => [ "george", "jane", "elroy" ],
+    simpsons       => [ "homer", "marge", "bart" ],
+);

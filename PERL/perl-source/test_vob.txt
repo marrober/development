@@ -1,0 +1,6 @@
+crnc       : \ncc_sdt_vob\rnc\cp\crnc
+srnc       : \rnc\cp\srnc
+algorithms : \Test\cygnus_include\arpa
+algorithms : \Test\cygnus_include\net
+users
+

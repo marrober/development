@@ -1,0 +1,2 @@
+require ExtUtils::Liblist;
+ExtUtils::Liblist::ext($potential_libs, $Verbose);

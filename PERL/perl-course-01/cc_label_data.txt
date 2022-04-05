@@ -1,0 +1,15 @@
+ANT-1.6.2,09-Aug-04.18:49:17,vobadm,d0627819.2b664cd4.b606.9a:a1:7f:09:c6:d4
+ANT-1.6.2_CC_PATCHED,09-Aug-04.18:54:26,vobadm,48248537.c0454281.af7e.40:4d:70:3b:ea:b9
+BACKSTOP,09-Oct-03.15:50:42,vobadm,f595d740.fa6711d7.821f.00:0c:29:1d:a3:63
+CHECKEDOUT,09-Oct-03.15:50:42,vobadm,f595d73c.fa6711d7.821f.00:0c:29:1d:a3:63
+CLEARCASE_SOURCEFORGE_0.9.7,16-Feb-04.08:14:05,mroberts,687f2166.e0844420.8f02.a6:eb:25:0d:40:03
+CtCmd_V1.00,15-Oct-03.21:11:15,mroberts,7ef96592.42954657.ae41.df:30:6f:72:e0:52
+CtCmd_V1.01,15-Oct-03.21:11:15,mroberts,4bb1cfd7.0b02476f.b91b.d8:07:d5:94:1f:08
+CtCmd_V1.02,15-Oct-03.21:11:15,mroberts,99e58edc.ba18433a.b364.f4:87:bc:69:d3:24
+CtCmd_V1.03,15-Oct-03.21:11:15,mroberts,ab16fa13.6a5c4080.b35c.ca:bf:f4:a3:b6:8b
+JUNIT_3.8.1,19-Nov-03.13:53:21,mroberts,1bff1cbe.f17b4ddf.94b9.76:08:7d:dc:4b:5e
+LATEST,09-Oct-03.15:50:42,vobadm,f595d738.fa6711d7.821f.00:0c:29:1d:a3:63
+REL1.0,15-Oct-03.21:11:16,mroberts,10ea1cd3.c39b40d8.b0ba.e1:8e:3a:43:40:37
+REL2.0,15-Oct-03.21:11:16,mroberts,d0c6cf68.3ec24a9e.bc7f.6a:af:72:c8:45:21
+V2002.05.00-PATCH-00,24-Oct-03.10:28:24,mroberts,893362d5.1e394866.9853.5d:96:56:db:be:fa
+V2003.06.00-PATCH-00,23-Oct-03.11:20:47,mroberts,3c870d4d.14084071.9ec2.b8:45:45:1e:31:e5

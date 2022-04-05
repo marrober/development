@@ -1,0 +1,2149 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Mark Roberts">
+   <meta name="GENERATOR" content="Mozilla/4.5 [en] (WinNT; I) [Netscape]">
+   <meta name="Description" content="Descriptions of PERL scripts used for the manipulation or production of source code for MV Platform.">
+   <title>PERL Scripts</title>
+</head>
+<body>
+
+<h1>
+<a NAME="PERLScripts"></a>PERL SCRIPTS</h1>
+
+<h2>
+Script Source Code</h2>
+
+<table BORDER=3 CELLSPACING=3 CELLPADDING=3 >
+<tr>
+<td><a href="#GenerateLanguageSpecificSourceFiles">Generate Language Specific
+Source Files</a></td>
+
+<td>langsplit.pl</td>
+</tr>
+
+<tr>
+<td><a href="../../../u%7C/50300PL/DEV/util/SRC/scanlang.pl">Syntax Check
+Language File</a></td>
+
+<td>scanlang.pl</td>
+</tr>
+
+<tr>
+<td><a href="../../../u%7C/50300PL/DEV/util/SRC/formatlang.pl">Format Language
+Text</a></td>
+
+<td>formatlang.pl</td>
+</tr>
+
+<tr>
+<td><a href="../../../u%7C/50300PL/DEV/util/SRC/makereallang.pl">Generate
+Real Language File</a></td>
+
+<td>makereallang.pl</td>
+</tr>
+
+<tr>
+<td><a href="../../../u%7C/50300PL/DEV/util/SRC/makeescapelang.pl">Generate
+Escape Sequence Language File</a></td>
+
+<td>makeescapelang.pl</td>
+</tr>
+
+<tr>
+<td><a href="../../../u%7C/50300PL/DEV/util/SRC/tem.pl">Text Editor Module
+File Creator</a></td>
+
+<td>tem.pl</td>
+</tr>
+
+<tr>
+<td><a href="../../DEV/util/SRC/modbus_auto.pl">ModBus Automatic Test File
+Generator</a></td>
+
+<td>modbus_auto.pl</td>
+</tr>
+</table>
+
+<p>Note that all scripts are located in the directory \50300PL\DEV\util\SRC.
+<h2>
+Script Usage and Detailed Description</h2>
+
+<ul>
+<ul>
+<li>
+<a href="#GenerateLanguageSpecificSourceFiles">Generate Language Specific
+Source Files</a></li>
+
+<li>
+<a href="#SyntaxCheckLanguageFile">Syntax Check Language File</a></li>
+
+<li>
+<a href="#FormatLanguageText">Format Language Text</a></li>
+
+<li>
+<a href="#GenerateRealLanguageFile">Generate Real Language File</a></li>
+
+<li>
+<a href="#GenerateEscapeSequenceLanguageFile">Generate Escape Sequence
+Language File</a></li>
+
+<li>
+<a href="#TextEditorModuleFileCreator">Text Editor Module File Creator</a></li>
+
+<li>
+<a href="#ModBusAutomaticTestFileGenerator">ModBus Automatic Test File
+Generator</a></li>
+</ul>
+</ul>
+
+<h3>
+General Notes</h3>
+Detailed descriptions of the PERL scripts are given based on the assumption
+that the description of langsplit.pl will be read in its entirety first,
+since it is the most important script. PERL concepts required for the understanding
+of the scripts are only given in the description of langsplit.pl.
+<h3>
+
+<hr WIDTH="100%">Name</h3>
+<a NAME="GenerateLanguageSpecificSourceFiles"></a>Generate Language Specific
+Source Files (langsplit.pl)
+<h3>
+General Description</h3>
+This script generates language text <a href="#SourceFile">source</a> and
+<a href="#IncludeFile">include</a>
+files and up to four <a href="#LanguageFiles">language files</a> that may
+be downloaded to a product. The input files used by the script must be
+generated in a text editor and are referred to as '<a href="#LanguageDefinitionFile">language
+definition files</a>'.
+<h4>
+<a NAME="LanguageFiles"></a>Language Files (Text Data)</h4>
+Text information is stored in the language files as a stream of exactly
+4096 character strings of 16 characters each. Strings that are less than
+16 characters long are padded with spaces to the required length. Since
+the strings are of a fixed length it is not necessary to include string
+termination characters. For example the three strings "Password", "Description"
+and "0123456789ABCDEF" would be stored in a language file as :
+<pre>12345678901234567890123456789012345678901234567890</pre>
+
+<pre>Password&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Description&nbsp;&nbsp;&nbsp;&nbsp; 0123456789ABCDEF</pre>
+
+<pre>^ start&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ^^end/start&nbsp;&nbsp;&nbsp;&nbsp; ^^end/start&nbsp;&nbsp;&nbsp;&nbsp; ^end</pre>
+The indications above show where each string ends and the next starts when
+the text data is stored in the memory of the product. Each language file
+must contain exactly 4096 16 character strings to make the file 65536 (64
+Kbytes) long. Since there are four language files in each product there
+is a total of 256 Kbytes of language data. If a definition file does not
+include enough data to create 4096 strings then the script adds enough
+strings of 16 spaces to the end of the file to fill it. Language data is
+stored in FLASH EPROM which uses 32 bit addressing. The data is compressed
+to store 4 characters in each 32 bit word, so 64 K words of FLASH EPROM
+are used for the storage of language data.
+<p>Each string in the products memory is referenced using a sequential
+number, beginning at 0. So for example "Password" is string 0, "Description"
+is string 1 etc. In order to use meaningful names for each string in the
+source code of the product a Pre-processor macro name is associated with
+each string. This allows strings to be extracted from the FLASH EPROM memory
+using function calls that look like the example shown below :
+<pre>ui_DisplayMessage((UINT16)CB_CONTROL_TRIP, LCD_TOP_LINE);</pre>
+Rather than :
+<pre>ui_DisplayMessage((UINT16)687, LCD_TOP_LINE);</pre>
+
+<h4>
+String Tables</h4>
+Some strings form a set of optional strings to be presented to the user
+for menus. Examples are :
+<p>&nbsp;&nbsp;&nbsp; 'Enabled', 'Disabled' - Many database items may be
+disabled or enabled.
+<br>&nbsp;&nbsp;&nbsp; 'Card not Fitted', 'Card Failed', 'Signal Healthy',
+'No Signal' - IRIG-B Status.
+<p>These optional lists are defined as enumerated types in the .c source
+file produced by the script. The name of the enumerated string is included
+on the end of the line that defines the strings. If a string does not appear
+in an enumerated list then the text &lt;NONE> is used in place of the name
+of the enumerated list. The preprocessor macro names are used to identify
+the individual strings in each enumerated list.
+<h4>
+<a NAME="LanguageDefinitionFile"></a>Language Definition File</h4>
+The language definition file contains lines of six comma separated components,
+described below :
+<pre>&lt;PreProcessor Macro Name>, "String 1", "String 2", "String 3", "String 4", &lt;Enumerated Table Name></pre>
+The &lt;PreProcessor Macro Name> is the name to be used in a #define constant
+to identify the string. These are incremented from 0 at the start of the
+file. Since the individual strings are added to the language files in the
+order that they appear in the language definition file there is a correlation
+between indexes and individual strings.
+<p>The second to fifth items in the line are the actual strings which must
+be enclosed in double quote characters. If it is necessary to create a
+string that has a double quote character (") in the string then an appropriate
+<a href="#EscapeSequences">escape
+sequence</a> should be used. The languages are arranged in columns such
+that English strings are the second item in the line, French strings are
+the third item in the line, German strings are the fourth item in the line
+and Spanish strings are the fifth item in the line. It is possible to generate
+a language definition file that contains only one series of strings. In
+the example above 'string 2' to 'string 4'&nbsp; would be missing and field
+three in the line would be the enumeration table name. The <a href="#langsplitCommandLineOptions">command
+line</a> details shown below describe how this can be done. The product
+always needs four strings for each line in the file so pseudo foreign language
+text is generated by copying the text from item 2 in the line and changing
+character 16 of each string in language files 2, 3 and 4 to 'F', 'G' and
+'S' respectively. This simulates French, German and Spanish text in columns
+3, 4 and 5 of the language definition file.
+<h4>
+Example</h4>
+The example language definition file below includes a series of extracts
+from the <a href="../../../u%7C/50300PL/DEV/pl/SRC/langtext.dfn">Platform
+Software definition file</a>.
+<br>&nbsp;
+<pre><tt><font size=-1>// Fixed text used by User Interface</font></tt></pre>
+
+<pre><tt><font size=-1>UI_ENTER_PASSWORD,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Enter Password",&nbsp;&nbsp; "Mot de Passe ?", "Passworteingabe",&nbsp;&nbsp;&nbsp; "Intro Contrase\d154a",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;NONE></font></tt></pre>
+
+<pre><tt><font size=-1>UI_PASSWORD_ENTERED,&nbsp;&nbsp;&nbsp; "Password Entered", "Mot Passe OK",&nbsp;&nbsp; "Pa\d143wt eingegeben",&nbsp; "Ctr\d154a Introdcida",&nbsp;&nbsp;&nbsp; &lt;NONE></font></tt></pre>
+
+<pre><tt><font size=-1>ENUM_IRIGB_STATUS_NOT_FITTED,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Card not Fitted", "Carte Non Ins\d149r\d149", "Kart n.eingf\d159hrt", "Card not Fitted",&nbsp;&nbsp;&nbsp; enumIrigbStatus</font></tt></pre>
+
+<pre><tt><font size=-1>ENUM_IRIGB_STATUS_FAILED,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Card Failed",&nbsp;&nbsp;&nbsp;&nbsp; "Carte en D\d149faut",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Karten Abbruch",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Card Failed",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; enumIrigbStatus</font></tt></pre>
+
+<pre><tt><font size=-1>ENUM_IRIGB_STATUS_SIGNAL_PRESENT,&nbsp;&nbsp;&nbsp;&nbsp; "Signal Healthy",&nbsp; "Signal OK",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Signal OK",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Se\d154al Buen Est", enumIrigbStatus</font></tt></pre>
+
+<pre><tt><font size=-1>ENUM_IRIGB_STATUS_SIGNAL_NOT_PRESENT, "No Signal",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Pas de Signal",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Kein Signal",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Sin Se\d154al",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; enumIrigbStatus</font></tt></pre>
+It is acceptable to include blank lines and extra spaces between the comma
+separated fields for clarity and ease of use when editing the file. Comments
+may be added to the file using the C++ style of // at the start of each
+comment line. Each of the four language files to be downloaded to a product,
+based on the file above would contain the text shown below. The rule is
+included to show the character spacing. Note the translation of <a href="#EscapeSequences">escape
+sequences</a> between the language definition file and the language text
+file to be downloaded to a product.
+<p>Column 1 : English
+<pre>1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890</pre>
+
+<pre>Enter Password&nbsp; Password EnteredCard not Fitted Card Failed&nbsp;&nbsp;&nbsp;&nbsp; Signal Healthy&nbsp; No Signal</pre>
+
+<p><br>Column 2 : French
+<pre>1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890</pre>
+
+<pre>Mot de Passe ?&nbsp; Mot Passe OK&nbsp;&nbsp;&nbsp; Carte Non Ins&eacute;r&eacute;Carte en D&eacute;faut Signal OK&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Pas de Signal</pre>
+Column 3 : German
+<pre>1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890</pre>
+
+<pre>Passworteingabe Pa&szlig;wt eingegebenKart n.eingf&uuml;hrtKarten Abbruch&nbsp; Signal OK&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Kein Signal</pre>
+Column 4 : Spanish
+<pre>1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890</pre>
+
+<pre>Intro Contrase&ntilde;aCtr&ntilde;a IntrodcidaCard not Fitted Card Failed&nbsp;&nbsp;&nbsp;&nbsp; Se&ntilde;al Buen Est&nbsp; Sin Se&ntilde;al</pre>
+
+<h4>
+PreProcessor Macro Names</h4>
+The PreProcessor Macro names shown in the example above are translated
+into #define constants in the include file produced by the script. Based
+on the example the following entries would be created.
+<pre><tt><font size=-1>#define UI_ENTER_PASSWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (0)</font></tt></pre>
+
+<pre><tt><font size=-1>#define UI_PASSWORD_ENTERED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (1)</font></tt></pre>
+
+<pre><tt><font size=-1>#define ENUM_IRIGB_STATUS_NOT_FITTED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (2)</font></tt></pre>
+
+<pre><tt><font size=-1>#define ENUM_IRIGB_STATUS_FAILED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (3)</font></tt></pre>
+
+<pre><tt><font size=-1>#define ENUM_IRIGB_STATUS_SIGNAL_PRESENT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (4)</font></tt></pre>
+
+<pre><tt><font size=-1>#define ENUM_IRIGB_STATUS_SIGNAL_NOT_PRESENT&nbsp;&nbsp;&nbsp;&nbsp; (5)</font></tt></pre>
+The string associated with the constant 'ENUM_IRIGB_STATUS_FAILED' is the
+fourth string in each language block.
+<p>The processing and construction of enumerated types involves collecting
+together all preprocessor constants associated with the same enumerated
+type. The enumerated type is then constructed as shown below for the example
+language definition file above.
+<pre>UINT32 enumIrigbStatus[4] = { ENUM_IRIGB_STATUS_NOT_FITTED, ENUM_IRIGB_STATUS_FAILED,</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ENUM_IRIGB_STATUS_SIGNAL_PRESENT, ENUM_IRIGB_STATUS_SIGNAL_NOT_PRESENT };</pre>
+During the processing of the language text definition file it is possible
+that lines containing the same enumerated type name may not be on contiguous
+lines. It is therefore necessary to calculate the number to be added in
+the square brackets ([ ]) with the enumerated type name, after all definition
+files have been read and processed. The enumerated types are stored in
+the .c source file produced by the script. Since the definitions of the
+constants used in the enumerated types are in the .h include file then
+it is necessary to include the .h file in the source file.
+<h4>
+<a NAME="MemoryManagement"></a>Memory Management</h4>
+As part of the philosophy for the placement of data and code in the memory
+space of&nbsp; MV Platform products, the #PRAGMA directive is used. For
+each enumerated type there is a section in the .h include file that forces
+the table into the sect_str memory section. An example of the directive
+in the .h include file to do this is shown below :
+<pre>#pragma DATA_SECTION(enumIrigbStatus, "sect_str")</pre>
+
+<pre>extern UINT32 enumIrigbStatus[4];</pre>
+The first line places the enumerated type in a particular memory section
+and the second line makes the enumerated type visible to any source file
+that includes the .h include file. Note that these directives should appear
+before the #define constants in the .h include file. Since the enumerated
+types are defined as UINT32 objects the include file <a href="../../../u%7C/50300PL/DEV/COM/INC/types.h">types.h</a>
+should be included for the definition of UINT32.
+<h4>
+<a NAME="C-PRE-PROCESSOR"></a>'C' Pre-Processor</h4>
+Some sections of the language definition file are not required for all
+models of a product. Problems were discovered when the use of a core file
+and small model specific files was investigated. At this point it was decided
+that the language definition files would be designed in such a way that
+they could be processed by the 'C' pre-processor. This gives the creator
+of the file the facilities for optional inclusion of sections of the file.
+By using the #ifdef, #else and #endif pre-processor directories certain
+sections of the file can be included or removed based on the model being
+built. An example is shown below :
+<pre>#if defined FEEDER_MODEL_2 || defined FEEDER_MODEL_3</pre>
+
+<pre>PSL_DDB_ELEMENT_177, "Block A/R",&nbsp;&nbsp; ..............</pre>
+
+<pre>#endif</pre>
+
+<pre>#ifdef FEEDER_MODEL_3</pre>
+
+<pre>PSL_DDB_ELEMENT_178, "Live Line Mode", ..............</pre>
+
+<pre>PSL_DDB_ELEMENT_179, "Auto Mode", ...........</pre>
+
+<pre>PSL_DDB_ELEMENT_180, "Telecontrol Mode", ................</pre>
+
+<pre>#endif</pre>
+Prior to use by the PERL script the language definition file must be processed
+by the 'C' pre-processor using commands such as :
+<pre>$(CC) $(CINCLUDES) $(CDEFINES) -po -pl -pn \50300pl\dev\pl\SRC\langtext.dfn</pre>
+The above command has been extracted from a makefile produced to build
+the language text. The language definition file is processed by the Texas
+Instruments compiler and the make variables CINCLUDES and CDEFINES are
+passed to the compiler. The arguments -po -pl and -pn cause, respectively,
+the following operations pre processor only, generate a .pp file and do
+not include #line directives in the output file. The output file produced
+by the compiler is in the same directory as the source file and has the
+same name except for a .pp extension. The .pp file should then be processed
+by the PERL script. The CDEFINES variable should contain any required constants
+that should be defined to cause certain sections of the language definition
+file to be included, such as FEEDER_MODEL_2 or FEEDER_MODEL_3.
+<h4>
+<a NAME="EscapeSequences"></a>Escape Sequences</h4>
+Many characters used in the non English languages for the file are outside
+the normal ASCII character range of 32 (space character) to 126 (~ character).
+Examples of these characters are accented e's (&egrave;&ecirc;&euml;) and
+the German &szlig; character. It is not possible to paste these characters
+from a character map program or word processor into the language definition
+file because the MV Platform does not use the standard ASCII character
+set for these extended characters. Instead the Courier character set is
+used. As a result the appropriate Courier character code must be specified
+using one of two possible escape sequences. These are \dnnn or \xjj, where
+nnn is a three digit decimal version of the required Courier code and jj
+is a two digit hexadecimal version of the required Courier code. The Courier
+character set for extended characters is shown in the table below. Note
+that the table shows the decimal Courier codes.
+<br>&nbsp;
+<table BORDER=3 WIDTH="100%" >
+<tr>
+<td>Courier Code</td>
+
+<td>Character</td>
+
+<td>Courier Code</td>
+
+<td>Character</td>
+
+<td>Courier Code</td>
+
+<td>Character</td>
+
+<td>Courier Code</td>
+
+<td>Character</td>
+</tr>
+
+<tr>
+<td>127</td>
+
+<td>&Agrave;</td>
+
+<td>137</td>
+
+<td>&Ntilde;</td>
+
+<td>147</td>
+
+<td>&ccedil;</td>
+
+<td>157</td>
+
+<td>&ugrave;</td>
+</tr>
+
+<tr>
+<td>128</td>
+
+<td>&Aacute;</td>
+
+<td>138</td>
+
+<td>&Ocirc;</td>
+
+<td>148</td>
+
+<td>&egrave;</td>
+
+<td>158</td>
+
+<td>&ucirc;</td>
+</tr>
+
+<tr>
+<td>129</td>
+
+<td>&Auml;</td>
+
+<td>139</td>
+
+<td>&Ouml;</td>
+
+<td>149</td>
+
+<td>&eacute;</td>
+
+<td>159</td>
+
+<td>&uuml;</td>
+</tr>
+
+<tr>
+<td>130</td>
+
+<td>&Ccedil;</td>
+
+<td>140</td>
+
+<td>&Ugrave;</td>
+
+<td>150</td>
+
+<td>&ecirc;</td>
+
+<td>160</td>
+
+<td>&Iacute;</td>
+</tr>
+
+<tr>
+<td>131</td>
+
+<td>&Egrave;</td>
+
+<td>141</td>
+
+<td>&Ucirc;</td>
+
+<td>151</td>
+
+<td>&euml;</td>
+
+<td>161</td>
+
+<td>&Oacute;</td>
+</tr>
+
+<tr>
+<td>132</td>
+
+<td>&Eacute;</td>
+
+<td>142</td>
+
+<td>&Uuml;</td>
+
+<td>152</td>
+
+<td>&icirc;</td>
+
+<td>162</td>
+
+<td>&iacute;</td>
+</tr>
+
+<tr>
+<td>133</td>
+
+<td>&Ecirc;</td>
+
+<td>143</td>
+
+<td>&szlig;</td>
+
+<td>153</td>
+
+<td>&iuml;</td>
+
+<td>163</td>
+
+<td>&oacute;</td>
+</tr>
+
+<tr>
+<td>134</td>
+
+<td>&Euml;</td>
+
+<td>144</td>
+
+<td>&agrave;</td>
+
+<td>154</td>
+
+<td>&ntilde;</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr>
+<td>135</td>
+
+<td>&Icirc;</td>
+
+<td>145</td>
+
+<td>&aacute;</td>
+
+<td>155</td>
+
+<td>&ocirc;</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr>
+<td>136</td>
+
+<td>&Iuml;</td>
+
+<td>146</td>
+
+<td>&auml;</td>
+
+<td>156</td>
+
+<td>&ouml;</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p>Since the \ character is used to begin an escape sequence it requires
+special treatment if the character is required in a string. In the usual
+mechanism for escape characters used in regular expression parsers two
+\ characters are required in the definition file where one is required
+in the actual text. For example to generate the string 'Yes \ No' requires
+the section in the language definition file of 'Yes \\ No'.
+<h4>
+<a NAME="SourceFile"></a>Source File Produced By Script</h4>
+The information in this section summarizes what has been presented above.
+It describes the layout of the source file (.c) to be produced by the script.
+<br>A comment should be added at the top of the source file to indicate
+that it has been generated automatically and therefore should not be modified.
+Any changes to the file should be attained by making appropriate changes
+to the language definition file. A suitable comment is shown below :
+<br>&nbsp;
+<pre>/* This file has been automatically generated by the PERL script</pre>
+
+<pre>&nbsp;* /50300PL/DEV/util/src/langsplit.pl.</pre>
+
+<pre>&nbsp;*</pre>
+
+<pre>&nbsp;*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DO NOT EDIT THIS FILE !!</pre>
+
+<pre>&nbsp;*</pre>
+
+<pre>&nbsp;* Modifications should be carried out by changing the definition</pre>
+
+<pre>&nbsp;* files used to create the file. Use the ClearCase configuration</pre>
+
+<pre>&nbsp;* record to locate the source data definition files.</pre>
+
+<pre>&nbsp;*/</pre>
+The comment describes the use of the ClearCase configuration record to
+locate the source data used to generate the script. This is done using
+the command 'cleartool catcr &lt;filename>'. Information is then displayed
+on the screen which will list the source language definition file. Note
+that this information is only available if the source file was produced
+using clearmake.
+<p>Following the comment two #include directives are required. These are
+for types.h which is required for the definition of UINT32, and the include
+file automatically generated by the script. The name of the include file
+to be generated by the script is supplied as a <a href="#langsplitCommandLineOptions">command
+line</a> option.
+<p>The enumerated type definitions following the #include directories.
+<h4>
+<a NAME="IncludeFile"></a>Include File Produced By Script</h4>
+The information in this section summarizes what has been presented above.
+It describes the layout of the include file (.h) to be produced by the
+script.
+<p>A comment should be added to the top of the include file in the same
+way as the source file. The comment block shown above is suitable. In addition
+comments should be used to describe the two sections of the file.
+<p>Bracketed around the entire file content, excluding the initial comment,
+should be a pre-processor directive to ensure that the content of the file
+is only processed once even if it is included in many files. The required
+directives are shown below :
+<pre>#ifndef LANGTXT_H</pre>
+
+<pre>#define LANGTXT_H</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; ..... file content .....</pre>
+
+<pre>#endif /* LANGTXT_H */</pre>
+In this example the name of the file is assumed to be langtxt, but the
+script should use the name of the include file supplied on the <a href="#langsplitCommandLineOptions">command
+line</a> for the #ifndef, #define and the comment after the #endif.
+<p>The first section of the file contains the #pragma and extern directives
+described in the <a href="#MemoryManagement">memory management</a> section.
+A pair of directives should be included for each enumerated type. A suitable
+comment to describe this section is shown below :
+<br>&nbsp;
+<pre>/* #pragma directives are used to locate string tables in the required</pre>
+
+<pre>&nbsp;* memory location.</pre>
+
+<pre>&nbsp;*/</pre>
+The second section of the file contains the #define directives. A suitable
+comment for this section of the file is shown below :
+<pre>/* #define directives. */</pre>
+
+<h4>
+File Formatting</h4>
+For each section of the files efforts are made to ensure that the automatically
+generated text is formatted in a readable manner. The longest #define directive
+and the longest enumerated type name are identified and spaces are added
+to other specifiers within the same section to ensure that the values are
+aligned. Some enumerated types have hundreds of values which cannot all
+be placed on a single line. For this reason enumerated type values are
+added to each line until the 80th column is reached. Further values are
+wrapped to the next line with an appropriate number of spaces added at
+the start of the line to ensure that all pre-processor constant names start
+at the same place.
+<h3>
+<a NAME="langsplitCommandLineOptions"></a>Command Line Arguments</h3>
+The script is executed using the ccperl interpreter supplied by <a href="http://www.rational.com">Rational
+Software</a> as part of the <a href="http://www.rational.com/products/clearcase/index.jtmpl">ClearCase</a>
+installation. Ccperl is located in \\eng-ntserver-6\atria\bin and in \atria\bin
+on the local hard disk of a PC configured to run ClearCase. The script
+is executed using the following line :
+<pre>ccperl \50300PL\DEV\util\SRC\langsplit.pl &lt;options></pre>
+In most cases the script will be executed from a make file.
+<p>Alternatively the 'standard' PERL interpreter can be used. This is located
+in the Tools VOB in \Tools\PERL\bin\perl.exe.
+<p>Command line arguments to the script are described below. Note that
+arguments are case sensitive.
+<br>&nbsp;
+<table BORDER=3 WIDTH="100%" >
+<tr>
+<td>Argument Identifiers&nbsp;</td>
+
+<td>Description</td>
+</tr>
+
+<tr>
+<td>/D=&lt;filename></td>
+
+<td>The name of a language definition file to process. There may be any
+number of definition files, but typically a product will use two - namely
+a platform specific file and a product specific file.</td>
+</tr>
+
+<tr>
+<td>/H=&lt;filename></td>
+
+<td>The name of the include file to be produced by the script.</td>
+</tr>
+
+<tr>
+<td>/S=&lt;filename></td>
+
+<td>The name of the source file to be produced by the script.</td>
+</tr>
+
+<tr>
+<td>/LANGS={1|4}</td>
+
+<td>The number of columns of text in the language definition file. If one
+language is used then the 16th character position is replaced with F, G
+and S in languages 2, 3 and 4 to simulate the presence of all four languages.
+This process is described <a href="#LanguageDefinitionFile">above</a>.</td>
+</tr>
+
+<tr>
+<td>/O1=&lt;filename></td>
+
+<td>The name of the file to contain the first column of language text.</td>
+</tr>
+
+<tr>
+<td>/O2=&lt;filename></td>
+
+<td>The name of the file to contain the second column of language text.</td>
+</tr>
+
+<tr>
+<td>/O3=&lt;filename></td>
+
+<td>The name of the file to contain the third column of language text.</td>
+</tr>
+
+<tr>
+<td>/O4=&lt;filename></td>
+
+<td>The name of the file to contain the fourth column of language text.</td>
+</tr>
+
+<tr>
+<td>/?</td>
+
+<td>Request the display of help</td>
+</tr>
+</table>
+
+<p>If any other command line argument is supplied to the script then the
+text 'ARGUMENT ERROR' is displayed.
+<h3>
+Operating System Return Values</h3>
+The following exit codes are returned which may be used by the calling
+environment.
+<br>&nbsp;
+<br>&nbsp;
+<table BORDER=3 WIDTH="100%" >
+<tr>
+<td>Return Code</td>
+
+<td>Error Message (If applicable).</td>
+</tr>
+
+<tr>
+<td>0</td>
+
+<td>N/A</td>
+</tr>
+
+<tr>
+<td>-1</td>
+
+<td>Error : # found at the start of a line which indicates that the file
+should be processed by the 'C' pre-processor.&nbsp;</td>
+</tr>
+
+<tr>
+<td>-2</td>
+
+<td>Error. The \d is not followed by enough characters. The faulty string
+is : &lt;string>.</td>
+</tr>
+
+<tr>
+<td>-3</td>
+
+<td>Error. The \x is not followed by enough characters. The faulty string
+is : &lt;string>.</td>
+</tr>
+
+<tr>
+<td>-4</td>
+
+<td>Error. The \ character was not followed by either d, x or \. The faulty
+string is : &lt;string>.</td>
+</tr>
+</table>
+
+<h3>
+Internal Operation</h3>
+The following section describes in detail the operation of the script in
+a manner that hopefully will assist in maintenance in the future. PERL
+concepts are described where necessary. It is useful to have a printed
+copy of the script to refer to when reading this section.
+<p>A number of constants are defined at the start of the file to allow
+these to be changed if necessary without searching through the file looking
+for them. These are for the help text, the file header text to be applied
+to the source file and the include file, and the backslash character (\)
+which is used to begin an escape sequence.
+<p>Two <a href="#LangSplitFunctions">functions</a> are defined. These are
+used to read the language definition file and to process the language text
+extracted from the language definition file.
+<p>The first section of the script processes the command line arguments.
+PERL stores command line arguments in an array with the name $ARGV. There
+is no ARGC variable, as in 'C', the number of command line arguments is
+obtained from the number of items in the $ARGV array. $#ARGV is used to
+get the array index of the last item in the array. Since arrays are indexed
+from 0 the index obtained from $#ARGV will be one less than the number
+of items in the array. For example :
+<pre>$ARGV[0] = "/D=fred.dfn"</pre>
+
+<pre>$ARGV[1] = "/H=include.h"</pre>
+
+<pre>$ARGV[2] = "/S=source.c"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $#ARGV = 2</pre>
+Note that the dollar sign ($) is used to denote a standard scalar variable.
+<p>A for loop is used to iterate through all command line options in turn,
+copying each option to the default pattern match variable $_. An if ()
+statement and a series of elsif() statements are used to match the arguments
+by searching for the argument identifiers. The regular expression pattern
+match operator m// is used. Usually the pattern match operator uses the
+forward slash character (/) to delimit the object to be searched for and
+the options that may follow. Since the text to be searched for in this
+case contains the forward slash character the delimiter is changed to the
+vertical bar character (|).
+<p>For definition files the argument is passed to the function <a href="#ReadDefinitionFile">ReadDefinitionFile</a>().
+<p>For all other command line arguments, other than /?, the name of the
+file that is to hold the relevant data is stored. The argument descriptors
+are removed using a substitution operation, described below.
+<pre>&nbsp;&nbsp;&nbsp; $HeaderFile =~ s|/H=||;</pre>
+The above operation is the replacement operator. The text between the first
+pair of | characters is replaced with the text between the second pair
+of | characters. In this case /H= is simply removed by replacing it with
+nothing. The =~ operator stores the new string back in the $HeaderFile
+variable.
+<p>The next section of the script involves splitting the definition data
+read from the language definition file into individual arrays for further
+processing. The split function is used to split the definition data into
+individual lines based on the new line character (\n). The results of the
+split are put into elements of the array @SplitRes.
+<p>A foreach loop is then used to iterate through the array placing each
+item in turn into the scalar variable $SingleLine and processing it through
+the code contained in the {} brackets of the foreach loop. Again the string
+to be processed is put into the default pattern match variable ($_), and
+a series of pattern match operations take place. The match (m/^#/) searches
+for a # character as the first character in the line. If this is found
+then it is assumed that the file has pre-processor directives and the file
+has not been <a href="#C-PRE-PROCESSOR">pre-processed</a> correctly yet.
+There is then an elsif which searches for two forward slash characters
+(/). Since the forward slash is the default pattern match delimiter the
+character must be escaped by putting a back slash character before it giving
+the pattern match sequence (m/\/\//). Two forward slash characters indicates
+a comment which is to be ignored. All other lines are considered to be
+language information and must be processed.
+<p>In order to make the content of a line easier to process all spaces
+except for those actually within a string must be removed. The marked characters
+below in the line of language information are those to be removed :
+<pre><tt><font size=-1>UI_ENTER_PASSWORD,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Enter Password",&nbsp;&nbsp; "Mot de Passe ?", "Passworteingabe",&nbsp;&nbsp;&nbsp; "Intro Contrase\d154a",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;NONE></font></tt></pre>
+
+<pre><tt><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ^^^^^^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ^^^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ^^^^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ^^^^^^^</font></tt></pre>
+The line is split into an array were each individual character is placed
+into a single array location. Each character in the string is then examined
+using a foreach loop and a new line buffer called $SpaceFreeLine is constructed
+containing the line without spaces. If a double quote character (") is
+located then the removal of spaces stops until the next double quote character
+is found and the language string data is assumed to have ended.
+<p>When the foreach loop has completed the above line would be as shown
+below in the $SpaceFreeLine scalar variable.
+<pre><tt><font size=-1>UI_ENTER_PASSWORD,"Enter Password","Mot de Passe ?","Passworteingabe","Intro Contrase\d154a",&lt;NONE></font></tt></pre>
+The space free line is then split again into the array @SplitRes but this
+time the delimiter for the split is a comma (,). The remainder of this
+section of the code to the #------------- break is responsible for adding
+the various sections of the line to a number of lists to be processed later.
+$SplitRes[x] is used to access the various parts of the line starting with
+the pre-processor macro name where x=0, to the enumerated type name where
+x=5. The data from the line is pushed onto the array, which simply appends
+the new string to a new array location. Pre-processor macro names are stored
+in the array @DefineList, For formatting purposes the maximum length of
+the pre-processor macro names is recorded in the scalar variable $MaxDefineLength.
+A for loop is used to process the four languages, but data is only pushed
+to an array if the $LanguagesToProcess variable indicates that language
+data is to be found in the location. If data is not found in one of the
+columns 2, 3, or 4 because the column is missing and /LANGS=1 was set on
+the command line then the data from language column 1 is pushed to the
+other three arrays too. Finally the enumerated type names are pushed to
+the array @StringTableNameList, with the maximum length of the enumerated
+type name being recorded in the scalar variable $MaxStringTableNameLength,
+which is to be used for formatting the source file later in the script.
+<p>The next section of the script, as indicated by the comment, builds
+the string tables (enumerated types).
+<p>A for loop iterates through the list of pre-processor macro names, and
+the associated enumerated type name that was extracted from the same line
+in the language definition file is extracted to the $_ variable. A comparison
+match is then made to see if the enumerated type name was &lt;NONE> which
+indicates that the strings are not in a string list. This is done using
+if (!m/&lt;NONE>/). If a string table name does exist for the line then
+a search is made through an array that is used to store enumerated type
+names that have already been encountered in the file. The array used to
+store this information is @UsedList. If the enumerated type name has not
+been seen before in the file then the search indicator variable $Located
+remains at -1, and so a new entry is created in @UsedLocation, and a new
+string table reference is created in $StringTable. The PERL code that creates
+the new string table requires further explanation, and the line of language
+definition file below is used to explain it.
+<pre><tt><font size=-1>ENUM_IRIGB_STATUS_NOT_FITTED, "Card not Fitted", "Carte Non Ins\d149r\d149", "Kart n.eingf\d159hrt", "Card not Fitted", enumIrigbStatus</font></tt></pre>
+The code is shown below :
+<pre><font size=-1>$UsedList[$#UsedList + 1] =&nbsp; $StringTableName;</font></pre>
+
+<pre><font size=-1>$StringTable[$#StringTable + 1] =&nbsp; "UINT32 ".$StringTableName."[] =";</font></pre>
+
+<pre><font size=-1>while (length($StringTable[$#StringTable]) &lt; (length("UINT32 ") + $MaxStringTableNameLength + length("[] =")))</font></pre>
+
+<pre><font size=-1>{</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; $StringTable[$#StringTable] = $StringTable[$#StringTable]." ";</font></pre>
+
+<pre><font size=-1>}</font></pre>
+
+<pre><font size=-1>$StringTable[$#StringTable] = $StringTable[$#StringTable]."{ ".$DefineList[$Counter];</font></pre>
+The first line adds enumIrigbStatus to a new location at the end of the
+array @UsedList. The dollar character ($) is used to name the array when
+indexing individual values and the construct $#UsedList + 1, implies the
+array location one past the end of the last current location in the array.
+This causes the array to grow by one.
+<p>The second line adds the text 'UINT32 enumIrigbStatus[] = ' to a new
+location at the end of the array @StringTable. The while loop then pads
+spaces into the array location after the = character to ensure that all
+enumerated type values are aligned in the file. When all spaces have been
+added the text '{ ENUM_IRIGB_STATUS_NOT_FITTED' is added to the end of
+the line to give the text shown below :
+<pre>UINT32 enumIrigbStatus[] =&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; { ENUM_IRIGB_STATUS_NOT_FITTED</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ^^^^^^^^ The number of spaces is determined by $MaxStringTableLength.</pre>
+The two arrays @UsedList and @StringTable therefore are aligned in that
+@UsedList simply contains the name of the enumerated type and the corresponding
+index in @StringTable contains the actual enumerated type definition text.
+The enumerated type definition is left as shown above when newly created
+since it is not know at this time whether or not further pre-processor
+constants will be added to it.
+<p>When the line of the language definition file that contains the second
+occurrence of the enumerated type name enumIrigbStatus is encountered through
+the search the variable $Located will hold the index into the @UsedList
+array and hence the index into the @StringTable array where the pre-processor
+variable must be added. Consider what has been shown for the example above
+and the line of the language definition file shown below :
+<pre><tt><font size=-1>ENUM_IRIGB_STATUS_FAILED, "Card Failed", "Carte en D\d149faut", "Karten Abbruch", "Card Failed", enumIrigbStatus</font></tt></pre>
+The code shown below is used to add the pre-processor constant to the enumerated
+type in the array @StringTable.
+<pre><font size=-1>$_ = $StringTable[$Located];</font></pre>
+
+<pre><font size=-1>@SplitRes = split /\n/, $StringTable[$Located];</font></pre>
+
+<pre><font size=-1>if (length($SplitRes[$#SplitRes]) > 80)</font></pre>
+
+<pre><font size=-1>{</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; $StringTable[$Located] = $StringTable[$Located].",\n";</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; $AddSpaceCounter = 0;</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; while ($AddSpaceCounter &lt; (length("UINT32 ") + $MaxStringTableNameLength + length("[] = {")))</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; {</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $StringTable[$Located] = $StringTable[$Located]." ";</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $AddSpaceCounter++;</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; }</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; $StringTable[$Located] = $StringTable[$Located].$DefineList[$Counter];</font></pre>
+
+<pre><font size=-1>}</font></pre>
+
+<pre><font size=-1>else</font></pre>
+
+<pre><font size=-1>{</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; $StringTable[$Located] = $StringTable[$Located].", ". $DefineList[$Counter];</font></pre>
+
+<pre><font size=-1>}</font></pre>
+The pre-processor constant name will be added to the end of the array location
+identified by $StringTable[$Located]. However the strings within the array
+location will be broken up by new line characters (\n) in order to ensure
+that the lines do not exceed 80 columns. Therefore the current data stored
+in the array location is split into individual elements of the array @SplitRes
+based on the \n character. If the length of the string in the final array
+location in @SplitRes is less than or equal to 80 then the pre-processor
+name is simply added to the end of the enumerated type as shown by the
+code in the else {} section. This results in the following in $StringTable[$Located]
+:
+<pre>UINT32 enumIrigbStatus[] =&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; { ENUM_IRIGB_STATUS_NOT_FITTED, ENUM_IRIGB_STATUS_FAILED</pre>
+If the length of the final line of the enumerated type data is currently
+greater than 80 characters long then the code within the if {} statement
+shown above is executed. The character ',\n' is added to the end of the
+line and then spaces are added, by the while loop, to pad the string so
+that the enumerated type values are aligned.&nbsp; When this has been done
+the pre-processor constant name is added to the string. This results in
+a string in $StringTable[$Located] which contains :
+<pre><font size=-1>UINT32 enumIrigbStatus[] =&nbsp;&nbsp;&nbsp; { ENUM_IRIGB_STATUS_NOT_FITTED, ENUM_IRIGB_STATUS_FAILED,\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ENUM_IRIGB_STATUS_SIGNAL_PRESENT,</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ^^^^ spaces as dictated by $MaxStringTableNameLength&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ^^^^^^^^^ Enough spaces for alignment.</font></pre>
+The result to be stored in the source file is shown below :
+<pre><font size=-1>UINT32 enumIrigbStatus[] =&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; { ENUM_IRIGB_STATUS_NOT_FITTED, ENUM_IRIGB_STATUS_FAILED,</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ENUM_IRIGB_STATUS_SIGNAL_PRESENT,</font></pre>
+Since the elements of the enumerated type are added as the data extracted
+from the language definition file is processed it is not possible to specify
+the number of elements in the square brackets ([]) until all data has been
+processed. Once the main for {} loop that controls the construction of
+the enumerated types has completed the next section of code calculates
+the number of items in the type and inserts the appropriate number. The
+code segment shown below performs this task :
+<pre>foreach $StringTableDef (@StringTable)</pre>
+
+<pre>{</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; @SplitString = split /\,/, $StringTableDef;</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; $Count = $#SplitString + 1;</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; if ($Count &lt; 10)</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; {</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $StringTableDef =~ s/\{/&nbsp; \{/;</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $StringTableDef =~ s/\n/\n&nbsp;&nbsp; /g;</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; }</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; elsif ($Count &lt; 100)</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; {</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $StringTableDef =~ s/\{/ \{/;</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $StringTableDef =~ s/\n/\n&nbsp;&nbsp; /g;</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; }</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; else</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; {</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $StringTableDef =~ s/\n/\n&nbsp;&nbsp; /g;</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; }</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; $StringTableDef =~ s/\[\]/\[$Count\]/;</pre>
+
+<pre>}</pre>
+Each line in the @StringTable array is split into the array @SplitString
+based on the comma character (,). The $Count variable is then assigned
+the number of elements in the split array plus one, which is the number
+of elements in the enumerated type. Conditional code is then used to insert
+spaces into the line to ensure that the text is still aligned when the
+numbers are added between the square brackets. The substitution 's/\{/&nbsp;&nbsp;
+\{/ ' is used to insert spaces before the { character, and then 's/\n/\n&nbsp;&nbsp;
+/g' performs a global search and replace to insert spaces after the \n
+character to align all other lines. Once this has been done the required
+number is inserted into the square brackets. All of the search routines
+in the above code segment involve the manipulation of characters that are
+actually control characters in regular expressions. For this reason they
+must be 'escaped' using the backslash character (\).
+<p>The next section of code generates the include file.&nbsp; A counter
+for the value of the pre-processor constant is initialized to 0 ($ConstantCounter),
+then the file to contain the text is opened assigning the file handle HeaderFileHandle
+to be used for all data writes. The variable that holds the name of the
+file is changed to '>filename' since the '>' character indicates that the
+file is to be opened for writing. Header information for the file is then
+written. The name of the include file is then manipulated to generate the
+following lines :
+<pre>#ifdef INCLUDE_H</pre>
+
+<pre>#define INCLUDE_H</pre>
+A copy of the name of the file is taken, for example include.h. The full
+stop (.) is then replaced with an underscore (_) and the characters are
+converted to uppercase using the uc() function. A line is then added to
+the file to include the file types.h followed by two new line characters.
+<p>A foreach loop is used to iterate through the @UsedList array to add
+the lines below to the file :
+<pre>#pragma DATA_SECTION(enumIrigbStatus, "sect_str")</pre>
+
+<pre>extern UINT32 enumIrigbStatus[4];</pre>
+A while loop is used based on the maximum length of the enumerate type
+name ($MaxStringTableLength) to ensure that the text "sect_str") always
+appears in the same column. This makes the include file more readable.
+The external reference line is then created. This is done by iterating
+through the @StringTable array to locate the string table and then extracting
+the numeric value to be put between the square brackets. This is done by
+the code shown below :
+<pre><font size=-1>foreach $StringTableDef (@StringTable)</font></pre>
+
+<pre><font size=-1>{</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; @SplitString = split /\[/, $StringTableDef;</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; $_ = $SplitString[0];</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; if ((m/$SearchText/) &amp;&amp; (length($_) == length($SearchText)))</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; {</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; @SplitString = split /\[/, $StringTableDef;</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; @NumString = split /\]/, $SplitString[1];</font></pre>
+
+<pre><font size=-1>&nbsp;&nbsp;&nbsp; }</font></pre>
+
+<pre><font size=-1>}</font></pre>
+
+<pre><font size=-1>$HeaderFileLine =~ s/\[\]/\[$NumString[0]\]/;</font></pre>
+
+<pre><font size=-1>print HeaderFileHandle $HeaderFileLine;</font></pre>
+The string is split into the @SplitString array and then the first element
+of the array is put into the default pattern match variable $_.&nbsp; A
+search is then performed to locate the enumerated type name in the string
+table list. When the correct string has been located the string table definition
+is split twice. The first split operation translates 'UINT32 enumIrigbStatus[4]
+= { ENUM_IRIGB_STA......' into two strings of 'UINT32 enumIrigbStatus'
+and '4] = { ENUM_IRIGB_STA......' stored in $SplitString[0] and $SplitString[1]
+respectively.&nbsp; The second split operation produces '4' and ' = { ENUM_IRIGB_STA......'
+in $NumString[0] and $NumString[1] respectively. The extracted value is
+then substituted into the buffer line $HeaderFileLine and it is written
+to the file.
+<p>A comment of /* #define directives. */ is then written to the file and
+a foreach loop is used to write the pre-processor macro names with their
+values.&nbsp; Within the foreach loop a while loop is used to ensure that
+the values are aligned in the file, based on the length of the longest
+pre-processor macro name stored in $MaxDefineLength. It is a requirement
+that the right hand side of the bracketed values are aligned so depending
+on the value of the constant either three, two or one space is removed.
+This ensures that values up to 9999 are aligned.
+<p>When all pre-processor macro names have been written a number of comment
+lines are written to the file and then it is closed.
+<p>The four language files are then written to their individual files using
+the function <a href="#ProcessText">ProcessText</a>. When all language
+files have been processed the source file is written using the code shown
+below :
+<pre>open SourceFileHandle, $SourceFile;</pre>
+
+<pre>print SourceFileHandle $FileHeader;</pre>
+
+<pre>print SourceFileHandle "#include ".'"'."types.h".'"'."\n";</pre>
+
+<pre>print SourceFileHandle "#include ".'"'.$HeaderFile.'"'."\n\n";</pre>
+
+<pre>foreach $StringTableDef (@StringTable)</pre>
+
+<pre>{</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; $StringTableDef = $StringTableDef." }\;";</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; print SourceFileHandle $StringTableDef."\n";</pre>
+
+<pre>}</pre>
+
+<pre>close SourceFileHandle;</pre>
+The file header information is printed followed by the #include lines for
+the two include files, one of which is taken from the name of the include
+file supplied on the command line. A foreach loop is used to iterate through
+the @StringTable array. Each entry then has the enumerated type terminator
+' };' appended to the string and then it is written to the file.
+<p>Following this file creation the script is terminated with a return
+value of 0.
+<h4>
+<a NAME="LangSplitFunctions"></a>Functions</h4>
+Individual functions used in the script are described below.
+<h4>
+<a NAME="ReadDefinitionFile"></a>ReadDefinitionFile</h4>
+The code of this function simply removes the '/D=' string from the name
+of the language definition file and then opens the file for reading. A
+while loop which uses the eof() funtion as a means of termination is used
+to read the data 25 bytes at a time into a buffer called $DataFromFile.
+This is then added to a holding buffer called $DefinitionData using the
+join() function. In this way all data from the file is extracted including
+comments and line termination characters. The $DefinitionData variable
+is not re-initialised when the function is called so the script can handle
+any number of language definition files.
+<h4>
+<a NAME="ProcessText"></a>ProcessText</h4>
+The ProcessText function is passed four arguments which are extracted into
+local variables using the my and shift operators. The arguments are described
+below :
+<ul>
+<li>
+The name of the file,</li>
+
+<li>
+The character to substitute into character location 16 if this language
+file is to be a psuedo language file based on language text in column 1.</li>
+
+<li>
+The number of languages to process. This is taken from the /LANGS= command
+line argument.</li>
+
+<li>
+The number of this language - an incremental number from 1 to 4 as the
+language data is processed.</li>
+</ul>
+Prior to calling the function the global variable @LanguageList is assigned
+one of the language arrays - @LanguageOneList etc.
+<p>The file is opened for writting purposes and a line counter variable
+is initialised to 0 ($LineCounter).
+<br>Each item within the language text array @LanguageList is then processed
+in turn using a foreach loop. The double quote characters (") are removed
+from the line using the search and replace operation 's/\"//g'. The string
+is then split into an array where each character occupies a single array
+location so that the characters can be processed individually. A while
+loop and counter are used to process each character. The default pattern
+match variable $_ is assigned each character in turn. A comparison then
+takes place for the back slash character (\). If the character is not found
+then the character is appended to the variable $NewString, which is used
+to build the string to be written to the file. If a back slash character
+is located then a second search takes place on the next character. If a
+'d' is found then the following three characters are assumed to be the
+decimal code of the required character, in the Courier character set for
+numbers in the range 127 to 163 or ASCII character set for numbers in the
+range 30 to 126. A check is performed to ensure that there are enough characters
+following the 'd'. If there are not enough characters then an error message
+is displayed and the script exits with a code of -2. If there are enough
+characters in the buffer then the substr function is used to extract the
+characters and the appropriate character is added to the $NewString buffer.
+If an 'x' is found then the following two characters are assumed to be
+the hexadecimal code of the required character, in the Courier character
+set for numbers in the range 7F to A3 or ASCII character set for numbers
+in the range 1E to 7E. A check is performed to ensure that there are enough
+characters following the 'x'. If there are not enough characters then an
+error message is displayed and the script exits with a code of -3. If there
+are enough characters in the buffer then the substr function is used to
+extract the hexadecimal characters and the appropriate character is added
+to the $NewString buffer.
+<p>When all characters in the string have been processed a while loop is
+used to ensure that there are always 16 characters in the string. Any strings
+that are beyound 16 characters in length are truncated to 16 characters.
+<p>The $LanguagesToProcess and $LanguageCounter variables are then used
+to decided whether the array of language data used by the function contains
+genuine language text or a copy of the English in column 1. If the language
+is a psuedo foreign language then the string is split, character 16 is
+replaced by the supplied $LanguageFileCharacter and then the string is
+reconstructed.
+<p>The $LineCounter variable is then incremented and a check is made to
+ensure that the file will not contain more that 4096. Once the array of
+language data has been processed any remaining space in the file up to
+4096 strings is padded with spaces.
+<h3>
+
+<hr WIDTH="100%">Name</h3>
+<a NAME="SyntaxCheckLanguageFile"></a>Syntax Check Language File (scanlang.pl)
+<h3>
+General Description</h3>
+This script will perform a number of checks on a <a href="#LanguageDefinitionFile">language
+definition file</a> to ensure that it can be correctly processed by the
+script <a href="#GenerateLanguageSpecificSourceFiles">langsplit.pl</a>.
+<h4>
+Checks Performed</h4>
+
+<ul>
+<li>
+Most language definition files began with only a single column of data
+in the English language. This column was then copied and replicated to
+produce French, German and Spanish text which was then translated to the
+required genuine language. As a result there may be language text in columns
+2, 3 and 4 that has not been translated. Any such text is reported. The
+line number and the matching language text is reported. It is assumed by
+this script that the language are in the order English, French, German
+and Spanish. It will still work fine if languages are replaced to give
+a sequence of, say, English, Russian, Polish, Italian, it is just that
+the error messages would then be misleading.</li>
+
+<li>
+Some language text has been produced by French, German and Spanish translation
+staff who have included accented characters that are outside the range
+32 to 126 decimal. These character will be stored in the language defintion
+file in the extended ASCII coding scheme and not the Courier coding scheme.
+As a result the wrong character is presented by the relay when such a string
+is used. Any characters outside the permitted range are reported and the
+line number and column location are give. Such characters should be replaced
+with an appropriate escape sequence.</li>
+
+<li>
+A check is performed to ensure that all character strings are 16 characters
+or less in length. The script langsplit.pl does truncate overlength strings
+but the truncation may be inappropriate and so a considered abreviation
+of the phrase is required. The location of overlength strings is report
+along with the offending text.</li>
+</ul>
+
+<h3>
+Command Line Arguments</h3>
+A single command line option is used by the script to indicate the file
+to be processed. The script is executed as shown below :
+<pre>ccperl \50300PL\DEV\util\SRC\scanlang.pl /D=&lt;filename></pre>
+Where &lt;filename> is the name of a single file to process.
+<p>Alternatively the 'standard' PERL interpreter can be used. This is located
+in the Tools VOB in \Tools\PERL\bin\perl.exe.
+<h3>
+Operating System Return Values</h3>
+The function always returns the error code 0.
+<h3>
+Internal Operation</h3>
+The following section describes in detail the operation of the script in
+a manner that hopefully will assist in maintenance in the future. PERL
+concepts are described where necessary. It is useful to have a printed
+copy of the script to refer to when reading this section.
+<p>The script begins by printing a series of text lines that describe what
+it will check for and which errors it will report. The name of the file
+to check is then extracted from the command line and stored in $FileToCheck.
+The /D= part of the argument is removed using the search and replace operator
+'s|/D=||'. A number of variables are then initialised to 0 for the recording
+of the number of Invalid characters and the number of overlength strings.
+The file is then opened and a while loop is used with the eof() function
+to process the file to completion. Each character is read from the file
+one at a time and is stored in the scalar variable $DataFromFile.
+<p>If the character is not &lt;CR> or &lt;LF> then it is appended to the
+variable $FileLineBuffer.
+<p>If the character is &lt;CR> then a further single character read takes
+place to remove the accompanying &lt;LF> character and the $LineCounter
+variable is incremented by one to indicate a change of line number. At
+the same time the $CharacterCounter variable is reset to 0 for the start
+of the processing of the line. If the character read from the file is a
+&lt;LF> character then it is assumed that the file has UNIX format line
+termination characters and so there is no need to perform a second read
+to remove the additional character. In this instance the counters are simply
+incremented and reset. For any other character the $CharacterCounter is
+incremented and further checking of the character takes place. If the characters
+value is outside the range 32 to 126 then an error message ' is displayed.
+<p>Further checking then takes place to identify string data by the start
+and end double quote characters ("). The ASCII code of a double quote character
+is 34. A scalar variable called $InString is used to indicate whether the
+current character position is within a string or not as the string is processed
+from left to right. The $InString variable is changed as the line is processed
+in the manner described below :
+<pre><tt><font size=-1>ENUM_IRIGB_STATUS_FAILED, "Card Failed", "Carte en D\d149faut", "Karten Abbruch", "Card Failed", enumIrigbStatus</font></tt></pre>
+
+<pre><tt><font size=-1>0000000000000000000000000001111111111100001111111111111111111000011111111111111000011111111111000000000000000000</font></tt></pre>
+The 0's and 1's indicate the value of $InString as the file is processed.
+when a double quote character is encountered for the second time then $InString
+is set to 0 and there is a whole string in $StringToCheck to be processed.
+A copy is taken of the string to the variable $StringHoldingCopy in case
+it is necessary to report an error on the string. Any \d... sequences are
+replaced with a single character (a capital D but it does not matter which
+actual character is used), and and \x.. sequence are also replaced with
+a single character. The full stops (.) in the regular expressions 's/\\d.../D/g'
+and 's/\\x../X/g' replace \d followed by any three characters with 'D'
+and \x followed by any two characters with a 'X' character. This is what
+the langsplit.pl script does except that the real character replacement
+is carried out. The length of the string can then be checked to see if
+it exceeds 16 characters.
+<p>When a full line has been identified it is possible to check for repeated
+text in the language columns. The contents of $FileLineBuffer are split
+into an array @SplitLine based on the comma delimeter (,). If the index
+to the last element of @SplitLine is greater than or equal to 5 then it
+is assumed that there is a full set of languages to check. The column that
+is assumed to be English text ($SplitLine[1]) is assigned to the default
+pattern match variable $_, and a for loop is used to compare the English
+text to the other three languages. Two search and replace operations are
+done on $_ and the comparison text prior to the match test. The operation
+'s/ *//' removes all spaces from the front of the strings and the operation
+'s/\"//g' removes all occurances of double quote characters. If a match
+is found then an appropriate error message is displayed.
+<p>When all lines of the file have been processed the $Invalid and $OverLength
+variables are checked and an indication of no errors will be given if possible.
+<h3>
+
+<hr WIDTH="100%">Name</h3>
+<a NAME="FormatLanguageText"></a>Format Language Text (formatlang.pl)
+<h3>
+General Description</h3>
+This script is used to re-align a language definition file after it has
+been edited. After a file has been changed the comma separated columns
+may be out of alignment. This makes the file difficult to read. This script
+was constructed by extracting large sections of the langsplit.pl script
+so reference to that script will be made when describing this file.
+<h3>
+Command Line Arguments</h3>
+A single command line option is used by the script to indicate the file
+to be processed. The script is executed as shown below :
+<pre>ccperl \50300PL\DEV\util\SRC\formatlang.pl /D=&lt;filename></pre>
+Where &lt;filename> is the name of a single file to process.
+<p>Alternatively the 'standard' PERL interpreter can be used. This is located
+in the Tools VOB in \Tools\PERL\bin\perl.exe.
+<h3>
+Operating System Return Values</h3>
+The function always returns the error code 0.
+<h3>
+Internal Operation</h3>
+The following section describes in detail the operation of the script in
+a manner that hopefully will assist in maintenance in the future. PERL
+concepts are described where necessary. It is useful to have a printed
+copy of the script to refer to when reading this section.
+<p>This script is an altered copy of the langpslit.pl script so large sections
+of it are the same as that script.
+<p>Two <a href="#LangSplitFunctions">functions</a> are defined and used
+which are the same as those in langsplit.pl. These are used to read the
+language definition file and to process the language text extracted from
+the language definition file.
+<p>At the start of the script help text and the title are defined followed
+by the definitions of the functions.
+<p>The main function then begins by getting the 'temp' or 'tmp' environment
+variable. The environment variables 'TEMP', 'temp', 'TMP' and 'tmp' are
+requested in order until a valid setting is found. If none of the environment
+variables is set then an error message is displayed and the script exist.
+<p>A for loop is used to process items on the command line one at a time.
+It is therefore possible to pass multiple language definition files to
+the script to be processed one after the other.
+<p>The next section of the script processes the command line arguments.
+If the argument /D= is found on the command line then the file content
+is extracted using the <a href="#ReadDefinitionFile">ReadDefinitionFile</a>
+function and the filename is recorded in the variable $FileName. The next
+section of the file is taken from langsplit.pl and is described in the
+description of that script. The result of the section of code is that the
+language defintion data has been put into the arrays as described in the
+diagram below :
+<pre><tt><font size=-1>ENUM_IRIGB_STATUS_NOT_FITTED, "Card not Fitted", "Carte Non Ins\d149r\d149", "Kart n.eingf\d159hrt", "Card not Fitted", enumIrigbStatus</font></tt></pre>
+
+<pre><tt><font size=-1>|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</font></tt></pre>
+
+<pre><tt><font size=-1>|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | --> @StringTableNameList</font></tt></pre>
+
+<pre><tt><font size=-1>|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | --> @LanguageFourList</font></tt></pre>
+
+<pre><tt><font size=-1>|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | --> @LanguageTwoList&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | --> @LanguageThreeList</font></tt></pre>
+
+<pre><tt><font size=-1>| --> @DefineList&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | --> @LanguageOneList</font></tt></pre>
+The next section of the script is a series of foreach loops that get the
+maximum length of each item stored in the arrays indicated above.
+<p>A new file is then opened for output in the directory identified by
+$EnvTemp with the name formatdef.temp. The definition data is then re-read
+and split into individual lines in the array @SplitLines. A foreach loop
+the processes each line one at a time. The line is put into the default
+pattern match variable $_ and a search is performed in an if() and else()
+statement. If the first line begins with the # character or the // pair
+of characters then the line is not be be reformatted and it is put into
+the temporary file. For all other lines the spaces are removed except for
+where they appear in double quoted text. This process is described for
+the script langsplit.pl. When all non essential space characters have been
+removed from the file the text is joined back togther with appropriate
+amounts of space between the comma separated fields using while loops to
+insert the spaces.
+<p>When all lines of the file have been processed it is closed and a command
+is created in $CopyCommand to copy the temporary file to the location of
+the original input file. Note the use of the construct substr($TempFile,
+1). This will take all of the variable $TempFile starting at character
+1 rather than character 0. This removes the greater than character (>)
+inserted into the name to make the file an output file when it was opened.
+The copy command is executed by enclosing the variable that contains the
+command in 'back quotes' (`), which are found in the key at the top left
+of the main set on a standard keyboard.
+<h3>
+
+<hr WIDTH="100%">Name</h3>
+<a NAME="GenerateRealLanguageFile"></a>Generate Real Language File (makereallang.pl)
+<h3>
+General Description</h3>
+This script simply converts all escape sequence (\dxxx or \xnn) into the
+appropriate Courier defined character.
+<h3>
+Command Line Arguments</h3>
+The command line options used by the script are shown below:
+<pre>ccperl \50300PL\DEV\util\SRC\makereallang.pl /D=&lt;input-filename> /O=&lt;output-filename></pre>
+Where &lt;input-filename> is the name of a single language definition file,
+and &lt;output-filename> is the name of a file to hold the 'real' language
+text. Note that the order is important.
+<p>Alternatively the 'standard' PERL interpreter can be used. This is located
+in the Tools VOB in \Tools\PERL\bin\perl.exe.
+<h3>
+Operating System Return Values</h3>
+The function always returns the error code 0.
+<h3>
+Internal Operation</h3>
+The script begins with a series of printed messages describing the script.
+It then searches for the /? option and if this is present it prints a message
+about the command line options to the script. The names of the file to
+process and the output file are collected into $FileToConvert and $OutputFile
+respectively. The construct 's|/O=|>|' replaces the command line argument
+selector with the '>' character to make the file open operation open the
+file for output.
+<p>The data is then read from the file and is collected into a buffer of
+one line at a time. Once a line has been collected the series of character
+replacements take place using the lines that include constructs like 's/\\d143/\xDF/g'
+This will search each line for all occurances of \d143 and then replaces
+them with the character with the hex code DF. In this example 143 is the
+Courier code of the character and DF is the ASCII code of the character.
+<p>Once the file has been completely processed the input and output files
+are closed and the script terminates. The output file may then be read
+using a text editor to show the real text that would appear on a Courier
+Master station if the language text was used in a product. The output will
+probably not be aligned into columns so the file could benefit from being
+processed by <a href="#FormatLanguageText">formatlang.pl</a>.
+<h3>
+
+<hr WIDTH="100%">Name</h3>
+<a NAME="GenerateEscapeSequenceLanguageFile"></a>Generate Escape Sequence
+Language File (makeescapelang.pl)
+<h3>
+General Description</h3>
+This script simply converts all characters outside the range 32 to 126
+to the appropriate escape sequence (\dxxx). Language text translation contractors
+send files to ALSTOM that contain accented characters. It is probably not
+acceptable to ask them to use the escape sequences. Such data can be directly
+imported into the language definition file provided that it is then processed
+by this script.
+<h3>
+Command Line Arguments</h3>
+The command line options used by the script are shown below:
+<pre>ccperl \50300PL\DEV\util\SRC\makeescapelang.pl /D=&lt;input-filename> /O=&lt;output-filename></pre>
+Where &lt;input-filename> is the name of a single language definition file
+that contains accented characters, and &lt;output-filename> is the name
+of a file to hold the language definition file that is acceptable by langsplit.pl.
+Note that the order is important.
+<p>Alternatively the 'standard' PERL interpreter can be used. This is located
+in the Tools VOB in \Tools\PERL\bin\perl.exe.
+<h3>
+Operating System Return Values</h3>
+The function always returns the error code 0.
+<h3>
+Internal Operation</h3>
+The script begins with a series of printed messages describing the script.
+If then searches for the /? option and if this is present it prints a message
+about the command line options to the script. The names of the file to
+process and the output file are collected into $FileToConvert and $OutputFile
+respectively. The construct 's|/O=|>|' replaces the command line argument
+selector with the '>' character to make the file open operation open the
+file for output.
+<p>The data is then read from the file and is collected into a buffer of
+one line at a time. Once a line has been collected the series of character
+replacements take place using the lines that include constructs like 's/\xDF/\\d143/g'
+This will search each line for all occurances of the character with the
+ASCII code DF (hex)&nbsp; and then replaces it with the character sequence
+\d143. In this example 143 is the Courier code of the character and DF
+is the ASCII code of the character.
+<p>Once the file has been completely processed the input and output files
+are closed and the script terminates. The output will probably not be aligned
+into columns so the file could benefit from being processed by <a href="#FormatLanguageText">formatlang.pl</a>.
+<br>
+<hr WIDTH="100%">
+<h3>
+Name</h3>
+<a NAME="TextEditorModuleFileCreator"></a>Text Editor Module File Creator
+(tem.pl)
+<h3>
+General Description</h3>
+This script is used to generate a file that may be use by the Text Editor
+Module of MiCOM S1. The format of the TEM file is shown below :
+<pre>APP: Courier</pre>
+
+<pre>TYPE: LanguageText</pre>
+
+<pre>FORMAT: 1.0</pre>
+
+<pre>FILESOURCE: ALSTOM</pre>
+
+<pre>MODEL: P141242111A1A0000A</pre>
+
+<pre>This is a ALSTOM P&amp;C originated language text file.</pre>
+
+<pre>Date : 25/01/99?Enter Password</pre>
+
+<pre>Password Entered</pre>
+
+<pre>Password Cleared</pre>
+
+<pre>Access Level 0</pre>
+
+<pre>Access Level 1</pre>
+
+<pre>Access Level 2</pre>
+The above text shows the start of the TEM file. All 4096 text strings that
+appear in the language file are stored in the file but are not shown here
+for the sake of space. After the date a character with the ASCII code 1A
+(hex) is added to the file followed by the first of the 4096 strings. This
+is shown by a question mark in the example above.
+<h3>
+Command Line Arguments</h3>
+Command line arguments to the script are described below. Note that arguments
+are case sensitive.
+<br>&nbsp;
+<table BORDER=3 WIDTH="100%" >
+<tr>
+<td>Argument Identifier</td>
+
+<td>Description</td>
+</tr>
+
+<tr>
+<td>/F= { ALSTOM | USER }</td>
+
+<td>This option identifies the file source. The two available options are
+ALSTOM or USER.</td>
+</tr>
+
+<tr>
+<td>/M= &lt;Model number></td>
+
+<td>The model number of the product.</td>
+</tr>
+
+<tr>
+<td>/C={ DEFAULT_ALSTOM | FILE /D= &lt;filename> }</td>
+
+<td>This options specifies the source of the comment to appear in the file.
+If DEFAULT_ALSTOM is used then the comment shown below is put into the
+top of the file.
+<br>'This is a ALSTOM P&amp;C originated language text file.
+<br>Date : 08/11/1999'
+<br>If the option FILE /D=&lt;filename> is used then the content of the
+file identified by &lt;filename> is used as the comment.</td>
+</tr>
+
+<tr>
+<td>/I=&lt;input-filename></td>
+
+<td>Specifies the name of an input file that has been generated by <a href="#GenerateLanguageSpecificSourceFiles">langsplit.pl</a>.
+The file was one of the /O{1-4}= options of langsplit.pl.</td>
+</tr>
+
+<tr>
+<td>/O=&lt;output-filename></td>
+
+<td>Specifies the name of the file to hold the data to be read by the MiCOM
+S1 Text Editor Module.</td>
+</tr>
+</table>
+
+<p>Note that all options are case sensitive.
+<p>Alternatively the 'standard' PERL interpreter can be used. This is located
+in the Tools VOB in \Tools\PERL\bin\perl.exe.
+<h3>
+Operating System Return Values</h3>
+The function always returns the error code 0.
+<h3>
+Internal Operation</h3>
+The first part of the script collects command line arguments in the same
+manner as the script <a href="#GenerateLanguageSpecificSourceFiles">langsplit.pl</a>.
+The command line arguments are the processed to construct the file header.
+If the DEFAULT_ALSTOM command line argument is specified for the /C option
+then the date is constructed using the gmtime function. If the FILE option
+is used then the contents of the file identified by /D= is read. If the
+comment in the file ends with a line termination character then it is removed.
+The character with the hex code 1A is then added to the header.
+<p>The input file is then opened and read a character at a time with each
+character then being written to the output file. After each 16th character
+a line termination character is inserted into the output file.
+<p>
+<hr WIDTH="100%">
+<h3>
+Name</h3>
+<a NAME="ModBusAutomaticTestFileGenerator"></a>ModBus Automatic Test File
+Generator (Modbus_Auto.pl)
+<h3>
+General Description</h3>
+This script processes the products' spreadsheet to produce a file of information
+that cna be used by the ModBus Master Station for automatic testing. Columns
+of data are read from the spreadsheet and processed to produce a single
+comma delimeted file. Extensive command line arguments are used to control
+the manner in which the script collects information, which cells it process
+and which it rejects and which model will be tested using the resulting
+data file.
+<h3>
+Product Spreadsheet Format</h3>
+If a spreadsheet is in an acceptable format for the Courier automatic testing
+then it is probable that it will be acceptable by this script. There are
+however a number of additional modifications :
+<br>&nbsp;
+<h4>
+G Number Identification</h4>
+G number defininitions on the 'data types' sheet must be model specific
+if the content varies for each model. For example the information shown
+below has been extracted from the Feeder spreadsheet.
+<pre>&nbsp;&nbsp;&nbsp; G31&nbsp; ANALOGUE CHANNEL ASSIGNMENT SELECTOR (Feeder Models 1 &amp; 2)</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; VA</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp;&nbsp;&nbsp; VB</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp;&nbsp;&nbsp; VC</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3&nbsp;&nbsp;&nbsp;&nbsp; IA</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 4&nbsp;&nbsp;&nbsp;&nbsp; IB</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 5&nbsp;&nbsp;&nbsp;&nbsp; IC</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6&nbsp;&nbsp;&nbsp;&nbsp; IN</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 7&nbsp;&nbsp;&nbsp;&nbsp; IN Sensitive</pre>
+
+<pre>&nbsp;</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; G31&nbsp; ANALOGUE CHANNEL ASSIGNMENT SELECTOR (Feeder Model 3)</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; VA</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp;&nbsp;&nbsp; VB</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp;&nbsp;&nbsp; VC</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3&nbsp;&nbsp;&nbsp;&nbsp; V Checksync</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 4&nbsp;&nbsp;&nbsp;&nbsp; IA</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 5&nbsp;&nbsp;&nbsp;&nbsp; IB</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6&nbsp;&nbsp;&nbsp;&nbsp; IC</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 7&nbsp;&nbsp;&nbsp;&nbsp; IN</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 8&nbsp;&nbsp;&nbsp;&nbsp; IN Sensitive</pre>
+The above shows that there are two definitions form G31. One for models
+1 &amp; 2 and the second for model 3. This information must be conveyed
+to the PERL script somehow. The chosen method is to put a comma separated
+list of model numbers after the G code, so the two definitions shown above
+would be replaced as :
+<pre>G31-1,2</pre>
+
+<pre>G31-3</pre>
+
+<h4>
+Unwanted Cells</h4>
+Cells included in the spreadsheet to define the address ranges for protection
+setting groups 2, 3 and 4 can confuse the extraction process. These cells
+should have a non numeric character as the first character, such as *43000.
+<h3>
+Command Line Arguments</h3>
+Command line arguments to the script are described below. Note that arguments
+are case sensitive.
+<p>It is possible to pass the arguments to the file using standard command
+line options or by using a&nbsp; configuration file. If a configuration
+file is used then the single argument shown below is used to indicate to
+the script the location of the file :
+<pre>/CONFIG = u:\5030X\auto_test\config\model_1_all.cfg</pre>
+The above (case sensitive) option indicates that the file model_1_all.cfg
+located in u:\5030X\auto_test\config should be used to configure the actions
+of the script. The construction of the configuration file is described
+after the arguments.
+<br>&nbsp;
+<br>&nbsp;
+<table BORDER=3 WIDTH="100%" >
+<tr>
+<td>Argument Identifier</td>
+
+<td>Description</td>
+</tr>
+
+<tr>
+<td>/Type: {settings|commands|data|all}</td>
+
+<td>Indicates which type of cells to include : settings, commands or data
+alone, or all types. It is possible to enter a comma separated list if
+only two of the options are required, such as /Type:settings,data</td>
+</tr>
+
+<tr>
+<td>/D:<i>constant = value</i></td>
+
+<td>This argument is used to define an constant expressed as a variable
+in the spreadsheet. A typical example is the 'Max' field of the Digital
+input settings in the disturbance recorder column. Instead of a value the
+text 'DDB Size' is shown. The value of DDB Size must be indicated to the
+script using /D:DDB Size = 300 (say). All other variables for Default,
+Min, Max and Step values must be defined in this way. Any that are currently
+indicated by '**' and then comments in the Comment field must be changed
+to a textual representation using characters in the rangeA-Z or a-z. Spaces
+are allowed. There can be any number of the /D: command line arguments.</td>
+</tr>
+
+<tr>
+<td>/InFile=<i>&lt;filename></i></td>
+
+<td>The name of the Microsoft Escel spreadsheet to be processed.</td>
+</tr>
+
+<tr>
+<td>/OutFile=<i>&lt;filename></i></td>
+
+<td>The name of the data file to be produced. This will be the input to
+the ModBus Master Station.</td>
+</tr>
+
+<tr>
+<td>/Excluded=addr1, addr2, addr3-addr4</td>
+
+<td>A comma separated list of addresses that should be ignored by the script
+and hence they will not be automatically tested. This is useful for event
+extraction cells etc. Individual cells can be specified using a comma separated
+list. A range can also be specified using the format 'start - end'. There
+can be any number of individual exclusions and any number of range exclusions.</td>
+</tr>
+
+<tr>
+<td>/GD=addr1-addr2</td>
+
+<td>The spreadsheet specifies only a single group of protection parameters.
+This setting indicates to the script the range of addresses in the group
+1 parameters.&nbsp;</td>
+</tr>
+
+<tr>
+<td>/GC=addr1-addr2,addr3-addr4, ....</td>
+
+<td>This setting indicates the address ranges for which protection parameter
+groups 2, 3 and 4 should be produced, based on copying the cells in the
+range given by /GD= and adjusting the addresses. There should be three
+address ranges for this argument.</td>
+</tr>
+
+<tr>
+<td>/M:{1 .. 4}</td>
+
+<td>This setting indicates the model number. Cells are included in a particular
+model by the presence of a '*' character in the model column. Ony cells
+that are indicated to be present in the model are included in the output
+file. It is possible to select different values for the default, min, max
+and step settings for a cell based on the model number. An example of this
+is the digital input 8 parameter in the disturbance recorder column which
+should be the same for all products.&nbsp;</td>
+</tr>
+</table>
+
+<h3>
+Operating System Return Values</h3>
+The following return values are used by the program.
+<br>&nbsp;
+<br>&nbsp;
+<table BORDER=3 WIDTH="100%" >
+<tr>
+<td>Return Value</td>
+
+<td>Error Message (if applicable).</td>
+</tr>
+
+<tr>
+<td>0</td>
+
+<td>No errors.</td>
+</tr>
+
+<tr>
+<td>-1</td>
+
+<td>Blank minimum, maximum or step for the cell indicated. (Min, max or
+step is also indicated.</td>
+</tr>
+
+<tr>
+<td>-2</td>
+
+<td>The textual min, max or step was not found in the list of defined constants
+supplied to the script on the command line using the /D option.</td>
+</tr>
+
+<tr>
+<td>-3</td>
+
+<td>Invalid character in a range specific address exclusion definition.</td>
+</tr>
+
+<tr>
+<td>-4</td>
+
+<td>Range error in address exclusion. The start address was greater than
+the end address.</td>
+</tr>
+
+<tr>
+<td>-5</td>
+
+<td>Range error in address exclusion. The start address was equal to the
+end address.</td>
+</tr>
+
+<tr>
+<td>-6</td>
+
+<td>An invalid character was found in an individual address exclusion.</td>
+</tr>
+
+<tr>
+<td>-7</td>
+
+<td>An invalid character was found in the /GC specifier.</td>
+</tr>
+
+<tr>
+<td>-8</td>
+
+<td>Range error in /GC specifier. The start address was greater than the
+end address.</td>
+</tr>
+
+<tr>
+<td>-9</td>
+
+<td>Range error in /GC specifier. The start address was equal to the end
+address.</td>
+</tr>
+
+<tr>
+<td>-10</td>
+
+<td>The /GC specifier contained only a single address. It should contain
+a range as indicated in teh command line options section above.</td>
+</tr>
+
+<tr>
+<td>-11</td>
+
+<td>The textually specified default value was not found in the list of
+constants defined on the command line using the /D option.</td>
+</tr>
+</table>
+
+<h3>
+Internal Operation</h3>
+The script is split into separate sections indicated by a comment in the
+form :
+<p>#----------------------------------------
+<br># Descriptive comment.
+<br>#----------------------------------------
+<p>At the start of the script there is a section called 'Required Packages'.
+This has the single line :
+<pre>use OLE;</pre>
+This instructs the script to import data from the OLE library.
+<p>PERL subroutines are then defined for which the <a href="#ModBusAutoFunctions">documentation</a>
+can be found below.
+<p>The first part of the script processes command line arguments. If the
+first argument is /CONFIG= then the contents of the file specified after
+the option are read into the string $JoinedArguments. All line termination
+characters are removed from the string using the regular expression s/\n/
+/g. If the first argument is not /CONFIG= then all arguments are extracted
+from the command line into the string $JoinedArguments separated by spaces.
+However the arguments are supplied to the script they can be processed
+in the same way from this point on.
+<p>The array @ARGV is then produced by spliting all arguments based on
+the '/' character that preceeds all options.
+<p>Each item in the array is then processed in turn using a foreach loop.
+A series of if statements are used to identify the individual options.
+All arguments to this script are case insensitive due to the '/i' on the
+end of the regular expressions in the if statements.
+<p>A hash table is used for the storage of the defined constants. This
+is an array that is indexed on text rather than numbers. For example a
+hash called 'PeoplesAges' could be created as shown below :
+<p>$PeoplesAges{"Mark"} = 31;
+<br>$PeoplesAges{"John"} = 25;
+<br>$PeoplesAges{"Emma"} = 27;
+<br>$PeoplesAges{"David"} = 21;
+<p>If the user then typed a name as a command line argument into a script
+that contained the above hash, it would be possible to get the age of the
+person from the following code, assuming that the typed name was stored
+in the scalar variable $Name.
+<pre>print $Name ." is ".$PeoplesAges{$Name}." years old\n";</pre>
+The variable $TypeFlag is set based on the /Type setting. Bits are used
+to indicate which settings are required.
+<p>The name of the input file is stored in $InputFileName.
+<p>The name of the output file is stored in $OutputFileName.
+<p>Excluded addresses are stored in the array @Exclusions. Individual addresses
+are stored here, so ranges are expanded to include all addresses between
+the start and end points.
+<p>The /GD option is processed to store the start of the defined protection
+settings group in $DefinedGroupStart, and the end of the defined protection
+settings group is stored in $DefinedGroupEnd.
+<p>A two dimensional array is used to store the start and end addresses
+of the groups for which copies of the protection settings are to be created.
+The array is constructed as :
+<pre>$GroupCopy[Group index][0 = start address]</pre>
+
+<pre>$GroupCopy[Group index][1 = end address]</pre>
+The model number is stored in $Model.
+<p>The Microsoft Excel spreadsheet is then opened and the data is extracted.
+An excel 'object' is created using the construct :
+<pre>$excel = CreateObject OLE 'Excel.Application'</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or warn "Couldn't create new instance of Excel App!!";</pre>
+
+<pre>$book = $excel->Workbooks->Open($InputFileName);</pre>
+The $book variable is used to reference the spreadsheet data.
+<br>The sheet that contains the cell definitions in the spreadsheet is
+sheet 2. This is selected and information concerning the number of rows
+and columns is obtained from :
+<pre>$sheet = $book->Worksheets(2);</pre>
+
+<pre>$lastcol = $sheet->UsedRange->Columns->{Count};</pre>
+
+<pre>$lastrow = $sheet->UsedRange->Rows->{Count};</pre>
+A foreach loop is used to process each row in the sheet. The $DisplayCounter
+variable is simply used to display a series of full stop characters (.)
+as an indication of progress through the slow read of the spreadsheet.
+<p>Values are extracted from the sheet using :
+<br>&nbsp;
+<pre>($sheet->Cells(int($Row),j))->{Value};</pre>
+Where j is the column number.
+<p>The data in the Modbus Start Address column is extracted. A length check
+and regular expression are used to confirm that the data extracted is a
+valid ModBus address. If this is the case then the start and end addresses
+are extracted and stored. If the first character in the ModBus start address
+is a '3' then the cell type is marked to be 'Data', and if the first character
+in the ModBus start address is a '4' then the cell type is marked to be
+'Command'.
+<p>All other required data is then extracted from the sheets row and stored
+in scalar variables.
+<p>A check is then performed to see if the cell is required for the selected
+model. The model specific fields are in the following spreadsheet cells
+:
+<p>Model 1 : column 18
+<br>Model 2 : column 19
+<br>Model 3 : column 20
+<br>Model 4 : column 21
+<p>The constuct shown below returns TRUE is the cell is NOT to be used
+in this model :
+<pre>if (!($sheet->Cells(int($Row),(17 + $ModelNumber))->{Value} =~ (m/ *\* */)))</pre>
+If the cell is indicated not be be used in this model then the line below
+is checked to see if the cell is actually required and cell definition
+information should be substituted. The ModBus address cell for the sheet
+row below the row currently under consideration is examined and all spaces
+are removed from the front and end of the data in the cell. If this results
+in a zero length string then it is assumed that the row <i>may</i> include
+information to be substituted. The model specific cell for the row below
+the row under consideration is then examined and if this cell does include
+a '*' character then information in the default, min, max and step is substituted
+if present. If the cell is indicated not be be in the model then the $ModBusStart
+variable is set to a zero length string so that the data is not stored.
+If the information is to be stored then the command line supplied exclusions
+list must be processed to ensure that the cell is not excluded. A foreach
+loop is used to compare the ModBus start address of the cell under consideration
+to each item in the exclusions list. If the cell is not be be excluded
+then the information collected is stored in the @Database array. The function
+<a href="#GetSimpleValue">GetSimpleValue</a>
+is used to process the minimum, maximum and step values.
+<p>Data type information is then extracted from sheet 3 of the spreadsheet.
+Again a foreach loop is used to process each row and a $DisplayCounter
+variable is maintained to give an indication of progress to the user.
+<p>If the G type contains a dash character (-) then it is assumed that
+there will be a model number after the dash, or a comma separated list
+of model numbers. The text after the dash is extracted into a list and
+if the model number supplied as an argument matches one of the model numbers
+in the list then the G code is stored in the variable $StoredGCode.
+<p>If the G type does not include a dash then it is stored without question.
+<br>&nbsp;
+<p>If the first column of the row does not contain any text then it is
+assumed that columns 2 and 3 contain definition data for a G code previously
+extracted. In this instance then data in columns 2 and 3 is stored along
+with the previously extracted G code in the array @DataTypes.
+<p>When this processing is completed the excel spreadsheet is closed.
+<p>The next section of the script replaces textual default values stored
+in the array @Database with numeric values extracted from the appropriate
+G type in @DataTypes. A foreach loop is used to process each row in @Database.
+if the cell is a setting or a command cell then the @DataTypes array is
+iterated through to find a G number that matches the G number of the cell.
+If a match is found then a comparison on the stored default value is made
+with the text extracted from the data types information. If a match is
+found then the stored textual default value is replaced with the equivalent
+numeric value.
+<p>The next section of the script performs a similar function to that just
+described, except that the information to be substituted into the default
+value for cells in the database is taken from command line given defined
+constants. Again a foreach loop is used to process each database row and
+a comparison is used to ensure that only settings and command cells are
+processed. The regular expression (m/[^-0-9\.]/) is used to search for
+any character other than those listed in the brackets - (0123456789-.).
+If such a character is found then the default must be replaced. A further
+check is introduced to ensure that textual cells and password cells are
+not replaced. A foreach loop is used to process the search for the textual
+default through the hash table of defined constants that was produced earlier
+in the script. This code is shown below :
+<pre>foreach $Arg (sort keys %Arguments)</pre>
+
+<pre>{</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; if ((m/$Arg/) &amp;&amp; (length($_) == length($Arg)))</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; {</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $Database[$Row][4] = $Arguments{$Arg};</pre>
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $Match = 1;</pre>
+
+<pre>&nbsp;&nbsp;&nbsp; }</pre>
+
+<pre>}</pre>
+The above code iterates through each 'key' of the hash which is the textual
+part of the related data items. In the people and ages example give above
+the sorted key list would be : Emma, David, John, Mark. If a match is found
+to the textual default value given in the database then the 'value' associated
+with the key is extracted from the hash and is stored in the database to
+replace the textual default. If a match is not found then an error message
+is displayed and the script exist.
+<p>The next section of the script performs the same process as described
+above on the minimum maximum and step values stored in the database. an
+extra foreach loop is inserted into the code to allow the database columns
+5, 6 and 7 to be processed since these hold the min, max and step values
+respectively.
+<p>At this point all data is formatted correctly. The information given
+with the /GC and /GD options is then processed to copy the single protection
+setting group defined in the spreadsheet to the other protection setting
+groups. A series of foreach loops are used to copy cells in the required
+range to the new range.
+<p>The output file is then opened and database rows that match the required
+type (setting, command cell or data cell) are written to the file.
+<p>The file is then closed and the script terminates.
+<h4>
+<a NAME="ModBusAutoFunctions"></a>Functions</h4>
+Individual functions used in the script are described below.
+<p><a NAME="GetSimpleValue"></a>GetSimpleValue
+<p>This script simply returns the value of the argument if it begins with
+text, or returns the numeric part if the script contains textual characters
+at the end. For example :
+<p>DDB Size as an argument would be returned as DDB Size.
+<br>100 * V1 as an argument would be returned as 100.
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

@@ -1,0 +1,2 @@
+use Sys::Hostname;
+$host = hostname();

@@ -1,0 +1,73 @@
+<HTML><HEAD><TITLE>Simple Search</TITLE></HEAD>
+
+
+<BODY BGCOLOR="white" TEXT="#004000" LINK="#400080" VLINK="#008080" ALINK="#FFFF00">
+
+<CENTER>
+<BR><BR><FONT SIZE=3 COLOR="#004080" FACE="Helvetica,Arial"><B>Search This CD</B></FONT><BR><hr width=50%><BR><BR>
+
+
+<!-- START OF THE FORM -->
+
+<TABLE BORDER=1 CELLPADDING=5 bgcolor=#6699CC background=tback1.gif><TR><TD>
+
+<FORM ACTION="http://localhost:6018" METHOD="GET" NAME="search">
+
+<P><table border=0 cellpadding=0><tr><td valign=top>
+
+<!-- HIDDEN DO NOT REMOVE -->
+
+<INPUT TYPE="hidden" NAME="nosort" VALUE="FALSE">
+<INPUT TYPE="hidden" NAME="method" VALUE="FIND">
+<INPUT TYPE="hidden" NAME="scope" VALUE="LOCAL">
+
+<FONT SIZE=-1 FACE="Helvetica,Arial" color=#800040>
+
+<B>Search for</B><BR></FONT>
+
+<!-- TEXT INPUT -->
+
+<INPUT TYPE="TEXT" NAME="terms" SIZE="35"><BR><BR>
+
+<table border=1 bgcolor="#99CCCC" cellpadding=5 width=100% background=tback2.gif><tr><td>
+
+<!-- RESET -->
+
+			<INPUT TYPE="RESET" NAME="name" VALUE="Reset"></td><td>
+
+<!-- FORMAT -->
+
+
+<FONT SIZE=-1 FACE="Helvetica,Arial" color=#006699><B>Format:</B></FONT>
+
+			<SELECT NAME="format">
+
+			<OPTION VALUE="EXPANDED" SELECTED>Expanded </OPTION>
+
+			<OPTION VALUE="SIMPLE">Simple </OPTION>
+
+
+
+
+			</SELECT></td></tr></table>
+</td><td align=right valign=top>
+
+<!-- SEARCH -->
+
+<INPUT NAME="submit" SRC="search.gif" Alt=Search ALIGN="top" vspace=12 hspace=5 BORDER=0 TYPE=IMAGE VALUE="search">
+
+
+
+</FORM>
+
+</tr></td></table></TD></TR></TABLE>
+<!-- END FORM -->
+
+
+<BR><BR><hr width=50%><BR>
+<FONT SIZE=3 FACE="Helvetica,Arial"><A HREF="search_help.html#1">Search Help</A></FONT>
+
+
+</BODY>
+
+</HTML>

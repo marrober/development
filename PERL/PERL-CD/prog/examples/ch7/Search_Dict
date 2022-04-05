@@ -1,0 +1,2 @@
+use Search::Dict;
+look *FILEHANDLE, $key, $dict, $fold;

@@ -1,0 +1,4 @@
+package GoodStuff;
+use Exporter;
+use AutoLoader;
+@ISA = qw(Exporter AutoLoader);

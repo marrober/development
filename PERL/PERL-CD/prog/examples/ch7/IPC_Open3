@@ -1,0 +1,4 @@
+use IPC::Open3;
+
+$pid = open3($WTR, $RDR, $ERR, "$cmd_with_args");
+$pid = open3($WTR, $RDR, $ERR, "$cmd", "arg1", "$arg2", ...);

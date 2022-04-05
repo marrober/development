@@ -1,0 +1,3 @@
+FROM quay.io/marrober/openliberty:7
+COPY liberty-rest-app.war /config/apps/liberty-rest-app.war
+COPY server.xml /config/server.xml

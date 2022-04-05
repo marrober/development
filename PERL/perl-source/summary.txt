@@ -1,0 +1,2 @@
+Date & Time,RSE-Max,RSE-Cur,RSDS-Max,RSDS-Cur
+9/8/2012 21:42,,0,,0

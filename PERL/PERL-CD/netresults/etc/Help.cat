@@ -1,0 +1,24 @@
+#
+# Help files for each panels
+#
+DEFAULT=help/home.htm
+P_WELCOME=help/home.htm
+P_BYE=help/home.htm
+#
+P_DIRECTION=help/nrs00012.htm#sersc
+P_DBMAN=help/nrs00012.htm#inxm
+P_DBEDIT=help/nrs00012.htm#inxe
+P_COMMENT=help/nrs00012.htm#comm
+P_FILEMAP=help/nrs00012.htm#mapf
+P_FILEFLT=help/nrs00012.htm#12a
+P_FILESEL=help/nrs00012.htm#flist
+P_STOPWORD=help/nrs00012.htm#stopw
+P_ALTSRV=help/nrs00012.htm#alts
+P_FORMAT=help/nrs00012.htm#forst
+P_SCHEDULE=help/nrs00012.htm#builds
+P_SVCCTRL=help/nrs00012.htm#sercon
+P_ALTSRVMAN=help/nrs00012.htm#sercat
+P_SRVPROP=help/nrs00012.htm#sercon
+P_USRMAN=help/nrs00012.htm#userm
+P_FORMATMAN=help/nrs00012.htm#templ
+#
