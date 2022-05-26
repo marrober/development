@@ -1,0 +1,68 @@
+apiVersion: v1
+data:
+  accounts.mark: apiKey,login
+  accounts.niraj: apiKey, login
+  admin.enabled: "true"
+  application.instanceLabelKey: ""
+  configManagementPlugins: ""
+  dex.config: |
+    connectors:
+    - config:
+        clientID: system:serviceaccount:openshift-gitops:openshift-gitops-argocd-dex-server
+        clientSecret: eyJhbGciOiJSUzI1NiIsImtpZCI6InptZ3VaTUtLbFR3M2pYMXY0dFVwblQ3MjlaR3hOck8zazRRd1d3MWhxaXMifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJvcGVuc2hpZnQtZ2l0b3BzIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6Im9wZW5zaGlmdC1naXRvcHMtYXJnb2NkLWRleC1zZXJ2ZXItdG9rZW4tYjZjY3giLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoib3BlbnNoaWZ0LWdpdG9wcy1hcmdvY2QtZGV4LXNlcnZlciIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6Ijg3ZGNhZDQyLTM5MzUtNDhjNS05ZmJkLTYxOGMxMmJiMjkxMiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpvcGVuc2hpZnQtZ2l0b3BzOm9wZW5zaGlmdC1naXRvcHMtYXJnb2NkLWRleC1zZXJ2ZXIifQ.RL5UhFhplwoFJUJ2EnEimkXpzNzH3IinfeD8huTGHw2BYNQcSNHeCzPUg_oNyRh3vNENlb_uG--1Wwf_m6EPiQlcosiAkgyvTy4coyrSYeppMFV61OJdybPvBWh0MNrQdbsr4zQ9fHTdU6h7lyFZqd2ahi5gIY5BWoLpsKyMA7yjN_nKip0uBYX4FSY67dXX91mDmxcQEMcmdtzQe2oM0uC7hq-jVzHb7n--aj-h-qQBCyud1bDClb3VG6emCBLX1GhqjHGBdOGQZSfDDSOSruBGEFC7F8gdOtFhihg293jfYLRdnR1CTjykTY3WvKHqT0oAubSi4TuGJ-H_I7ECgGmwnM0CPLOJM-f_aBIgBMyINoi07ITSXGG0BUm_qz1DoehHZ7dk705rkLH7UfNRVYVlea1PW9pu9gJQ_M83_ofz9G50_vpGQeU58wVd5M0dreZilmmDPQEZ2SWAcoVRRXcwvP9GyJyMHIqfIk6WRUn9xWENFOF40GCmS9C6Oxfy45TSSGsOYnWpGw3TmAgwEO4ceZkvVvl3xWhiygX2p6nWJivz-st7TCmu5lGmPk9MpZMiD-fjl5iuJDRUGfidHGJOvU7z9yy1eCBcJzDJ7rd2GTOwOqay9cc7KHV6CAwalb16DC2tiDYPwBlA7JvSsgrYFeAyETVOHitwsyPhuYg
+        groups: []
+        insecureCA: true
+        issuer: https://kubernetes.default.svc
+        redirectURI: https://openshift-gitops-server-openshift-gitops.apps.skylake.demolab.local/api/dex/callback
+      id: openshift
+      name: OpenShift
+      type: openshift
+  ga.anonymizeusers: "false"
+  ga.trackingid: ""
+  help.chatText: ""
+  help.chatUrl: ""
+  kustomize.buildOptions: ""
+  policy.csv: |
+    p, role:org-admin, applications, *, */*, allow
+    p, role:org-admin, clusters, get, *, allow
+    p, role:org-admin, repositories, get, *, allow
+    p, role:org-admin, repositories, create, *, allow
+    p, role:org-admin, repositories, update, *, allow
+    p, role:org-admin, repositories, delete, *, allow
+    g, mark, role:org-admin
+  policy.default: role:''
+  repositories: ""
+  repository.credentials: ""
+  resource.exclusions: |
+    - apiGroups:
+      - tekton.dev
+      clusters:
+      - '*'
+      kinds:
+      - TaskRun
+      - PipelineRun
+  resource.inclusions: ""
+  statusbadge.enabled: "false"
+  url: https://openshift-gitops-server-openshift-gitops.apps.skylake.demolab.local
+  users.anonymous.enabled: "false"
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","data":{"accounts.mark":"apiKey,login","accounts.niraj":"apiKey, login","admin.enabled":"true","application.instanceLabelKey":"","configManagementPlugins":"","dex.config":"connectors:\n- config:\n    clientID: system:serviceaccount:openshift-gitops:openshift-gitops-argocd-dex-server\n    clientSecret: eyJhbGciOiJSUzI1NiIsImtpZCI6InptZ3VaTUtLbFR3M2pYMXY0dFVwblQ3MjlaR3hOck8zazRRd1d3MWhxaXMifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJvcGVuc2hpZnQtZ2l0b3BzIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6Im9wZW5zaGlmdC1naXRvcHMtYXJnb2NkLWRleC1zZXJ2ZXItdG9rZW4tYjZjY3giLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoib3BlbnNoaWZ0LWdpdG9wcy1hcmdvY2QtZGV4LXNlcnZlciIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6Ijg3ZGNhZDQyLTM5MzUtNDhjNS05ZmJkLTYxOGMxMmJiMjkxMiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpvcGVuc2hpZnQtZ2l0b3BzOm9wZW5zaGlmdC1naXRvcHMtYXJnb2NkLWRleC1zZXJ2ZXIifQ.RL5UhFhplwoFJUJ2EnEimkXpzNzH3IinfeD8huTGHw2BYNQcSNHeCzPUg_oNyRh3vNENlb_uG--1Wwf_m6EPiQlcosiAkgyvTy4coyrSYeppMFV61OJdybPvBWh0MNrQdbsr4zQ9fHTdU6h7lyFZqd2ahi5gIY5BWoLpsKyMA7yjN_nKip0uBYX4FSY67dXX91mDmxcQEMcmdtzQe2oM0uC7hq-jVzHb7n--aj-h-qQBCyud1bDClb3VG6emCBLX1GhqjHGBdOGQZSfDDSOSruBGEFC7F8gdOtFhihg293jfYLRdnR1CTjykTY3WvKHqT0oAubSi4TuGJ-H_I7ECgGmwnM0CPLOJM-f_aBIgBMyINoi07ITSXGG0BUm_qz1DoehHZ7dk705rkLH7UfNRVYVlea1PW9pu9gJQ_M83_ofz9G50_vpGQeU58wVd5M0dreZilmmDPQEZ2SWAcoVRRXcwvP9GyJyMHIqfIk6WRUn9xWENFOF40GCmS9C6Oxfy45TSSGsOYnWpGw3TmAgwEO4ceZkvVvl3xWhiygX2p6nWJivz-st7TCmu5lGmPk9MpZMiD-fjl5iuJDRUGfidHGJOvU7z9yy1eCBcJzDJ7rd2GTOwOqay9cc7KHV6CAwalb16DC2tiDYPwBlA7JvSsgrYFeAyETVOHitwsyPhuYg\n    groups: []\n    insecureCA: true\n    issuer: https://kubernetes.default.svc\n    redirectURI: https://openshift-gitops-server-openshift-gitops.apps.skylake.demolab.local/api/dex/callback\n  id: openshift\n  name: OpenShift\n  type: openshift\n","ga.anonymizeusers":"false","ga.trackingid":"","help.chatText":"","help.chatUrl":"","kustomize.buildOptions":"","policy.csv":"p, role:org-admin, applications, *, */*, allow\np, role:org-admin, clusters, get, *, allow\np, role:org-admin, repositories, get, *, allow\np, role:org-admin, repositories, create, *, allow\np, role:org-admin, repositories, update, *, allow\np, role:org-admin, repositories, delete, *, allow\ng, mark, role:org-admin\n","policy.default":"role:''","repositories":"","repository.credentials":"","resource.exclusions":"- apiGroups:\n  - tekton.dev\n  clusters:\n  - '*'\n  kinds:\n  - TaskRun\n  - PipelineRun\n","resource.inclusions":"","statusbadge.enabled":"false","url":"https://openshift-gitops-server-openshift-gitops.apps.skylake.demolab.local","users.anonymous.enabled":"false"},"kind":"ConfigMap","metadata":{"annotations":{},"creationTimestamp":"2022-04-05T10:18:49Z","labels":{"app.kubernetes.io/managed-by":"openshift-gitops","app.kubernetes.io/name":"argocd-cm","app.kubernetes.io/part-of":"argocd"},"name":"argocd-cm","namespace":"openshift-gitops","ownerReferences":[{"apiVersion":"argoproj.io/v1alpha1","blockOwnerDeletion":true,"controller":true,"kind":"ArgoCD","name":"openshift-gitops","uid":"7b56c61d-7302-4a85-ab64-84d54b758482"}],"resourceVersion":"44541913","uid":"8d6b3b4c-2f60-4da7-8b34-7a95d4fbe054"}}
+  creationTimestamp: "2022-04-05T10:18:49Z"
+  labels:
+    app.kubernetes.io/managed-by: openshift-gitops
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+  name: argocd-cm
+  namespace: openshift-gitops
+  ownerReferences:
+  - apiVersion: argoproj.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ArgoCD
+    name: openshift-gitops
+    uid: 7b56c61d-7302-4a85-ab64-84d54b758482
+  resourceVersion: "44554617"
+  uid: 8d6b3b4c-2f60-4da7-8b34-7a95d4fbe054
