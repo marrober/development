@@ -1,0 +1,15 @@
+{
+  "name": "layer-node-application",
+  "version": "1.0.0",
+  "description": "The layer appliction - a micro-service communication example",
+  "main": "./layer.js",
+  "private": true,
+  "scripts": {
+    "start": "node ./layer.js"
+  },
+  "dependencies": {
+    "express": "4.16.4",
+    "ip": "1.1.5",
+    "sprintf-js": "1.1.2"
+  }
+}
