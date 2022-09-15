@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-from-left-namespace
+  namespace: right
 spec:
   podSelector:
     matchLabels:
@@ -13,3 +14,17 @@ spec:
     - namespaceSelector:
         matchLabels:
           projectName: left
+---
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  namespace: right
+  name: deny-from-other-namespaces
+spec:
+  podSelector:
+#    matchLabels:
+#      deployment: fourth
+  policyTypes:
+  - Egress
+  - Ingress
+  ingress: []
