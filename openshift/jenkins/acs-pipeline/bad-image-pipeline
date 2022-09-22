@@ -1,0 +1,28 @@
+pipeline {
+    agent any
+    environment {
+        ROX_API_TOKEN = 'eyJhbGciOiJSUzI1NiIsImtpZCI6Imp3dGswIiwidHlwIjoiSldUIn0.eyJhdWQiOlsiaHR0cHM6Ly9zdGFja3JveC5pby9qd3Qtc291cmNlcyNhcGktdG9rZW5zIl0sImV4cCI6MTY5NDY4OTY4MCwiaWF0IjoxNjYzMTUzNjgwLCJpc3MiOiJodHRwczovL3N0YWNrcm94LmlvL2p3dCIsImp0aSI6ImY1ZWYxM2M0LTNmOGEtNGU3Ny1hOGYxLTUyNmI0MmMzOGFmNCIsIm5hbWUiOiJjaWNkIiwicm9sZXMiOlsiQ29udGludW91cyBJbnRlZ3JhdGlvbiJdfQ.gS4_dKRbMSJydjLZ0IqbviDUET2JrVpxcCHvZLsTK-iZPXsPrG1N4mXOUgUXio_ym992PuCOYaFl8rMnrruc04RvNTIVwW7AFwYGstI_g-_IDF23Kp1cpzzO2JnrTW0zAzVjJdGSbTihKVWpJCLRof4YjtqIKG5wzROI0C1nHjj2o54JodvNt0swOrzVY0TntBJ0jpDn1Zo0T5AazeJaelUN3exHfMymiHegAgiMJqD0LJR1DTTySwjntAjroNA-P56hPBDMeWQ08oXYASVPr43bV-Cet12wWuoVh4RZ09MskPne3V039FKnMEVzXq2HV1xrCop4jQEHLW4PKFKNZFn2pbzhKU1_kklp80iW0C6Sx7eV35iPPUQSFYRyo7shfPJw_POfeN8HMHrq-_BkVt1JkXsN9GjvCNIIWUE3hl472ZsOaMzIlE0y170pmbf1bHx76X703W2cB372Aq_dDEdSaRbgJleuTEyxxHEdCSq51kBlPOUtZe1w0FwdbquSiqWNWAezhc15BGaJn6Z73lal4ecK5Xb7EoZyyKXzPT-JNjpX0WWjwlZGf7gr4ILu02jw4g9HO8kaV1dTn09mzqSt4_cPWXGwF6RsCY8_5Fsalj7krwYMcURpN9elzZbSpc6ruO1li6RAczxqWlL1WNoQLXow-ij9BRb-SZk-gws'
+        ACS_URL   = 'central-stackrox.apps.cluster-l7p4q.l7p4q.sandbox371.opentlc.com:443'
+    }
+    stages {
+        stage('Image Vuln Test') {
+            steps {
+                sh '''#!/bin/bash
+
+                    curl -s -k -L -H "Authorization: Bearer ${ROX_API_TOKEN}" https://${ACS_URL}/api/cli/download/roxctl-linux --output ./roxctl > /dev/null; echo "Getting roxctl"
+                    chmod +x ./roxctl
+                    ./roxctl image scan --image quay.io/marrober/open-liberty-base:2 --insecure-skip-tls-verify -e ${ACS_URL} --force > /dev/null 2>&1
+
+                    ./roxctl image check --image quay.io/marrober/open-liberty-base:2 --insecure-skip-tls-verify -e ${ACS_URL} -o table --retries 0 > imageScanResult 2>&1
+
+                    cat imageScanResult
+                '''
+            }
+        }
+    }
+    post {
+        always {
+             archiveArtifacts artifacts: 'imageScanResult', fingerprint: true
+        }
+    }
+}
