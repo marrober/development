@@ -4,5 +4,5 @@ metadata:
   name: default
 spec:
   controlPlaneRef:
-    namespace: istio-system
+    namespace: istio-system-2
     name: basic

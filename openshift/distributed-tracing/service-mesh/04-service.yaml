@@ -8,12 +8,10 @@ metadata:
   name: fourth
   namespace: service-mesh-tracing
 spec:
-  type: ClusterIP  
+  type: ClusterIP
   ports:
-  - name: 8080-tcp
+  - name: http-8080
     port: 8080
-    protocol: TCP
     targetPort: 8080
   selector:
     deployment: fourth
-    

@@ -9,7 +9,7 @@ metadata:
   namespace: service-mesh-tracing
 spec:
   port:
-    targetPort: 8080-tcp
+    targetPort: http-8080
   to:
     kind: Service
     name: first

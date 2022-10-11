@@ -21,10 +21,10 @@ spec:
     spec:
       containers:
       - env:
-#        - name: NEXT_LAYER_NAME
-#          value: second
-#        - name: NEXT_LAYER_NAMESPACE
-#          value: service-mesh-tracing
+        - name: NEXT_LAYER_NAME
+          value: second
+        - name: NEXT_LAYER_NAMESPACE
+          value: service-mesh-tracing
         - name: THIS_LAYER_NAME
           value: first
         - name: VERSION_ID
