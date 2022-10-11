@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: third
+    app.kubernetes.io/component: third
+    app.kubernetes.io/instance: third
+  name: third
+  namespace: service-mesh-tracing
+spec:
+  type: ClusterIP  
+  ports:
+  - name: tcp-8080
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    deployment: third
+    

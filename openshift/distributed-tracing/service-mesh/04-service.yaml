@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: fourth
+    app.kubernetes.io/component: fourth
+    app.kubernetes.io/instance: fourth
+  name: fourth
+  namespace: service-mesh-tracing
+spec:
+  type: ClusterIP  
+  ports:
+  - name: 8080-tcp
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    deployment: fourth
+    

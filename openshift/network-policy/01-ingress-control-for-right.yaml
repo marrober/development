@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: "2022-10-04T14:35:18Z"
+  labels:
+    network-policy-generator.stackrox.io/generated: "true"
+  name: stackrox-generated-two
+  namespace: right
+spec:
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: left
+      podSelector:
+        matchLabels:
+          deployment: one
+    ports:
+    - port: 8080
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      deployment: two
+  policyTypes:
+  - Ingress

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: second
+    app.kubernetes.io/component: second
+    app.kubernetes.io/instance: second
+  name: second
+  namespace: service-mesh-tracing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      deployment: second
+  template:
+    metadata:
+      labels:
+        deployment: second
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+      - env:
+        - name: NEXT_LAYER_NAME
+          value: third
+        - name: NEXT_LAYER_NAMESPACE
+          value: service-mesh-tracing
+        - name: THIS_LAYER_NAME
+          value: second
+        - name: VERSION_ID
+          value: v1
+        image: quay.io/marrober/layers:latest
+        imagePullPolicy: IfNotPresent
+        name: first
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources: {}
