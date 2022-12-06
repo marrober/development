@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  creationTimestamp: "2022-10-04T14:35:18Z"
+  creationTimestamp: "2022-11-16T15:49:54Z"
   labels:
     network-policy-generator.stackrox.io/generated: "true"
   name: stackrox-generated-two
