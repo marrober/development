@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: fourth
+    version: v1
     app.kubernetes.io/component: fourth
     app.kubernetes.io/instance: fourth
   name: fourth
@@ -12,10 +13,14 @@ spec:
   selector:
     matchLabels:
       deployment: fourth
+      app: fourth
+      version: v1
   template:
     metadata:
       labels:
         deployment: fourth
+        app: fourth
+        version: v1
       annotations:
         sidecar.istio.io/inject: "true"
     spec:

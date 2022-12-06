@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: first
+    version: v1
     app.kubernetes.io/component: first
     app.kubernetes.io/instance: first
   name: first
@@ -12,19 +13,23 @@ spec:
   selector:
     matchLabels:
       deployment: first
+      app: first
+      version: v1
   template:
     metadata:
       labels:
         deployment: first
+        app: first
+        version: v1
       annotations:
         sidecar.istio.io/inject: "true"
     spec:
       containers:
       - env:
-#        - name: NEXT_LAYER_NAME
-#          value: second
-#        - name: NEXT_LAYER_NAMESPACE
-#          value: service-mesh-tracing
+        - name: NEXT_LAYER_NAME
+          value: second
+        - name: NEXT_LAYER_NAMESPACE
+          value: service-mesh-tracing
         - name: THIS_LAYER_NAME
           value: first
         - name: VERSION_ID
