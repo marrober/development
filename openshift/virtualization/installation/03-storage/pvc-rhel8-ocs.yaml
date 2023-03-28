@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "rhel8-ocs"
+  labels:
+    app: containerized-data-importer
+  annotations:
+    cdi.kubevirt.io/storage.import.endpoint: "http://192.168.123.100:81/rhel8-kvm.img"
+  namespace: default
+spec:
+  volumeMode: Block
+  storageClassName: ocs-storagecluster-ceph-rbd
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 40Gi
