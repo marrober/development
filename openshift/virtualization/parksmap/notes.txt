@@ -1,0 +1,3 @@
+1. Grant permissions to the service account for the project :
+
+oc policy add-role-to-user view -z default

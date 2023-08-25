@@ -1,0 +1,206 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  app: mongodb
+metadata:
+  annotations:
+    iconClass: icon-mongodb
+    name.os.template.kubevirt.io/centos8: CentOS 8 or higher
+    openshift.io/display-name: MongoDB Virtual Machine Template
+    openshift.io/long-description: This template provides a standalone MongoDB Virtual
+      Machine with a database created. The database is stored on persistent storage.  The
+      database name, username, and password are chosen via parameters when provisioning
+      this service.
+    openshift.io/provider-display-name: Red Hat Turkey Solution Architect Team
+    tags: database,mongodb
+  creationTimestamp: "2023-08-16T12:03:20Z"
+  name: mongodb-vm-template
+  namespace: openshift
+  resourceVersion: "44885"
+  uid: b96fad65-6c2b-47e5-b426-9e3366bf2706
+objects:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      template.openshift.io/expose-uri: mongodb://{.spec.clusterIP}:{.spec.ports[?(.name=="mongo")].port}
+    labels:
+      app: ${APPLICATION_NAME}
+      component: ${MONGODB_APPLICATION_NAME}
+      role: database
+    name: ${MONGODB_APPLICATION_NAME}
+  spec:
+    ports:
+    - name: mongo
+      nodePort: 0
+      port: 27017
+      protocol: TCP
+      targetPort: 27017
+    selector:
+      flavor.template.kubevirt.io/small: "true"
+      kubevirt.io/domain: ${MONGODB_APPLICATION_NAME}
+      kubevirt.io/size: small
+      os.template.kubevirt.io/centos8: "true"
+      vm.kubevirt.io/name: ${MONGODB_APPLICATION_NAME}
+      workload.template.kubevirt.io/server: "true"
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    annotations:
+      name.os.template.kubevirt.io/centos8: CentOS 8 or higher
+      openshift.io/display-name: MongoDB Virtual Machine
+    labels:
+      app: ${APPLICATION_NAME}
+      app.kubernetes.io/part-of: ${APPLICATION_NAME}
+      flavor.template.kubevirt.io/small: "true"
+      kubevirt.io/domain: ${MONGODB_APPLICATION_NAME}
+      kubevirt.io/size: small
+      os.template.kubevirt.io/centos8: "true"
+      vm.kubevirt.io/name: ${MONGODB_APPLICATION_NAME}
+      workload.template.kubevirt.io/server: "true"
+    name: ${MONGODB_APPLICATION_NAME}
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1alpha1
+      kind: DataVolume
+      metadata:
+        name: ${MONGODB_APPLICATION_NAME}-rootdisk
+      spec:
+        pvc:
+          accessModes:
+          - ReadWriteMany
+          resources:
+            requests:
+              storage: 20Gi
+          storageClassName: ocs-storagecluster-ceph-rbd
+          volumeMode: Block
+        source:
+          pvc:
+            name: centos8
+            namespace: openshift-virtualization-os-images
+    running: true
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/flavor: small
+          vm.kubevirt.io/os: centos8
+          vm.kubevirt.io/workload: server
+        labels:
+          flavor.template.kubevirt.io/small: "true"
+          kubevirt.io/domain: ${MONGODB_APPLICATION_NAME}
+          kubevirt.io/size: small
+          os.template.kubevirt.io/centos8: "true"
+          vm.kubevirt.io/name: ${MONGODB_APPLICATION_NAME}
+          workload.template.kubevirt.io/server: "true"
+      spec:
+        domain:
+          cpu:
+            cores: 1
+            sockets: 1
+            threads: 1
+          devices:
+            disks:
+            - bootOrder: 1
+              disk:
+                bus: virtio
+              name: ${MONGODB_APPLICATION_NAME}-rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              model: virtio
+              name: nic-0
+            networkInterfaceMultiqueue: true
+            rng: {}
+          machine:
+            type: pc-q35-rhel8.4.0
+          resources:
+            requests:
+              memory: 2Gi
+        evictionStrategy: LiveMigrate
+        hostname: ${MONGODB_APPLICATION_NAME}
+        networks:
+        - name: nic-0
+          pod: {}
+        terminationGracePeriodSeconds: 180
+        volumes:
+        - dataVolume:
+            name: ${MONGODB_APPLICATION_NAME}-rootdisk
+          name: ${MONGODB_APPLICATION_NAME}-rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: ${VM_USER_NAME}
+              password: ${VM_PASSWORD}
+              chpasswd: { expire: False }
+              yum_repos:
+                mongodb-org-3.6:
+                  baseurl: https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/3.6/x86_64/
+                  enabled: true
+                  gpgcheck: true
+                  gpgkey: https://www.mongodb.org/static/pgp/server-3.6.asc
+                  name: MongoDB Repository
+              packages:
+                - bash-completion
+                - mongodb-org
+              runcmd:
+                - systemctl daemon-reload
+                - systemctl enable mongod.service
+                - systemctl start mongod.service
+                - >
+                  mongo admin --host localhost --eval "db.createUser({user: 'root', pwd: '${MONGODB_ADMIN_PASSWORD}', roles: [{role: 'root', db: 'admin'}]});"
+                - >
+                  mongo admin --host localhost --eval "db.getSiblingDB('mongodb').createUser({user: '${MONGODB_USER}', pwd: '${MONGODB_PASSWORD}', roles: [{role: 'dbOwner', db: '${MONGODB_DATABASE}'}]});"
+                - >
+                  sed -i -e 's/bindIp: 127.0.0.1/bindIp: 0.0.0.0/g' /etc/mongod.conf
+                - >
+                  sed -i -e 's/^#security:/security:/g' /etc/mongod.conf
+                - >
+                  sed -i -e '/^security:/a \  authorization: enabled' /etc/mongod.conf
+                - systemctl restart mongod.service
+          name: cloudinitdisk
+parameters:
+- description: The name for the mongoDB application and virtual machine.
+  displayName: MongoDB Application Name
+  name: MONGODB_APPLICATION_NAME
+  required: true
+  value: mongodb
+- description: Virtual Machine Username
+  displayName: Virtual Machine Username
+  name: VM_USER_NAME
+  required: true
+  value: redhat
+- description: Virtual Machine User Password
+  name: VM_PASSWORD
+  required: true
+  value: openshift
+- description: The name for the main application
+  displayName: Main Application Name
+  name: APPLICATION_NAME
+  required: true
+  value: workshop
+- description: Database name
+  displayName: Database name
+  name: MONGODB_DATABASE
+  required: true
+  value: mongodb
+- description: Database username
+  displayName: Database username
+  name: MONGODB_USER
+  required: true
+  value: mongodb
+- description: Database user password
+  displayName: Database user password
+  generate: expression
+  name: MONGODB_PASSWORD
+  required: true
+  value: mongodb
+- description: Database admin password
+  displayName: Database admin password
+  generate: expression
+  name: MONGODB_ADMIN_PASSWORD
+  required: true
+  value: mongodb
