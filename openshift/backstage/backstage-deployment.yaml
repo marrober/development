@@ -1,0 +1,445 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: '1'
+    kubectl.kubernetes.io/last-applied-configuration: >
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"rht-gitops.com/openshift-gitops":"backstage"},"name":"backstage","namespace":"backstage"},"spec":{"replicas":1,"selector":{"matchLabels":{"app.kubernetes.io/instance":"backstage","app.kubernetes.io/name":"backstage"}},"template":{"metadata":{"labels":{"app.kubernetes.io/instance":"backstage","app.kubernetes.io/name":"backstage"}},"spec":{"containers":[{"command":["node","packages/backend","--config","/config/app-config.yaml"],"env":[{"name":"BUCKET_URL","value":"https://s3-openshift-storage.apps.cluster-lkl98.sandbox1183.opentlc.com"},{"name":"AWS_REGION","valueFrom":{"configMapKeyRef":{"key":"BUCKET_REGION","name":"backstage-bucket-claim"}}},{"name":"POSTGRES_ADMIN_PASSWORD","valueFrom":{"secretKeyRef":{"key":"databasePassword","name":"backstage-postgresql"}}},{"name":"POSTGRES_HOST","value":"backstage-postgresql.backstage.svc"},{"name":"POSTGRES_USER","value":"postgres"},{"name":"POSTGRES_PORT","value":"5432"},{"name":"NODE_TLS_REJECT_UNAUTHORIZED","value":"0"},{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_baseUrl","value":"https://keycloak-backstage.apps.cluster-lkl98.sandbox1183.opentlc.com/auth"},{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_loginRealm","value":"backstage"},{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_realm","value":"backstage"},{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_clientId","valueFrom":{"secretKeyRef":{"key":"rhsso.clientId","name":"backstage-keycloak-creds"}}},{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_clientSecret","valueFrom":{"secretKeyRef":{"key":"rhsso.clientSecret","name":"backstage-keycloak-creds"}}},{"name":"LOG_LEVEL","value":"debug"}],"envFrom":[{"configMapRef":{"name":"backstage-bucket-claim"}},{"secretRef":{"name":"backstage-bucket-claim"}}],"image":"quay.io/rhdh/rhdh-hub-rhel9:0.2","imagePullPolicy":"Always","livenessProbe":{"failureThreshold":3,"httpGet":{"path":"/","port":"http","scheme":"HTTP"},"periodSeconds":10,"successThreshold":1,"timeoutSeconds":1},"name":"backstage","ports":[{"containerPort":7007,"name":"http","protocol":"TCP"}],"readinessProbe":{"failureThreshold":3,"httpGet":{"path":"/","port":"http","scheme":"HTTP"},"periodSeconds":10,"successThreshold":1,"timeoutSeconds":1},"volumeMounts":[{"mountPath":"/config","name":"backstage-config","readOnly":true}]},{"args":["--provider=oidc","--email-domain=*","--upstream=http://localhost:7007","--http-address=0.0.0.0:4180","--skip-provider-button","--insecure-oidc-allow-unverified-email=true"],"env":[{"name":"OAUTH2_PROXY_OIDC_ISSUER_URL","value":"https://keycloak-backstage.apps.cluster-lkl98.sandbox1183.opentlc.com/auth/realms/backstage"},{"name":"OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY","value":"true"},{"name":"OAUTH2_PROXY_CLIENT_ID","valueFrom":{"secretKeyRef":{"key":"rhsso.clientId","name":"backstage-keycloak-creds"}}},{"name":"OAUTH2_PROXY_CLIENT_SECRET","valueFrom":{"secretKeyRef":{"key":"rhsso.clientSecret","name":"backstage-keycloak-creds"}}},{"name":"OAUTH2_PROXY_COOKIE_SECRET","valueFrom":{"secretKeyRef":{"key":"oauth.cookieSecret","name":"backstage-keycloak-creds"}}}],"image":"quay.io/oauth2-proxy/oauth2-proxy:latest","imagePullPolicy":"Always","name":"janus-dev-oauth-proxy","ports":[{"containerPort":4180,"protocol":"TCP"}],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"terminationMessagePath":"/dev/termination-log","terminationMessagePolicy":"File"}],"serviceAccount":"backstage","serviceAccountName":"backstage","volumes":[{"name":"backstage-config","secret":{"defaultMode":420,"secretName":"backstage-config"}}]}}}}
+  resourceVersion: '106626'
+  name: backstage
+  uid: c8bec07f-01fd-4e64-8ada-8be24b625f45
+  creationTimestamp: '2023-10-09T17:03:37Z'
+  generation: 1
+  managedFields:
+    - manager: argocd-application-controller
+      operation: Update
+      apiVersion: apps/v1
+      time: '2023-10-09T17:03:37Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+          'f:labels':
+            .: {}
+            'f:rht-gitops.com/openshift-gitops': {}
+        'f:spec':
+          'f:progressDeadlineSeconds': {}
+          'f:replicas': {}
+          'f:revisionHistoryLimit': {}
+          'f:selector': {}
+          'f:strategy':
+            'f:rollingUpdate':
+              .: {}
+              'f:maxSurge': {}
+              'f:maxUnavailable': {}
+            'f:type': {}
+          'f:template':
+            'f:metadata':
+              'f:labels':
+                .: {}
+                'f:app.kubernetes.io/instance': {}
+                'f:app.kubernetes.io/name': {}
+            'f:spec':
+              'f:volumes':
+                .: {}
+                'k:{"name":"backstage-config"}':
+                  .: {}
+                  'f:name': {}
+                  'f:secret':
+                    .: {}
+                    'f:defaultMode': {}
+                    'f:secretName': {}
+              'f:containers':
+                'k:{"name":"backstage"}':
+                  'f:envFrom': {}
+                  'f:image': {}
+                  'f:volumeMounts':
+                    .: {}
+                    'k:{"mountPath":"/config"}':
+                      .: {}
+                      'f:mountPath': {}
+                      'f:name': {}
+                      'f:readOnly': {}
+                  'f:terminationMessagePolicy': {}
+                  .: {}
+                  'f:resources': {}
+                  'f:command': {}
+                  'f:livenessProbe':
+                    .: {}
+                    'f:failureThreshold': {}
+                    'f:httpGet':
+                      .: {}
+                      'f:path': {}
+                      'f:port': {}
+                      'f:scheme': {}
+                    'f:periodSeconds': {}
+                    'f:successThreshold': {}
+                    'f:timeoutSeconds': {}
+                  'f:env':
+                    'k:{"name":"POSTGRES_HOST"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                    'k:{"name":"POSTGRES_ADMIN_PASSWORD"}':
+                      .: {}
+                      'f:name': {}
+                      'f:valueFrom':
+                        .: {}
+                        'f:secretKeyRef': {}
+                    'k:{"name":"POSTGRES_USER"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                    'k:{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_clientId"}':
+                      .: {}
+                      'f:name': {}
+                      'f:valueFrom':
+                        .: {}
+                        'f:secretKeyRef': {}
+                    'k:{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_loginRealm"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                    'k:{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_realm"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                    .: {}
+                    'k:{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_baseUrl"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                    'k:{"name":"NODE_TLS_REJECT_UNAUTHORIZED"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                    'k:{"name":"APP_CONFIG_catalog_providers_keycloakOrg_default_clientSecret"}':
+                      .: {}
+                      'f:name': {}
+                      'f:valueFrom':
+                        .: {}
+                        'f:secretKeyRef': {}
+                    'k:{"name":"POSTGRES_PORT"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                    'k:{"name":"AWS_REGION"}':
+                      .: {}
+                      'f:name': {}
+                      'f:valueFrom':
+                        .: {}
+                        'f:configMapKeyRef': {}
+                    'k:{"name":"LOG_LEVEL"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                    'k:{"name":"BUCKET_URL"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                  'f:readinessProbe':
+                    .: {}
+                    'f:failureThreshold': {}
+                    'f:httpGet':
+                      .: {}
+                      'f:path': {}
+                      'f:port': {}
+                      'f:scheme': {}
+                    'f:periodSeconds': {}
+                    'f:successThreshold': {}
+                    'f:timeoutSeconds': {}
+                  'f:terminationMessagePath': {}
+                  'f:imagePullPolicy': {}
+                  'f:ports':
+                    .: {}
+                    'k:{"containerPort":7007,"protocol":"TCP"}':
+                      .: {}
+                      'f:containerPort': {}
+                      'f:name': {}
+                      'f:protocol': {}
+                  'f:name': {}
+                'k:{"name":"janus-dev-oauth-proxy"}':
+                  'f:image': {}
+                  'f:terminationMessagePolicy': {}
+                  .: {}
+                  'f:resources': {}
+                  'f:args': {}
+                  'f:env':
+                    .: {}
+                    'k:{"name":"OAUTH2_PROXY_CLIENT_ID"}':
+                      .: {}
+                      'f:name': {}
+                      'f:valueFrom':
+                        .: {}
+                        'f:secretKeyRef': {}
+                    'k:{"name":"OAUTH2_PROXY_CLIENT_SECRET"}':
+                      .: {}
+                      'f:name': {}
+                      'f:valueFrom':
+                        .: {}
+                        'f:secretKeyRef': {}
+                    'k:{"name":"OAUTH2_PROXY_COOKIE_SECRET"}':
+                      .: {}
+                      'f:name': {}
+                      'f:valueFrom':
+                        .: {}
+                        'f:secretKeyRef': {}
+                    'k:{"name":"OAUTH2_PROXY_OIDC_ISSUER_URL"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                    'k:{"name":"OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY"}':
+                      .: {}
+                      'f:name': {}
+                      'f:value': {}
+                  'f:securityContext':
+                    .: {}
+                    'f:allowPrivilegeEscalation': {}
+                    'f:capabilities':
+                      .: {}
+                      'f:drop': {}
+                    'f:privileged': {}
+                    'f:runAsNonRoot': {}
+                    'f:seccompProfile':
+                      .: {}
+                      'f:type': {}
+                  'f:terminationMessagePath': {}
+                  'f:imagePullPolicy': {}
+                  'f:ports':
+                    .: {}
+                    'k:{"containerPort":4180,"protocol":"TCP"}':
+                      .: {}
+                      'f:containerPort': {}
+                      'f:protocol': {}
+                  'f:name': {}
+              'f:dnsPolicy': {}
+              'f:serviceAccount': {}
+              'f:restartPolicy': {}
+              'f:schedulerName': {}
+              'f:terminationGracePeriodSeconds': {}
+              'f:serviceAccountName': {}
+              'f:securityContext': {}
+    - manager: kube-controller-manager
+      operation: Update
+      apiVersion: apps/v1
+      time: '2023-10-09T17:04:07Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            'f:deployment.kubernetes.io/revision': {}
+        'f:status':
+          'f:availableReplicas': {}
+          'f:conditions':
+            .: {}
+            'k:{"type":"Available"}':
+              .: {}
+              'f:lastTransitionTime': {}
+              'f:lastUpdateTime': {}
+              'f:message': {}
+              'f:reason': {}
+              'f:status': {}
+              'f:type': {}
+            'k:{"type":"Progressing"}':
+              .: {}
+              'f:lastTransitionTime': {}
+              'f:lastUpdateTime': {}
+              'f:message': {}
+              'f:reason': {}
+              'f:status': {}
+              'f:type': {}
+          'f:observedGeneration': {}
+          'f:readyReplicas': {}
+          'f:replicas': {}
+          'f:updatedReplicas': {}
+      subresource: status
+  namespace: backstage
+  labels:
+    rht-gitops.com/openshift-gitops: backstage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: backstage
+      app.kubernetes.io/name: backstage
+      app: backstage
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: backstage
+        app.kubernetes.io/name: backstage
+        app: backstage
+    spec:
+      restartPolicy: Always
+      serviceAccountName: backstage
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      securityContext: {}
+      containers:
+        - resources: {}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          name: backstage
+          command:
+            - node
+            - packages/backend
+            - '--config'
+            - /config/app-config.yaml
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          env:
+            - name: BUCKET_URL
+              value: >-
+                https://s3-openshift-storage.apps.cluster-lkl98.sandbox1183.opentlc.com
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: backstage-bucket-claim
+                  key: BUCKET_REGION
+            - name: POSTGRES_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-postgresql
+                  key: databasePassword
+            - name: POSTGRES_HOST
+              value: backstage-postgresql.backstage.svc
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PORT
+              value: '5432'
+            - name: NODE_TLS_REJECT_UNAUTHORIZED
+              value: '0'
+            - name: APP_CONFIG_catalog_providers_keycloakOrg_default_baseUrl
+              value: >-
+                https://keycloak-backstage.apps.cluster-lkl98.sandbox1183.opentlc.com/auth
+            - name: APP_CONFIG_catalog_providers_keycloakOrg_default_loginRealm
+              value: backstage
+            - name: APP_CONFIG_catalog_providers_keycloakOrg_default_realm
+              value: backstage
+            - name: APP_CONFIG_catalog_providers_keycloakOrg_default_clientId
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-keycloak-creds
+                  key: rhsso.clientId
+            - name: APP_CONFIG_catalog_providers_keycloakOrg_default_clientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-keycloak-creds
+                  key: rhsso.clientSecret
+            - name: LOG_LEVEL
+              value: debug
+          ports:
+            - name: http
+              containerPort: 7007
+              protocol: TCP
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: backstage-config
+              readOnly: true
+              mountPath: /config
+          terminationMessagePolicy: File
+          envFrom:
+            - configMapRef:
+                name: backstage-bucket-claim
+            - secretRef:
+                name: backstage-bucket-claim
+          image: 'quay.io/rhdh/rhdh-hub-rhel9:0.2'
+        - resources: {}
+          terminationMessagePath: /dev/termination-log
+          name: janus-dev-oauth-proxy
+          env:
+            - name: OAUTH2_PROXY_OIDC_ISSUER_URL
+              value: >-
+                https://keycloak-backstage.apps.cluster-lkl98.sandbox1183.opentlc.com/auth/realms/backstage
+            - name: OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY
+              value: 'true'
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-keycloak-creds
+                  key: rhsso.clientId
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-keycloak-creds
+                  key: rhsso.clientSecret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-keycloak-creds
+                  key: oauth.cookieSecret
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - containerPort: 4180
+              protocol: TCP
+          imagePullPolicy: Always
+          terminationMessagePolicy: File
+          image: 'quay.io/oauth2-proxy/oauth2-proxy:latest'
+          args:
+            - '--provider=oidc'
+            - '--email-domain=*'
+            - '--upstream=http://localhost:7007'
+            - '--http-address=0.0.0.0:4180'
+            - '--skip-provider-button'
+            - '--insecure-oidc-allow-unverified-email=true'
+      serviceAccount: backstage
+      volumes:
+        - name: backstage-config
+          secret:
+            secretName: backstage-config
+            defaultMode: 420
+      dnsPolicy: ClusterFirst
+      imagePullSecrets: []
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+  paused: false
+status:
+  observedGeneration: 1
+  replicas: 1
+  updatedReplicas: 1
+  readyReplicas: 1
+  availableReplicas: 1
+  conditions:
+    - type: Available
+      status: 'True'
+      lastUpdateTime: '2023-10-09T17:04:07Z'
+      lastTransitionTime: '2023-10-09T17:04:07Z'
+      reason: MinimumReplicasAvailable
+      message: Deployment has minimum availability.
+    - type: Progressing
+      status: 'True'
+      lastUpdateTime: '2023-10-09T17:04:07Z'
+      lastTransitionTime: '2023-10-09T17:03:37Z'
+      reason: NewReplicaSetAvailable
+      message: ReplicaSet "backstage-7fb7666cbb" has successfully progressed.

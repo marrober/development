@@ -1,0 +1,175 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: >
+      {"apiVersion":"apps/v1","kind":"StatefulSet","metadata":{"annotations":{},"labels":{"app.kubernetes.io/instance":"backstage","app.kubernetes.io/name":"backstage-postgres","rht-gitops.com/openshift-gitops":"backstage"},"name":"backstage-postgresql","namespace":"backstage"},"spec":{"podManagementPolicy":"OrderedReady","replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"app.kubernetes.io/instance":"backstage","app.kubernetes.io/name":"backstage-postgres"}},"serviceName":"backstage-postgresql","template":{"metadata":{"creationTimestamp":null,"labels":{"app.kubernetes.io/instance":"backstage","app.kubernetes.io/name":"backstage-postgres"},"name":"backstage-postgresql"},"spec":{"containers":[{"env":[{"name":"POSTGRESQL_ADMIN_PASSWORD","valueFrom":{"secretKeyRef":{"key":"databasePassword","name":"backstage-postgresql"}}}],"image":"quay.io/fedora/postgresql-13:13","imagePullPolicy":"Always","name":"postgresql","ports":[{"containerPort":5432,"name":"tcp-postgresql","protocol":"TCP"}],"volumeMounts":[{"mountPath":"/var/lib/pgsql/data","name":"postgresdb"}]}],"dnsPolicy":"ClusterFirst","restartPolicy":"Always","schedulerName":"default-scheduler","serviceAccount":"backstage-postgresql","serviceAccountName":"backstage-postgresql","volumes":[{"name":"postgresdb","persistentVolumeClaim":{"claimName":"backstage-postgresql"}}]}},"updateStrategy":{"rollingUpdate":{"partition":0},"type":"RollingUpdate"}}}
+  resourceVersion: '106074'
+  name: backstage-postgresql
+  uid: 8899ac69-3b90-434f-ba88-31b52f47ba12
+  creationTimestamp: '2023-10-09T17:03:37Z'
+  generation: 1
+  managedFields:
+    - manager: argocd-application-controller
+      operation: Update
+      apiVersion: apps/v1
+      time: '2023-10-09T17:03:37Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+          'f:labels':
+            .: {}
+            'f:app.kubernetes.io/instance': {}
+            'f:app.kubernetes.io/name': {}
+            'f:rht-gitops.com/openshift-gitops': {}
+        'f:spec':
+          'f:podManagementPolicy': {}
+          'f:replicas': {}
+          'f:revisionHistoryLimit': {}
+          'f:selector': {}
+          'f:serviceName': {}
+          'f:template':
+            'f:metadata':
+              'f:labels':
+                .: {}
+                'f:app.kubernetes.io/instance': {}
+                'f:app.kubernetes.io/name': {}
+              'f:name': {}
+            'f:spec':
+              'f:volumes':
+                .: {}
+                'k:{"name":"postgresdb"}':
+                  .: {}
+                  'f:name': {}
+                  'f:persistentVolumeClaim':
+                    .: {}
+                    'f:claimName': {}
+              'f:containers':
+                'k:{"name":"postgresql"}':
+                  'f:image': {}
+                  'f:volumeMounts':
+                    .: {}
+                    'k:{"mountPath":"/var/lib/pgsql/data"}':
+                      .: {}
+                      'f:mountPath': {}
+                      'f:name': {}
+                  'f:terminationMessagePolicy': {}
+                  .: {}
+                  'f:resources': {}
+                  'f:env':
+                    .: {}
+                    'k:{"name":"POSTGRESQL_ADMIN_PASSWORD"}':
+                      .: {}
+                      'f:name': {}
+                      'f:valueFrom':
+                        .: {}
+                        'f:secretKeyRef': {}
+                  'f:terminationMessagePath': {}
+                  'f:imagePullPolicy': {}
+                  'f:ports':
+                    .: {}
+                    'k:{"containerPort":5432,"protocol":"TCP"}':
+                      .: {}
+                      'f:containerPort': {}
+                      'f:name': {}
+                      'f:protocol': {}
+                  'f:name': {}
+              'f:dnsPolicy': {}
+              'f:serviceAccount': {}
+              'f:restartPolicy': {}
+              'f:schedulerName': {}
+              'f:terminationGracePeriodSeconds': {}
+              'f:serviceAccountName': {}
+              'f:securityContext': {}
+          'f:updateStrategy':
+            'f:rollingUpdate':
+              .: {}
+              'f:partition': {}
+            'f:type': {}
+    - manager: kube-controller-manager
+      operation: Update
+      apiVersion: apps/v1
+      time: '2023-10-09T17:03:57Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:status':
+          'f:currentReplicas': {}
+          'f:currentRevision': {}
+          'f:updatedReplicas': {}
+          'f:readyReplicas': {}
+          'f:replicas': {}
+          'f:availableReplicas': {}
+          'f:collisionCount': {}
+          'f:observedGeneration': {}
+          'f:updateRevision': {}
+      subresource: status
+  namespace: backstage
+  labels:
+    app.kubernetes.io/instance: backstage
+    app.kubernetes.io/name: backstage-postgres
+    rht-gitops.com/openshift-gitops: backstage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: backstage
+      app.kubernetes.io/name: backstage-postgres
+  template:
+    metadata:
+      name: backstage-postgresql
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: backstage
+        app.kubernetes.io/name: backstage-postgres
+    spec:
+      restartPolicy: Always
+      serviceAccountName: backstage-postgresql
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      securityContext: {}
+      containers:
+        - resources: {}
+          terminationMessagePath: /dev/termination-log
+          name: postgresql
+          env:
+            - name: POSTGRESQL_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-postgresql
+                  key: databasePassword
+          ports:
+            - name: tcp-postgresql
+              containerPort: 5432
+              protocol: TCP
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: postgresdb
+              mountPath: /var/lib/pgsql/data
+          terminationMessagePolicy: File
+          image: 'quay.io/fedora/postgresql-13:13'
+      serviceAccount: backstage-postgresql
+      volumes:
+        - name: postgresdb
+          persistentVolumeClaim:
+            claimName: backstage-postgresql
+      dnsPolicy: ClusterFirst
+  serviceName: backstage-postgresql
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
+  revisionHistoryLimit: 10
+status:
+  observedGeneration: 1
+  availableReplicas: 1
+  updateRevision: backstage-postgresql-68668b6f59
+  currentRevision: backstage-postgresql-68668b6f59
+  currentReplicas: 1
+  updatedReplicas: 1
+  replicas: 1
+  collisionCount: 0
+  readyReplicas: 1
