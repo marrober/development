@@ -1,0 +1,1 @@
+for i in {1..100}; do curl $LEFTROUTE; echo "";sleep .1;done
