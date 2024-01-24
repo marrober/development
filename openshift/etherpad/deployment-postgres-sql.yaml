@@ -5,6 +5,7 @@ metadata:
     app: etherpad_db
     template: postgresql-persistent-template
   name: postgresql
+  namespace: etherpad
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -41,7 +42,7 @@ spec:
             secretKeyRef:
               key: database-name
               name: postgresql
-        image: image-registry.openshift-image-registry.svc:5000/openshift/postgresql@sha256:e89c687a3ed78dce0259766986b18143ff38e9c2a5069e236f50683d027cc8c9
+        image: image-registry.openshift-image-registry.svc:5000/openshift/postgresql@sha256:8aa33ef95d093c3eed8ec88274574e09e7654a10cd5827387189694ef3e0c5ad
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:

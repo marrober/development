@@ -4,6 +4,7 @@ metadata:
   labels:
     app: etherpad
   name: etherpad
+  namespace: etherpad
 spec:
   ports:
   - name: etherpad

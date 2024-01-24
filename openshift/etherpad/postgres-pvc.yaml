@@ -7,13 +7,14 @@ items:
       app: etherpad_db
       template: postgresql-persistent-template
     name: postgresql
+    namespace: etherpad
   spec:
     accessModes:
     - ReadWriteOnce
     resources:
       requests:
         storage: 10Gi
-    storageClassName: gp2
+    storageClassName: standard-csi
     volumeMode: Filesystem
   status:
     accessModes:
