@@ -1,28 +1,14 @@
 apiVersion: v1
-items:
-- apiVersion: v1
-  kind: PersistentVolumeClaim
-  metadata:
-    labels:
-      app: etherpad_db
-      template: postgresql-persistent-template
-    name: postgresql
-    namespace: etherpad
-  spec:
-    accessModes:
-    - ReadWriteOnce
-    resources:
-      requests:
-        storage: 10Gi
-    storageClassName: standard-csi
-    volumeMode: Filesystem
-  status:
-    accessModes:
-    - ReadWriteOnce
-    capacity:
-      storage: 10Gi
-    phase: Bound
-kind: List
+kind: PersistentVolumeClaim
 metadata:
-  resourceVersion: ""
-  selfLink: ""
+  labels:
+    app: etherpad_db
+    template: postgresql-persistent-template
+  name: postgresql
+  namespace: etherpad
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
