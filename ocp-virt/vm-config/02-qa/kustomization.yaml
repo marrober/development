@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- namespace.yaml
+- argocd-admin.yaml
+- vm-fedora-01.yaml
+- vm-fedora-02.yaml
