@@ -9,8 +9,8 @@
 Create environment variables for the routes using the information exposed at the end of the script. Example shown below.
 
 ````bash 
- export LEFTROUTE=http://one-left.apps.skylake.demolab.local/call-layers
- export ROGUEROUTE=http://rogue-rogue.apps.skylake.demolab.local/call-layers
+ export LEFTROUTE=$(oc get route/one -n left -o jsonpath='{"http://"}{.spec.host}{"/call-layers"}')
+ export ROGUEROUTE=$(oc get route/rogue -n rogue -o jsonpath='{"http://"}{.spec.host}{"/call-layers"}')
  ````
 
 ## Send traffic to the applications
