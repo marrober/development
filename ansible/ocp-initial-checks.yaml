@@ -4,11 +4,38 @@
   tasks:
   - name: check ocp api is available
     ansible.builtin.uri:
-      url: https://api.{{ cluster_deployment.clusterName }}.{{ cluster_deployment.baseDomain }}:6443/healthz
+      url: https://api.cluster-1.sandbox1425.opentlc.com:6443/healthz
       validate_certs: false
 
   - name: check ocp webconsole is available
     ansible.builtin.uri:
-      url: https://console-openshift-console.apps.{{ cluster_deployment.clusterName }}.{{ cluster_deployment.baseDomain }}/
+      url: https://console-openshift-console.apps.cluster-1.sandbox1425.opentlc.com/
       validate_certs: false
 
+  - name: get OCP version
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: ClusterVersion
+    register: clusterversion
+
+  - set_fact:
+      cluster_version: "{{ clusterversion | json_query('resources[0].spec.channel')}}"
+
+#  - debug:
+#      msg: "Cluster version : {{ cluster_version }}"
+
+  - name: get OCP node information
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: Node
+    register: nodeinfo
+
+  - debug:
+      msg: "{{ nodeinfo }}"
+
+  - name: Get Cluster information
+    kubernetes.core.k8s_cluster_info:
+    register: api_status
+
+#  - debug: 
+#      msg: "{{ api_status }}"
