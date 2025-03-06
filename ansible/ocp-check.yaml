@@ -36,24 +36,41 @@
       success_msg: Cluster version matches desired version
       fail_msg: Cluster current version does not match desired version
 
-  - name: Fet list of ocp nodes
+  - name: Fetch list of ocp nodes
     kubernetes.core.k8s_info:
       api_version: v1
       kind: Node
     register: ocp_nodes
 
-  - debug:
-      msg: "{{ nodeinfo }}"
+#  - debug:
+#      msg: "{{ ocp_nodes }}"
+  
+  - name: copy to output file
+    copy:
+      content: "{{ ocp_nodes }}"
+      dest: ./output
 
-#  - name: get the esxi hosts for each ocp node
-#    community.vmware.vmware_guest_info:
-#      datacenter: demolab
-#      name: "{{ item.metadata.name }}"
-#      validate_certs: false
-#    loop: "{{ ocp_nodes.resources }}"
-#    loop_control:
-#      label: "{{ item.metadata.name }}"
-#    register: vm_host_info
+  - name: initialise empty node_list
+    set_fact: 
+      node_list: []
+
+  - name: create list of nodes
+    set_fact:
+      node_list: "{{ node_list + [item.metadata.name] + [item.status.conditions | select(.type == 'Ready') ]}}"
+    loop: "{{ ocp_nodes.resources }}"
+    loop_control:
+      loop_var: item
+      label: "{{ item.metadata.name }}"
+    
+
+  - debug:
+      msg: "{{ node_list }}"
+
+  - name: copy to output file
+    copy:
+      content: "{{ node_list }}"
+      dest: ./output-2
+
 
 #  - name: print esxi host for each cluster node
 #    ansible.builtin.debug:
