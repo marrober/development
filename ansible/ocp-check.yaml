@@ -1,0 +1,84 @@
+---
+
+- hosts: localhost
+  gather_facts: false
+  vars:
+    desired_ocp_version: 4.14.14
+  tasks:
+  - name: check ocp api is available
+    ansible.builtin.uri:
+      url: https://api.{{ ocp_cluster }}:6443/healthz
+      validate_certs: false
+
+  - name: check ocp webconsole is available
+    ansible.builtin.uri:
+      url: https://console-openshift-console.apps.{{ ocp_cluster }}
+      validate_certs: false
+
+  - name: get OCP version
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: ClusterVersion
+    register: clusterversion
+
+  - name: set fact for cluster version
+    ansible.builtin.set_fact:
+      ocp_version: "{{ clusterversion.resources[0].status.desired.version }}"
+
+  - name: print cluster version
+    ansible.builtin.debug:
+      msg: Cluster version is - {{ ocp_version }}
+
+  - name: assert that cluster version matches desired version
+    ansible.builtin.assert:
+      that:
+        - ocp_version == desired_ocp_version
+      success_msg: Cluster version matches desired version
+      fail_msg: Cluster current version does not match desired version
+
+  - name: Fet list of ocp nodes
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: Node
+    register: ocp_nodes
+
+#  - name: get the esxi hosts for each ocp node
+#    community.vmware.vmware_guest_info:
+#      datacenter: demolab
+#      name: "{{ item.metadata.name }}"
+#      validate_certs: false
+#    loop: "{{ ocp_nodes.resources }}"
+#    loop_control:
+#      label: "{{ item.metadata.name }}"
+#    register: vm_host_info
+
+#  - name: print esxi host for each cluster node
+#    ansible.builtin.debug:
+#      msg: host for {{ item.instance.hw_name }} {{ item.instance.hw_esxi_host }}
+#    loop: "{{ vm_host_info.results }}"
+#    loop_control:
+#      label: "{{ item.instance.hw_name }}"
+
+#  - name: create change request to create affinity rules
+#    servicenow.itsm.change_request:
+#      type: standard
+#      state: new
+#      requested_by: admin
+#      short_description: Create VMware affinity fules for OCP Cluster - {{ ocp_cluster }}
+#      description: | 
+#        Please create affinity rules for the following hosts.
+
+#        {% for vm in vm_host_info.results %}
+
+#        {{ vm.instance.hw_name }} - {{ vm.instance.hw_esxi_host }}
+
+#        {% endfor %}
+
+#      priority: moderate
+#      risk: low
+#      impact: low
+#    register: snow_change_req
+
+#  - debug:
+#      var: snow_change_req.record.number
+
