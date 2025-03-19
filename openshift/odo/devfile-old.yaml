@@ -1,14 +1,20 @@
 schemaVersion: 2.2.2
 metadata:
-  name: pacman
+  name: helloworld-example
 projects:
-  - name: pacman
+  - name: odo-sample
     git:
       remotes:
-        origin: 'https://github.com/marrober/pacman.git'
+        origin: 'https://github.com/marrober/development.git'
       checkoutFrom:
         revision: main
 components:
+#  - name: tooling
+#    container:
+#      image: quay.io/devfile/universal-developer-image:ubi8-latest
+#      endpoints:
+#        - name: http-3000
+#          targetPort: 3000
   - name: tools
     container:
       image: registry.redhat.io/devspaces/udi-rhel8@sha256:d147892c643a0127cfcf868daee0ff416a8df922fe2a7c716ebfc457ff526fa2
@@ -69,3 +75,27 @@ commands:
       commandLine: 'node_server_pids=$(pgrep -fx ''.*nodemon (--inspect )?app.js'' | tr "\\n" " ") && echo "Stopping node server with PIDs: ${node_server_pids}" &&  kill -15 ${node_server_pids} &>/dev/null && echo ''Done.'''
       group:
         kind: run
+#  - id: 1-dependencies
+#    exec:
+#      label: Download dependencies
+#      component: tools
+#      workingDir: ${PROJECTS_ROOT}/pacman/src
+#      commandLine: npm install
+#      group:
+#        kind: build
+#  - id: install
+#    exec:
+#      commandLine: npm install
+#      component: tooling
+#      workingDir: ${PROJECT_ROOT}/development/openshift/odo
+#      group:
+#        kind: build
+#      label: Install npm packages
+#  - id: run
+#    exec:
+#      commandLine: node app.js
+#      component: tooling
+#      workingDir: ${PROJECT_ROOT}/development/openshift/odo
+#      group:
+#        kind: run
+#      label: run the app.js node file
