@@ -16,6 +16,14 @@ components:
         - name: http-3000
           targetPort: 3000
 commands:
+  - id: 1-dependencies
+    exec:
+      label: Download dependencies
+      component: tools
+      workingDir: ${PROJECTS_ROOT}/pacman/src
+      commandLine: npm install
+      group:
+        kind: build
   - id: install
     exec:
       commandLine: npm install
