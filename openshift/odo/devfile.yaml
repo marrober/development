@@ -17,6 +17,7 @@ commands:
       group:
         isDefault: true
         kind: build
+      label: Install npm packages
   - id: run
     exec:
       commandLine: node app.js
@@ -25,3 +26,4 @@ commands:
       group:
         isDefault: true
         kind: run
+      labe: run the app.js node file
