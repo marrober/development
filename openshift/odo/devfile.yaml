@@ -9,7 +9,7 @@ projects:
       checkoutFrom:
         revision: main
 components:
-  - name: dev-tooling
+  - name: tooling
     container:
       image: quay.io/devfile/universal-developer-image:ubi8-latest
       endpoints:
@@ -19,16 +19,16 @@ commands:
   - id: install
     exec:
       commandLine: npm install
-      component: dev-tooling
-      workingDir: ${PROJECT_ROOT}/odo
+      component: tooling
+      workingDir: ${PROJECT_ROOT}/development/openshift/odo
       group:
         kind: build
       label: Install npm packages
   - id: run
     exec:
       commandLine: node app.js
-      component: dev-tooling
-      workingDir: ${PROJECT_ROOT}/odo
+      component: tooling
+      workingDir: ${PROJECT_ROOT}/development/openshift/odo
       group:
         kind: run
       label: run the app.js node file
