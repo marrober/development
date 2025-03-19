@@ -13,7 +13,7 @@ commands:
     exec:
       commandLine: npm install
       component: dev-tooling
-      workingDir:${PROJECT_ROOT}/odo
+      workingDir: ${PROJECT_ROOT}/odo
       group:
         kind: build
       label: Install npm packages
