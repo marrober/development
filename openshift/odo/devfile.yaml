@@ -9,12 +9,31 @@ projects:
       checkoutFrom:
         revision: main
 components:
-  - name: tooling
+#  - name: tooling
+#    container:
+#      image: quay.io/devfile/universal-developer-image:ubi8-latest
+#      endpoints:
+#        - name: http-3000
+#          targetPort: 3000
+  - name: tools
     container:
-      image: quay.io/devfile/universal-developer-image:ubi8-latest
+      image: registry.redhat.io/devspaces/udi-rhel8@sha256:d147892c643a0127cfcf868daee0ff416a8df922fe2a7c716ebfc457ff526fa2
       endpoints:
-        - name: http-3000
+        - exposure: public
+          name: nodejs
+          protocol: https
           targetPort: 3000
+      memoryLimit: 1Gi
+      memoryRequest: 600Mi
+      cpuLimit: '0.5'
+      cpuRequest: '0.25'
+      mountSources: true
+#      volumeMounts:
+#        - name: npm
+#          path: /home/user/.npm
+#  - name: npm
+#    volume:
+#      size: 1G
 commands:
   - id: 1-dependencies
     exec:
@@ -24,19 +43,59 @@ commands:
       commandLine: npm install
       group:
         kind: build
-  - id: install
+  - id: 2-run
     exec:
-      commandLine: npm install
-      component: tooling
-      workingDir: ${PROJECT_ROOT}/development/openshift/odo
-      group:
-        kind: build
-      label: Install npm packages
-  - id: run
-    exec:
-      commandLine: node app.js
-      component: tooling
-      workingDir: ${PROJECT_ROOT}/development/openshift/odo
+      label: Run the web app
+      component: tools
+      workingDir: ${PROJECTS_ROOT}/pacman/src
+      commandLine: nodemon app.js
       group:
         kind: run
-      label: run the app.js node file
+  - id: 3-install-and-run
+    exec:
+      label: Run the web app (and download dependencies)
+      component: tools
+      workingDir: ${PROJECTS_ROOT}/pacman/src
+      commandLine: npm install; nodemon app.js
+      group:
+        kind: run
+  - id: 4-debug
+    exec:
+      label: Run the web app (debugging enabled)
+      component: tools
+      workingDir: ${PROJECTS_ROOT}/pacman/src
+      commandLine: nodemon --inspect app.js
+      group:
+        kind: debug
+        isDefault: true
+  - id: 5-stopapp
+    exec:
+      label: Stop the web app
+      component: tools
+      commandLine: 'node_server_pids=$(pgrep -fx ''.*nodemon (--inspect )?app.js'' | tr "\\n" " ") && echo "Stopping node server with PIDs: ${node_server_pids}" &&  kill -15 ${node_server_pids} &>/dev/null && echo ''Done.'''
+      group:
+        kind: run
+#  - id: 1-dependencies
+#    exec:
+#      label: Download dependencies
+#      component: tools
+#      workingDir: ${PROJECTS_ROOT}/pacman/src
+#      commandLine: npm install
+#      group:
+#        kind: build
+#  - id: install
+#    exec:
+#      commandLine: npm install
+#      component: tooling
+#      workingDir: ${PROJECT_ROOT}/development/openshift/odo
+#      group:
+#        kind: build
+#      label: Install npm packages
+#  - id: run
+#    exec:
+#      commandLine: node app.js
+#      component: tooling
+#      workingDir: ${PROJECT_ROOT}/development/openshift/odo
+#      group:
+#        kind: run
+#      label: run the app.js node file
