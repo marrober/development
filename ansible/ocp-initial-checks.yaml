@@ -4,12 +4,12 @@
   tasks:
   - name: check ocp api is available
     ansible.builtin.uri:
-      url: https://api.cluster-1.sandbox1425.opentlc.com:6443/healthz
+      url: https://api.cluster-qjkct.qjkct.sandbox1677.opentlc.com:6443/healthz
       validate_certs: false
 
   - name: check ocp webconsole is available
     ansible.builtin.uri:
-      url: https://console-openshift-console.apps.cluster-1.sandbox1425.opentlc.com/
+      url: https://console-openshift-console.apps.cluster-qjkct.qjkct.sandbox1677.opentlc.com/
       validate_certs: false
 
   - name: get OCP version
