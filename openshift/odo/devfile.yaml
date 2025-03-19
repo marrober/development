@@ -13,17 +13,15 @@ commands:
     exec:
       commandLine: npm install
       component: dev-tooling
-      workingDir: ${PROJECT_SOURCE}
+      workingDir:${PROJECT_ROOT}/odo
       group:
-        isDefault: true
         kind: build
       label: Install npm packages
   - id: run
     exec:
       commandLine: node app.js
       component: dev-tooling
-      workingDir: ${PROJECT_SOURCE}
+      workingDir: ${PROJECT_ROOT}/odo
       group:
-        isDefault: true
         kind: run
       label: run the app.js node file
