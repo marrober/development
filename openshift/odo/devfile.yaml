@@ -1,8 +1,15 @@
-schemaVersion: 2.2.0
+schemaVersion: 2.2.2
 metadata:
   name: helloworld-example
+projects:
+  - name: odo-sample
+    git:
+      remotes:
+        origin: 'https://github.com/marrober/development.git'
+      checkoutFrom:
+        revision: main
 components:
-  - name: dev-tooling
+  - name: devTooling
     container:
       image: quay.io/devfile/universal-developer-image:ubi8-latest
       endpoints:
@@ -12,7 +19,7 @@ commands:
   - id: install
     exec:
       commandLine: npm install
-      component: dev-tooling
+      component: devTooling
       workingDir: ${PROJECT_ROOT}/odo
       group:
         kind: build
@@ -20,7 +27,7 @@ commands:
   - id: run
     exec:
       commandLine: node app.js
-      component: dev-tooling
+      component: devTooling
       workingDir: ${PROJECT_ROOT}/odo
       group:
         kind: run
