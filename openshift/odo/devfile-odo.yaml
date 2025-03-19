@@ -1,0 +1,25 @@
+schemaVersion: 2.2.0
+components:
+  - name: runtime
+    container:
+      image: node:18-alpine
+      endpoints:
+        - name: http-3000
+          targetPort: 3000
+commands:
+  - id: install
+    exec:
+      commandLine: npm install
+      component: runtime
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        isDefault: true
+        kind: build
+  - id: run
+    exec:
+      commandLine: node app.js
+      component: runtime
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        isDefault: true
+        kind: run

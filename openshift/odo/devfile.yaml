@@ -1,0 +1,27 @@
+schemaVersion: 2.2.0
+metadata:
+  name: helloworld-example
+components:
+  - name: dev-tooling
+    container:
+      image: quay.io/devfile/universal-developer-image:ubi8-latest
+      endpoints:
+        - name: http-3000
+          targetPort: 3000
+commands:
+  - id: install
+    exec:
+      commandLine: npm install
+      component: dev-tooling
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        isDefault: true
+        kind: build
+  - id: run
+    exec:
+      commandLine: node app.js
+      component: dev-tooling
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        isDefault: true
+        kind: run
