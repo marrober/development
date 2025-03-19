@@ -26,4 +26,4 @@ commands:
       group:
         isDefault: true
         kind: run
-      labe: run the app.js node file
+      label: run the app.js node file
