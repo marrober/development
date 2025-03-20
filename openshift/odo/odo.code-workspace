@@ -5,6 +5,9 @@
         },
         { 
             "path": "/projects/development"
+        },
+        {
+            "path": "/projects/pacman"
         }
     ],
     "settings": {},
