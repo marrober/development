@@ -2,12 +2,10 @@ schemaVersion: 2.2.0
 metadata:
   name: pacman
 projects:
-  - name: pacman
+  - name: my-quarkus-app
     git:
       remotes:
-        origin: 'https://github.com/marrober/pacman.git'
-      checkoutFrom:
-        revision: main
+        origin: https://gitlab-gitlab.apps.cluster-qjkct.qjkct.sandbox1677.opentlc.com/development/my-quarkus-app.git
 components:
   - name: development-tooling
     container:
@@ -63,7 +61,16 @@ commands:
 
 
 
-
+#schemaVersion: 2.2.2
+#metadata:
+#  name: pacman
+#projects:
+#  - name: pacman
+#    git:
+#      remotes:
+#        origin: 'https://github.com/marrober/pacman.git'
+#      checkoutFrom:
+#        revision: main
 #components:
 #  - name: tools
 #    container:
