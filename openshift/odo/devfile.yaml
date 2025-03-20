@@ -28,6 +28,8 @@ components:
           value: 0.0.0.0
         - name: MAVEN_OPTS
           value: '-Dmaven.repo.local=/home/user/.m2/repository'
+        - name: CHE_PLUGIN_REGISTRY_URL
+          value: https://open-vsx.org
       memoryLimit: 5Gi
       cpuLimit: 2500m
       volumeMounts:
