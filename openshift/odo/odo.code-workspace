@@ -1,7 +1,10 @@
 {
     "folders": [
         { 
-            "path": "."
+            "path": "/projects/my-quarkus-app"
+        },
+        { 
+            "path": "/projets/odo-sample"
         }
     ],
     "settings": {},

@@ -140,3 +140,5 @@ commands:
 #      commandLine: 'node_server_pids=$(pgrep -fx ''.*nodemon (--inspect )?app.js'' | tr "\\n" " ") && echo "Stopping node server with PIDs: ${node_server_pids}" &&  kill -15 ${node_server_pids} &>/dev/null && echo ''Done.'''
 #      group:
 #        kind: run
+
+# https://github.com/marrober/development.git?devfilePath=/openshift/odo/devfile.yaml
