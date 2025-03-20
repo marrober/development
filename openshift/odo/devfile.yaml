@@ -56,21 +56,30 @@ components:
 commands:
   - id: package
     exec:
-      label: 1. Package the application
+      label: 1. (QKS) Package the application
       component: development-tooling
       commandLine: ./mvnw package
+      workingDir: ${PROJECTS_ROOT}/my-quarkus-app
       group:
         kind: build
         isDefault: true
   - id: start-dev
     exec:
-      label: 2. Start Development mode (Hot reload + debug)
+      label: 2. (QKS) Start Development mode (Hot reload + debug)
       component: development-tooling
       commandLine: ./mvnw compile quarkus:dev
+      workingDir: ${PROJECTS_ROOT}/my-quarkus-app
       group:
         kind: run
         isDefault: true
-
+  - id: npm dependencies
+    exec:
+      label: 3. (NJS) Download dependencies
+      component: tools
+      workingDir: ${PROJECTS_ROOT}/pacman/src
+      commandLine: npm install
+      group:
+        kind: build
 
 
 
