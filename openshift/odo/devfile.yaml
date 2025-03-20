@@ -82,6 +82,38 @@ commands:
       commandLine: npm install
       group:
         kind: build
+  - id: run-nodejs
+    exec:
+      label: 4. (NJS) Run the web app
+      component: tools
+      workingDir: ${PROJECTS_ROOT}/pacman/src
+      commandLine: nodemon app.js
+      group:
+        kind: run
+  - id: install-and-run-nodejs
+    exec:
+      label: 5. (NJS) Run the web app (and download dependencies)
+      component: tools
+      workingDir: ${PROJECTS_ROOT}/pacman/src
+      commandLine: npm install; nodemon app.js
+      group:
+        kind: run
+  - id: debug-njs
+    exec:
+      label: 6. (NJS) Run the web app (debugging enabled)
+      component: tools
+      workingDir: ${PROJECTS_ROOT}/pacman/src
+      commandLine: nodemon --inspect app.js
+      group:
+        kind: debug
+        isDefault: true
+  - id: stopapp-njs
+    exec:
+      label: 7. (NJS) Stop the web app
+      component: tools
+      commandLine: 'node_server_pids=$(pgrep -fx ''.*nodemon (--inspect )?app.js'' | tr "\\n" " ") && echo "Stopping node server with PIDs: ${node_server_pids}" &&  kill -15 ${node_server_pids} &>/dev/null && echo ''Done.'''
+      group:
+        kind: run
 
 
 
