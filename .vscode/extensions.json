@@ -4,6 +4,8 @@
         "redhat.vscode-yaml",
         "cnshenj.vscode-task-manager",
         "redhat.vscode-openshift-connector",
-        "redhat.vscode-xml"
+        "redhat.vscode-xml",
+        "nickdemayo.vscode-json-editor",
+        "redhat.vscode-tekton-pipelines"
     ]
 }
