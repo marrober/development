@@ -8,7 +8,7 @@ projects:
         origin: 'https://github.com/marrober/development.git'
       checkoutFrom:
         revision: main
-    clonePath: odo-sameple
+    clonePath: odo-sample
   - name: my-quarkus-app
     git:
       remotes:
