@@ -2,13 +2,18 @@ schemaVersion: 2.2.0
 metadata:
   name: pacman
 projects:
-  - name: odo-sample
+  - name: development
     git:
       remotes:
         origin: 'https://github.com/marrober/development.git'
       checkoutFrom:
         revision: main
-    clonePath: odo-sample
+    clonePath: development
+  - name: pacman
+    git:
+      remotes:
+        origin: https://gitlab-gitlab.apps.cluster-qjkct.qjkct.sandbox1677.opentlc.com/development/pacman.git
+    clonePath: pacman
   - name: my-quarkus-app
     git:
       remotes:
