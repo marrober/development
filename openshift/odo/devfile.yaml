@@ -35,6 +35,8 @@ components:
       volumeMounts:
         - name: m2
           path: /home/user/.m2
+        - name: npm
+          path: /home/user/.npm
       endpoints:
         - name: quarkus-dev
           targetPort: 8080
@@ -52,7 +54,14 @@ components:
           exposure: none
           secure: false
           protocol: tcp
-  - name: m2
+        - name: nodejs
+          exposure: public
+          protocol: https
+          targetPort: 3000
+ - name: m2
+    volume:
+      size: 1G
+  - name: npm
     volume:
       size: 1G
 commands:
@@ -77,7 +86,7 @@ commands:
   - id: npm-dependencies
     exec:
       label: 3. (NJS) Download dependencies
-      component: tools
+      component: development-tooling
       workingDir: ${PROJECTS_ROOT}/pacman/src
       commandLine: npm install
       group:
@@ -85,7 +94,7 @@ commands:
   - id: run-nodejs
     exec:
       label: 4. (NJS) Run the web app
-      component: tools
+      component: development-tooling
       workingDir: ${PROJECTS_ROOT}/pacman/src
       commandLine: nodemon app.js
       group:
@@ -93,7 +102,7 @@ commands:
   - id: install-and-run-nodejs
     exec:
       label: 5. (NJS) Run the web app (and download dependencies)
-      component: tools
+      component: development-tooling
       workingDir: ${PROJECTS_ROOT}/pacman/src
       commandLine: npm install; nodemon app.js
       group:
@@ -101,7 +110,7 @@ commands:
   - id: debug-njs
     exec:
       label: 6. (NJS) Run the web app (debugging enabled)
-      component: tools
+      component: development-tooling
       workingDir: ${PROJECTS_ROOT}/pacman/src
       commandLine: nodemon --inspect app.js
       group:
@@ -110,7 +119,7 @@ commands:
   - id: stopapp-njs
     exec:
       label: 7. (NJS) Stop the web app
-      component: tools
+      component: development-tooling
       commandLine: 'node_server_pids=$(pgrep -fx ''.*nodemon (--inspect )?app.js'' | tr "\\n" " ") && echo "Stopping node server with PIDs: ${node_server_pids}" &&  kill -15 ${node_server_pids} &>/dev/null && echo ''Done.'''
       group:
         kind: run
