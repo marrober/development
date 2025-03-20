@@ -1,9 +1,9 @@
 {
     "recommendations": [
+        "redhat.vscode-openshift-connector",
         "esbenp.prettier-vscode",
         "redhat.vscode-yaml",
         "cnshenj.vscode-task-manager",
-        "redhat.vscode-openshift-extension-pack",
         "redhat.vscode-xml",
         "nickdemayo.vscode-json-editor",
         "redhat.vscode-tekton-pipelines"
