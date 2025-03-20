@@ -72,7 +72,7 @@ commands:
       group:
         kind: run
         isDefault: true
-  - id: npm dependencies
+  - id: npm-dependencies
     exec:
       label: 3. (NJS) Download dependencies
       component: tools
