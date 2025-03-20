@@ -2,11 +2,6 @@ schemaVersion: 2.2.0
 metadata:
   name: pacman
 projects:
-  - name: my-quarkus-app
-    git:
-      remotes:
-        origin: https://gitlab-gitlab.apps.cluster-qjkct.qjkct.sandbox1677.opentlc.com/development/my-quarkus-app.git
-    clonePath: my-quarkus-app
   - name: odo-sample
     git:
       remotes:
@@ -14,6 +9,11 @@ projects:
       checkoutFrom:
         revision: main
     clonePath: odo-sameple
+  - name: my-quarkus-app
+    git:
+      remotes:
+        origin: https://gitlab-gitlab.apps.cluster-qjkct.qjkct.sandbox1677.opentlc.com/development/my-quarkus-app.git
+    clonePath: my-quarkus-app
 components:
   - name: development-tooling
     container:
