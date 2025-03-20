@@ -58,7 +58,7 @@ components:
           exposure: public
           protocol: https
           targetPort: 3000
- - name: m2
+  - name: m2
     volume:
       size: 1G
   - name: npm
