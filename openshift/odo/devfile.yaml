@@ -7,6 +7,13 @@ projects:
       remotes:
         origin: https://gitlab-gitlab.apps.cluster-qjkct.qjkct.sandbox1677.opentlc.com/development/my-quarkus-app.git
     clonePath: my-quarkus-app
+  - name: odo-sample
+    git:
+      remotes:
+        origin: 'https://github.com/marrober/development.git'
+      checkoutFrom:
+        revision: main
+    clonePath: odo-sameple
 components:
   - name: development-tooling
     container:
