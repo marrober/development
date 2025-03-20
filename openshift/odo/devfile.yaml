@@ -1,71 +1,135 @@
-schemaVersion: 2.2.2
+schemaVersion: 2.2.0
 metadata:
-  name: pacman
+  name: quarkus-app-cmic
+  namespace: admin-devspaces
 projects:
-  - name: pacman
+  - name: my-quarkus-app
     git:
       remotes:
-        origin: 'https://github.com/marrober/pacman.git'
-      checkoutFrom:
-        revision: main
+        origin: https://gitlab-gitlab.apps.cluster-qjkct.qjkct.sandbox1677.opentlc.com/development/my-quarkus-app.git
 components:
-  - name: tools
+  - name: development-tooling
     container:
-      image: registry.redhat.io/devspaces/udi-rhel8@sha256:d147892c643a0127cfcf868daee0ff416a8df922fe2a7c716ebfc457ff526fa2
+      image: quay.io/devfile/universal-developer-image:ubi8-277c10c
+      env:
+        - name: QUARKUS_HTTP_HOST
+          value: 0.0.0.0
+        - name: MAVEN_OPTS
+          value: '-Dmaven.repo.local=/home/user/.m2/repository'
+      memoryLimit: 5Gi
+      cpuLimit: 2500m
+      volumeMounts:
+        - name: m2
+          path: /home/user/.m2
       endpoints:
-        - exposure: public
-          name: nodejs
+        - name: quarkus-dev
+          targetPort: 8080
+          exposure: public
+          secure: false
           protocol: https
-          targetPort: 3000
-      memoryLimit: 1Gi
-      memoryRequest: 600Mi
-      cpuLimit: '0.5'
-      cpuRequest: '0.25'
-      mountSources: true
+          path: hello
+        - name: debug
+          targetPort: 5005
+          exposure: none
+          secure: false
+          protocol: tcp
+        - name: tests
+          targetPort: 8081
+          exposure: none
+          secure: false
+          protocol: tcp
+  - name: m2
+    volume:
+      size: 1G
+commands:
+  - id: package
+    exec:
+      label: 1. Package the application
+      component: development-tooling
+      commandLine: ./mvnw package
+      group:
+        kind: build
+        isDefault: true
+  - id: start-dev
+    exec:
+      label: 2. Start Development mode (Hot reload + debug)
+      component: development-tooling
+      commandLine: ./mvnw compile quarkus:dev
+      group:
+        kind: run
+        isDefault: true
+
+
+
+
+#schemaVersion: 2.2.2
+#metadata:
+#  name: pacman
+#projects:
+#  - name: pacman
+#    git:
+#      remotes:
+#        origin: 'https://github.com/marrober/pacman.git'
+#      checkoutFrom:
+#        revision: main
+#components:
+#  - name: tools
+#    container:
+#      image: registry.redhat.io/devspaces/udi-rhel8@sha256:d147892c643a0127cfcf868daee0ff416a8df922fe2a7c716ebfc457ff526fa2
+#      endpoints:
+#        - exposure: public
+#          name: nodejs
+#          protocol: https
+#          targetPort: 3000
+#      memoryLimit: 1Gi
+#      memoryRequest: 600Mi
+#      cpuLimit: '0.5'
+#      cpuRequest: '0.25'
+#      mountSources: true
 #      volumeMounts:
 #        - name: npm
 #          path: /home/user/.npm
 #  - name: npm
 #    volume:
 #      size: 1G
-commands:
-  - id: 1-dependencies
-    exec:
-      label: Download dependencies
-      component: tools
-      workingDir: ${PROJECTS_ROOT}/pacman/src
-      commandLine: npm install
-      group:
-        kind: build
-  - id: 2-run
-    exec:
-      label: Run the web app
-      component: tools
-      workingDir: ${PROJECTS_ROOT}/pacman/src
-      commandLine: nodemon app.js
-      group:
-        kind: run
-  - id: 3-install-and-run
-    exec:
-      label: Run the web app (and download dependencies)
-      component: tools
-      workingDir: ${PROJECTS_ROOT}/pacman/src
-      commandLine: npm install; nodemon app.js
-      group:
-        kind: run
-  - id: 4-debug
-    exec:
-      label: Run the web app (debugging enabled)
-      component: tools
-      workingDir: ${PROJECTS_ROOT}/pacman/src
-      commandLine: nodemon --inspect app.js
-      group:
-        kind: debug
-        isDefault: true
-  - id: 5-stopapp
-    exec:
-      label: Stop the web app
-      component: tools
-      commandLine: 'node_server_pids=$(pgrep -fx ''.*nodemon (--inspect )?app.js'' | tr "\\n" " ") && echo "Stopping node server with PIDs: ${node_server_pids}" &&  kill -15 ${node_server_pids} &>/dev/null && echo ''Done.'''
-      group:
-        kind: run
+#commands:
+#  - id: 1-dependencies
+#    exec:
+#      label: Download dependencies
+#      component: tools
+#      workingDir: ${PROJECTS_ROOT}/pacman/src
+#      commandLine: npm install
+#      group:
+#        kind: build
+#  - id: 2-run
+#    exec:
+#      label: Run the web app
+#      component: tools
+#      workingDir: ${PROJECTS_ROOT}/pacman/src
+#      commandLine: nodemon app.js
+#      group:
+#        kind: run
+#  - id: 3-install-and-run
+#    exec:
+#      label: Run the web app (and download dependencies)
+#      component: tools
+#      workingDir: ${PROJECTS_ROOT}/pacman/src
+#      commandLine: npm install; nodemon app.js
+#      group:
+#        kind: run
+#  - id: 4-debug
+#    exec:
+#      label: Run the web app (debugging enabled)
+#      component: tools
+#      workingDir: ${PROJECTS_ROOT}/pacman/src
+#      commandLine: nodemon --inspect app.js
+#      group:
+#        kind: debug
+#        isDefault: true
+#  - id: 5-stopapp
+#    exec:
+#      label: Stop the web app
+#      component: tools
+#      commandLine: 'node_server_pids=$(pgrep -fx ''.*nodemon (--inspect )?app.js'' | tr "\\n" " ") && echo "Stopping node server with PIDs: ${node_server_pids}" &&  kill -15 ${node_server_pids} &>/dev/null && echo ''Done.'''
+#      group:
+#        kind: run
