@@ -1,5 +1,5 @@
 hetzner_webservice_username: marrober@redhat.com
-hetzner_webservice_password: b3eKKN4#hG^VMfxrX
+hetzner_webservice_password: 
 
 hetzner_hostname: "CentOS-90-stream-amd64-base"
 hetzner_ip: "65.21.135.84"
@@ -31,6 +31,10 @@ storage_nfs: false           # Default is false
 masters_schedulable: true   # Default is false
 master_count: 3
 compute_count: 0
+master_vcpu: 10
+master_memory_size: 75000
+master_memory_unit: 'MiB'
+master_root_disk_size: '250G'
 
 cluster_role_bindings:
   - cluster_role: sudoer
