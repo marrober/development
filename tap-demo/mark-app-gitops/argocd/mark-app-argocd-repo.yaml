@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mark-app-repo
+  namespace: janus-argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  url: https://gitlab-gitlab.apps.cluster-w52ds.w52ds.sandbox964.opentlc.com/development/mark-app-gitops.git
