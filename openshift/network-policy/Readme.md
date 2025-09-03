@@ -27,6 +27,12 @@ From a terminal on the pod called 'two-....' in the 'right' namespace execute th
 curl -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/marrober/myApp-cd/commits/62d032f39c0bde2bc62d0c114bd739df46b8a5a5/status 
 ````
 
+or
+
+````bash
+curl -v -LO https://download.fedoraproject.org/pub/fedora/linux/releases/42/Workstation/x86_64/iso/Fedora-Workstation-Live-42-1.1.x86_64.iso --output fedora.iso
+````
+
 The above will probe the git repository commit for status information and should return a json payload.
 
 ## Apply the 'block egress' network policy
