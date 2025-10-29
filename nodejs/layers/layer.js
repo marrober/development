@@ -283,6 +283,8 @@ app.get('/health', (request, response) => {
   
   sleep(sleepTime).then(() => {
 
+    console.log("setting the response code to 200 and sending now ...");
+    response.code = 200;
     response.send("sleep done ...");
   })
 });
