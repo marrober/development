@@ -17,10 +17,13 @@
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
 
 stages:          # List of stages for jobs, and their order of execution
+  - verify
   - build
   - dockerfile-build
   - image-build
   - scan-image
+  - merge-sboms
+  - security
 
 #build-job:
 #  rules:
@@ -36,6 +39,57 @@ stages:          # List of stages for jobs, and their order of execution
 #  script:
 #  - techdocs-cli generate --no-docker --verbose
 #  - techdocs-cli publish --publisher-type awsS3 --storage-name $TECHDOCS_S3_BUCKET_NAME --awsEndpoint $AWS_ENDPOINT --awsS3ForcePathStyle --entity $ENTITY_NAMESPACE/$ENTITY_KIND/$ENTITY_NAME
+
+verify-commit-job:
+  stage: verify
+  allow_failure: true
+  # Define variables that correspond to the Tekton parameters
+  variables:
+    # Description: TUF mirror
+    TUF_MIRROR: "http://tuf.trusted-artifact-signer.svc"
+    # Description: Email address of committer
+    CERTIFICATE_IDENTITY: "user1@demo.redhat.com"
+    # Description: OIDC issuer
+    OIDC_ISSUER: "https://keycloak-rhsso.apps.cluster-ztdj6.ztdj6.sandbox388.opentlc.com/auth/realms/openshift"
+    # Description: Rekor URL
+    REKOR_URL: "http://rekor-server.trusted-artifact-signer.svc"
+  # Use the same base image as the Tekton task's step
+  image: alpine/git:latest
+  # The 'before_script' runs before the main 'script' of the job
+  before_script:
+    # Set the GITSIGN_REKOR_URL environment variable, mirroring the Tekton stepTemplate
+    - export GITSIGN_REKOR_URL=$REKOR_URL
+    # Install dependencies
+    - apk add rpm cosign
+    # Download and install gitsign
+    - wget -q https://github.com/sigstore/gitsign/releases/download/v0.13.0/gitsign_0.13.0_linux_amd64.rpm
+    - rpm -ivh gitsign_0.13.0_linux_amd64.rpm
+    # Configure safe directory for git operations
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    # Initialize cosign
+    - cosign initialize --mirror=$TUF_MIRROR --root=$TUF_MIRROR/root.json
+  script:
+    # The main script commands to verify the commit
+    - pwd
+
+    - echo "This job verifies the latest commit signature"
+    - git show -s
+    - gitsign verify --certificate-identity=$CERTIFICATE_IDENTITY --certificate-oidc-issuer=$OIDC_ISSUER HEAD 
+
+source-sbom:
+  stage: build
+  image: quay.io/redhat-appstudio/syft:v0.94.0
+
+  script:
+    - mkdir syft-output
+    - syft dir:$CI_PROJECT_DIR/pacman/src --output cyclonedx-json=syft-output/sbom-source-cyclonedx.json
+    - syft dir:$CI_PROJECT_DIR/pacman/src --output spdx-json=syft-output/sbom-source-spdx.json
+    - cat syft-output/sbom-source-spdx.json
+
+  artifacts:
+    paths:
+      - syft-output/
+    expire_in: 1 hour
 
 build-job:
   stage: build
@@ -64,30 +118,130 @@ build-job:
       - build_output/
     expire_in: 1 hour
 
+
+
 build-image:
   stage: image-build
-  image: quay.io/marrober/buildah-gitlab-runner:1
+  allow_failure: true
+  image: quay.io/marrober/buildah-for-gitlab-runners:3
   variables:
     STORAGE_DRIVER: vfs
     BUILDAH_FORMAT: docker
     BUILDAH_ISOLATION: chroot
-    FQ_IMAGE_NAME: default-route-openshift-image-registry.apps.cluster-ztdj6.ztdj6.sandbox388.opentlc.com/gitlab/pacman:latest
+    FQ_IMAGE_NAME:  quay.io/marrober/pacman-glr:latest
     KUBERNETES_SERVICE_ACCOUNT_OVERWRITE: "buildah-sa"
-  before_script:
-    # Log in to the GitLab container registry
-    # - buildah login -u "$CI_REGISTRY_USER" --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    DOCKER_AUTH_CONFIG: $DOCKER_AUTH_CONFIG
   script:
-    - buildah login default-route-openshift-image-registry.apps.cluster-ztdj6.ztdj6.sandbox388.opentlc.com --username admin --password "sha256~mKmXFo_IOoxR2zq2XhkDLjZVn3vRniij5Lby49thRg4" -v
-    - buildah images
+    - echo $DOCKER_AUTH_CONFIG > ~/.docker/config.json
+    - ls -al ~/.docker/config.json
     - cd $CI_PROJECT_DIR/pacman/src/
     - buildah bud --layers -f dockerfile -t $FQ_IMAGE_NAME
-    - buildah images
-    - buildah push $FQ_IMAGE_NAME    
+    - buildah images 
+    - buildah push --tls-verify=false --authfile /home/build/.docker/config.json $FQ_IMAGE_NAME
+
 
 scan-image:
   stage: scan-image
   image: quay.io/marrober/ubi:latest
+  variables:
+    FQ_IMAGE_NAME:  quay.io/marrober/pacman-glr:latest
 
   script:
-    ls -al
-  
+    - |
+      set +e
+       mkdir acs-output
+      curl -s -k -L -H "Authorization: Bearer $ROX_API_TOKEN" https://$ROX_CENTRAL_ENDPOINT/api/cli/download/roxctl-linux --output ./acs-output/roxctl > /dev/null; echo "Getting roxctl"
+      chmod u+x acs-output/roxctl
+      failTask="false"
+      echo "image to be processed : $FQ_IMAGE_NAME"
+      echo "image scan ....."
+      ./acs-output/roxctl image scan --image $FQ_IMAGE_NAME --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --force > image-scan.txt 
+      echo "image check ...."
+      ./acs-output/roxctl image check --image $FQ_IMAGE_NAME --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT -o table --retries 0 > image-check.txt || ROX_EXIT_CODE=$?
+      echo $ROX_EXIT_CODE
+      echo "image sbom ...."
+      ./acs-output/roxctl image sbom --image $FQ_IMAGE_NAME -e $ROX_CENTRAL_ENDPOINT --insecure-skip-tls-verify > container-sbom.json
+      cp image-scan.txt acs-output/
+      cp container-sbom.json acs-output/
+      cp image-check.txt acs-output/
+      ls -al acs-output/
+      echo "image check result ....."
+      cat image-check.txt
+
+      exit $ROX_EXIT_CODE
+
+
+  artifacts:
+    paths:
+      - acs-output/
+    expire_in: 1 hour
+
+merge-syft-sboms-job:
+  stage: merge-sboms
+  image: registry.access.redhat.com/ubi9/python-39:1-143.1696863474
+  script:
+    - |
+      #!/usr/bin/env bash
+      ls -al acs-output
+      ls -al syft-output
+      mkdir merged-sboms
+      python3 <<'EOF'
+      import json
+
+      # load SBOMs
+      with open("acs-output/container-sbom.json") as f:
+        image_sbom = json.load(f)
+
+      with open("syft-output/sbom-source-spdx.json") as f:
+        source_sbom = json.load(f)
+
+      # fetch unique components from available SBOMs
+      def get_identifier(component):
+        return component["name"] + '@' + component.get("version", "")
+
+      image_sbom_components = image_sbom.get("components", [])
+      existing_components = [get_identifier(component) for component in image_sbom_components]
+
+      source_sbom_components = source_sbom.get("components", [])
+      for component in source_sbom_components:
+        if get_identifier(component) not in existing_components:
+          image_sbom_components.append(component)
+          existing_components.append(get_identifier(component))
+
+      image_sbom_components.sort(key=lambda c: get_identifier(c))
+
+      # write the CycloneDX unified SBOM
+      with open("./sbom-cyclonedx.json", "w") as f:
+        json.dump(image_sbom, f, indent=4)
+      EOF
+      ls -al sbom-cyclonedx.json
+      cat sbom-cyclonedx.json
+      cp sbom-cyclonedx.json merged-sboms/
+
+  artifacts:
+    paths:
+      - merged-sboms/
+    expire_in: 1 hour
+
+upload-sbom-to-repo:
+  stage: security 
+  image: ubi9/ubi
+  variables:
+    CYCLONEDX_HOST_URL: "https://cyclonedx-bom-repo-server-cyclonedx.apps.cluster-ztdj6.ztdj6.sandbox388.opentlc.com"
+  script:
+    - |
+      set +x
+
+      echo "check sbom in location"
+      ls -al merged-sboms
+
+      curl -X POST "${CYCLONEDX_HOST_URL}/v1/bom" -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -d @merged-sboms/sbom-cyclonedx.json -D /tmp/header.txt 
+      cat /tmp/header.txt 
+      LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g' | tr -d '\r')
+      echo "Captured location: $LOCATION"
+      echo "LINK_TO_SBOM=$LOCATION" > job.env
+    
+  artifacts:
+    reports:
+      dotenv: job.env
+ 
