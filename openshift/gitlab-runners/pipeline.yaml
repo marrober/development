@@ -314,36 +314,37 @@ Upload-sbom-to-tpa:
         echo "SUPPORTED_CYCLONEDX_VERSION not set, will not check SBOM versions"
         supported_version=""
       fi
+      
+      echo $supported_version
 
-      filepath = "merged-sboms/sbom-cyclonedx.json"
+      filepath="merged-sboms/sbom-cyclonedx.json"
 
       echo "File to upload : $filepath"
         
-      jq --arg nn "pacman-glr:latest" '.name = $nn' filepath > temp-sbom.json
+      jq --arg nn "pacman-glr:latest" '.name = $nn' $filepath > temp-sbom.json
       mv temp-sbom.json sbom-cyclonedx.json
 
-      filepath = "sbom-cyclonedx.json"
+      filepath="sbom-cyclonedx.json"
         
-        # Calculate SBOM ID (checksum) and symlink to WORKDIR
-        sbom_id="sha256:$(sha256sum "$filepath" | cut -d ' ' -f 1)"
-        sbom_path="$CI_UPLOAD_WORKDIR/$sbom_id.json"
-        
-        # Use cp instead of ln -s because GitLab CI artifacts/caching often dereferences links
-        cp "$(realpath "$filepath")" "$sbom_path"
+      # Calculate SBOM ID (checksum) and symlink to WORKDIR
+      sbom_id="sha256:$(sha256sum "$filepath" | cut -d ' ' -f 1)"
+      sbom_path="$CI_UPLOAD_WORKDIR/$sbom_id.json"
+      
+      # Use cp instead of ln -s because GitLab CI artifacts/caching often dereferences links
+      cp "$(realpath "$filepath")" "$sbom_path"
 
-        ls -al $sbom_path
+      ls -al $sbom_path
 
-        if [[ -n "$supported_version" ]]; then
-          sbom_version="$(jq -r ".specVersion" "$sbom_path")"
+      if [[ -n "$supported_version" ]]; then
+        sbom_version="$(jq -r ".specVersion" "$sbom_path")"
 
-          if version_lesser_equal "$sbom_version" "$supported_version"; then
-            echo "SBOM version ($sbom_version) is supported (<= $supported_version), will not convert"
-          else
-            echo "SBOM version ($sbom_version) is not supported, will convert to $supported_version"
-            printf "%s" "$supported_version" > "${sbom_path}.convert_to_version"
-          fi
+        if version_lesser_equal "$sbom_version" "$supported_version"; then
+          echo "SBOM version ($sbom_version) is supported (<= $supported_version), will not convert"
+        else
+          echo "SBOM version ($sbom_version) is not supported, will convert to $supported_version"
+          printf "%s" "$supported_version" > "${sbom_path}.convert_to_version"
         fi
-      done
+      fi
 
       echo "Found $(find "$CI_UPLOAD_WORKDIR" -name "*.json" | wc -l) CycloneDX SBOMs ready for processing"
     
@@ -361,10 +362,13 @@ Upload-sbom-to-tpa:
       # If you have a custom runner image with both tools, use that instead.
       
       curl -sL raw.githubusercontent.com | sh -s -- -b /usr/local/bin
+      echo "here-1"
       if ! command -v syft &> /dev/null; then
           echo "Syft installation failed. Cannot proceed with conversion."
           exit 1
       fi
+
+      echo "here-2"
 
       shopt -s nullglob
       for sbom_path in "$CI_UPLOAD_WORKDIR"/*.json; do
