@@ -23,6 +23,7 @@ stages:          # List of stages for jobs, and their order of execution
   - image-build
   - scan-image
   - merge-sboms
+  - sbom
   - security
 
 #build-job:
@@ -167,6 +168,7 @@ scan-image:
       ls -al acs-output/
       echo "image check result ....."
       cat image-check.txt
+      cat container-sbom.json
 
       exit $ROX_EXIT_CODE
 
@@ -189,30 +191,43 @@ merge-syft-sboms-job:
       import json
 
       # load SBOMs
-      with open("acs-output/container-sbom.json") as f:
-        image_sbom = json.load(f)
+      with open("./acs-output/container-sbom.json") as f:
+          image_sbom = json.load(f)
 
-      with open("syft-output/sbom-source-spdx.json") as f:
-        source_sbom = json.load(f)
+      with open("./syft-output/sbom-source-spdx.json") as f:
+          source_sbom = json.load(f)
 
-      # fetch unique components from available SBOMs
-      def get_identifier(component):
-        return component["name"] + '@' + component.get("version", "")
+      # fetch unique packages from available SBOMs
+      def get_identifier(package):
+          return package["name"] + '@' + package.get("versionInfo", "")
 
-      image_sbom_components = image_sbom.get("components", [])
-      existing_components = [get_identifier(component) for component in image_sbom_components]
+      image_sbom_packages = image_sbom.get("packages", [])
+      initial_image_SBOM_elements = str(len(image_sbom_packages))
+      existing_packages = [get_identifier(package) for package in image_sbom_packages]
 
-      source_sbom_components = source_sbom.get("components", [])
-      for component in source_sbom_components:
-        if get_identifier(component) not in existing_components:
-          image_sbom_components.append(component)
-          existing_components.append(get_identifier(component))
+      source_sbom_packages = source_sbom.get("packages", [])
+      initial_source_SBOM_elements = str(len(source_sbom_packages))
+      added_package_counter = 0
+      package_match = 0
+      for package in source_sbom_packages:
+          if get_identifier(package) not in existing_packages:
+              image_sbom_packages.append(package)
+              existing_packages.append(get_identifier(package))
+              added_package_counter = added_package_counter + 1
+          else:
+            package_match = package_match + 1
+              
+      image_sbom_packages.sort(key=lambda c: get_identifier(c))
 
-      image_sbom_components.sort(key=lambda c: get_identifier(c))
+      print("image sbom elements : " + initial_image_SBOM_elements)
+      print("source sbom elements : " + initial_source_SBOM_elements)
+      print("added packages : " + str(added_package_counter))
+      print("matched packages : " + str(package_match))
+      print("image sbom elements (after merge) : " + str(len(image_sbom_packages)))
 
       # write the CycloneDX unified SBOM
       with open("./sbom-cyclonedx.json", "w") as f:
-        json.dump(image_sbom, f, indent=4)
+          json.dump(image_sbom, f, indent=4)
       EOF
       ls -al sbom-cyclonedx.json
       cat sbom-cyclonedx.json
@@ -226,6 +241,7 @@ merge-syft-sboms-job:
 upload-sbom-to-repo:
   stage: security 
   image: ubi9/ubi
+  allow_failure: true
   variables:
     CYCLONEDX_HOST_URL: "https://cyclonedx-bom-repo-server-cyclonedx.apps.cluster-ztdj6.ztdj6.sandbox388.opentlc.com"
   script:
@@ -244,4 +260,192 @@ upload-sbom-to-repo:
   artifacts:
     reports:
       dotenv: job.env
- 
+
+Upload-sbom-to-tpa:
+  stage: sbom
+  image: quay.io/redhat-appstudio/appstudio-utils:5bd7d6cb0b17f9f2eab043a8ad16ba3d90551bc2@sha256:8c7fcf86af40c71aeb58e4279625c8308af5144e2f6b8e28b0ec7e795260e5f7
+  variables:
+    # --- Tekton Params translated to GitLab CI variables ---
+    COMPONENT_ID: "your-application-name" # Replace with your component identifier
+    SBOMS_DIR: "."
+    HTTP_RETRIES: "3"
+    FAIL_IF_TRUSTIFICATION_NOT_CONFIGURED: "true"
+    # WORKDIR within the container for temporary storage
+    CI_UPLOAD_WORKDIR: "./upload_temp"
+
+    # --- Trustification Secret Variables (Defined in GitLab Project/Group Settings) ---
+    # These variables must be configured in GitLab Settings -> CI/CD -> Variables.
+    # Set them as 'Masked' and 'Protected' (optional).
+    BOMBASTIC_API_URL: $BOMBASTIC_API_URL
+    OIDC_ISSUER_URL: $OIDC_ISSUER_URL
+    OIDC_CLIENT_ID: $OIDC_CLIENT_ID
+    OIDC_CLIENT_SECRET: $OIDC_CLIENT_SECRET
+    # Optional variable:
+    SUPPORTED_CYCLONEDX_VERSION: $SUPPORTED_CYCLONEDX_VERSION
+  
+  # Define cache/artifacts to persist files generated in 'gather-sboms' for subsequent steps
+  cache:
+    paths:
+      - ./upload_temp
+  artifacts:
+    paths:
+      - ./upload_temp
+    expire_in: 1 day
+
+  script:
+    # --- Step 1: gather-sboms logic ---
+    - |
+      #!/usr/bin/env bash
+      set -o errexit -o nounset -o pipefail
+      echo "--- Executing gather-sboms logic ---"
+
+      mkdir -p "$CI_UPLOAD_WORKDIR"
+
+      version_lesser_equal() {
+        local first
+        first="$(printf "%s\n%s" "$1" "$2" | sort --version-sort | head -n 1)"
+        [ "$1" = "$first" ]
+      }
+
+      if [[ -n "$SUPPORTED_CYCLONEDX_VERSION" ]]; then
+        supported_version="$SUPPORTED_CYCLONEDX_VERSION"
+        echo "Supported CycloneDX version found in variables: $supported_version"
+      else
+        echo "SUPPORTED_CYCLONEDX_VERSION not set, will not check SBOM versions"
+        supported_version=""
+      fi
+
+      filepath = "merged-sboms/sbom-cyclonedx.json"
+
+      echo "File to upload : $filepath"
+        
+      jq --arg nn "pacman-glr:latest" '.name = $nn' filepath > temp-sbom.json
+      mv temp-sbom.json sbom-cyclonedx.json
+
+      filepath = "sbom-cyclonedx.json"
+        
+        # Calculate SBOM ID (checksum) and symlink to WORKDIR
+        sbom_id="sha256:$(sha256sum "$filepath" | cut -d ' ' -f 1)"
+        sbom_path="$CI_UPLOAD_WORKDIR/$sbom_id.json"
+        
+        # Use cp instead of ln -s because GitLab CI artifacts/caching often dereferences links
+        cp "$(realpath "$filepath")" "$sbom_path"
+
+        ls -al $sbom_path
+
+        if [[ -n "$supported_version" ]]; then
+          sbom_version="$(jq -r ".specVersion" "$sbom_path")"
+
+          if version_lesser_equal "$sbom_version" "$supported_version"; then
+            echo "SBOM version ($sbom_version) is supported (<= $supported_version), will not convert"
+          else
+            echo "SBOM version ($sbom_version) is not supported, will convert to $supported_version"
+            printf "%s" "$supported_version" > "${sbom_path}.convert_to_version"
+          fi
+        fi
+      done
+
+      echo "Found $(find "$CI_UPLOAD_WORKDIR" -name "*.json" | wc -l) CycloneDX SBOMs ready for processing"
+    
+    # --- Step 2: convert-sboms-if-needed logic ---
+    # This step requires a different tool (syft), so we use 'after_script' to change image for this block
+    # Note: Using a single image with both tools (jq, find, syft) would be simpler if possible.
+    # We use 'before_script' here to change the execution context for this specific script block.
+    - |
+      #!/usr/bin/env bash
+      set -o errexit -o nounset -o pipefail
+      echo "--- Executing convert-sboms-if-needed logic ---"
+
+      # Install Syft within the current container as we cannot easily change the image mid-script in GitLab CI
+      # The original image 'appstudio-utils' is used, installing syft temporarily.
+      # If you have a custom runner image with both tools, use that instead.
+      
+      curl -sL raw.githubusercontent.com | sh -s -- -b /usr/local/bin
+      if ! command -v syft &> /dev/null; then
+          echo "Syft installation failed. Cannot proceed with conversion."
+          exit 1
+      fi
+
+      shopt -s nullglob
+      for sbom_path in "$CI_UPLOAD_WORKDIR"/*.json; do
+        conversion_attr="${sbom_path}.convert_to_version"
+
+        if [[ -f "$conversion_attr" ]]; then
+          cdx_version="$(cat "$conversion_attr")"
+          original_sbom_path="$(realpath "$sbom_path")"
+
+          echo "Converting $original_sbom_path to CycloneDX $cdx_version"
+          # Output converted version to a new file path to not overwrite original input
+          syft convert "$original_sbom_path" -o "cyclonedx-json@${cdx_version}=${sbom_path}.supported_version"
+        else
+          # Original SBOM already has a supported CDX version, duplicate it for next step input
+          cp "$sbom_path" "${sbom_path}.supported_version"
+        fi
+      done
+    
+    # --- Step 3: upload-sboms logic ---
+    - |
+      #!/usr/bin/env bash
+      set -o errexit -o nounset -o pipefail
+      echo "--- Executing upload-sboms logic ---"
+
+      shopt -s nullglob
+      # Look for files ending in .json.supported_version created in the previous step
+      sboms_to_upload=("$CI_UPLOAD_WORKDIR"/*.json.supported_version)
+
+      if [[ "${#sboms_to_upload[@]}" -eq 0 ]]; then
+        echo "No SBOMs to upload found in $CI_UPLOAD_WORKDIR."
+        exit 0
+      fi
+
+      # Check for required configuration variables in GitLab CI environment
+      check_config() {
+        local config_keys=("BOMBASTIC_API_URL" "OIDC_ISSUER_URL" "OIDC_CLIENT_ID" "OIDC_CLIENT_SECRET")
+        for key in "${config_keys[@]}"; do
+          if [[ -z "${!key}" ]]; then
+            echo "Missing required configuration variable: $key" >&2
+            return 1
+          fi
+        done
+        return 0
+      }
+
+      if ! check_config; then
+        if [[ "$FAIL_IF_TRUSTIFICATION_NOT_CONFIGURED" == "true" ]]; then
+          echo "Trustification configuration is incomplete. Failing pipeline."
+          exit 1
+        else
+          echo "Trustification configuration is incomplete. Skipping upload as requested."
+          exit 0
+        fi
+      fi
+
+      # Upload logic (using curl, same as original Tekton task)
+      for sbom_path in "${sboms_to_upload[@]}"; do
+        sbom_id=$(basename "$sbom_path" .json.supported_version)
+        echo "Uploading $sbom_path (ID: $sbom_id)"
+
+        # OIDC authentication steps must happen here to get a fresh token
+        AUTH_TOKEN=$(curl -sX POST "$OIDC_ISSUER_URL/protocol/openid-connect/token" \
+          -d "grant_type=client_credentials" \
+          -d "client_id=$OIDC_CLIENT_ID" \
+          -d "client_secret=$OIDC_CLIENT_SECRET" \
+          -d 'scope=openid' | jq -r '.access_token')
+
+        if [[ -z "$AUTH_TOKEN" ]] || [[ "$AUTH_TOKEN" == "null" ]]; then
+          echo "Failed to retrieve OIDC token. Check credentials."
+          exit 1
+        fi
+
+        # Use curl to upload the SBOM
+        curl -X POST "$BOMBASTIC_API_URL/api/v1/sbom?id=$sbom_id" \
+          -H "Authorization: Bearer $AUTH_TOKEN" \
+          --retry "$HTTP_RETRIES" \
+          --retry-delay 5 \
+          --data-binary "@$sbom_path"
+        
+        echo "" # Newline for readability
+      done
+
+      echo "Finished uploading all discovered SBOMs."
+  
