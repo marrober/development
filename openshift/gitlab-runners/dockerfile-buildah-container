@@ -5,6 +5,8 @@ RUN touch /etc/subgid /etc/subuid \
 && echo build:10000:65536 > /etc/subuid \
 && echo build:10000:65536 > /etc/subgid
 
+RUN mkdir -p /home/build/.docker && chmod 777 /home/build/.docker
+
 # Use chroot because the default runc does not work when running rootless
 RUN echo "export BUILDAH_ISOLATION=chroot" >> /home/build/.bashrc
 
