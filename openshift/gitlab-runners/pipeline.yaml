@@ -124,7 +124,7 @@ build-job:
 build-image:
   stage: image-build
   allow_failure: true
-  image: quay.io/marrober/buildah-for-gitlab-runners:3
+  image: quay.io/marrober/buildah-for-gitlab-runners:5
   variables:
     STORAGE_DRIVER: vfs
     BUILDAH_FORMAT: docker
