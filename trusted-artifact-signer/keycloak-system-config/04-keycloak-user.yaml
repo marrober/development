@@ -3,18 +3,19 @@ kind: KeycloakUser
 metadata:
   labels:
     app: sso
-  name: jdoe
+  name: marrober
+  namespace: keycloak-system
 spec:
   realmSelector:
     matchLabels:
       app: sso
   user:
-    email: jdoe@redhat.com
+    email: marrober@redhat.com
     enabled: true
     emailVerified: true
     credentials:
       - type: "password"
         value: "secure"
-    firstName: John
-    lastName: Doe
-    username: jdoe
+    firstName: Mark
+    lastName: Roberts
+    username: marrober
