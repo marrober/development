@@ -6,6 +6,8 @@ import org.json.JSONObject;
 import java.io.File;
 import tools.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 import java.io.IOException;
 
@@ -48,6 +50,22 @@ public class rhsaExplorer {
         System.out.println("data/age : " + data_age);
 
 
+        ProcessBuilder pb = new ProcessBuilder(
+            "curl", "-X", "GET", "-k", "-s", "-H", "\"authorization: Bearer $ROX_API_TOKEN\"", "\"https://central-stackrox.apps.ocp4.mr-openshift.co.uk/v1/images?query=CVE:CVE-2024-45337\"" 
+        );
+        pb.redirectErrorStream(true); 
+            
+        Process process = pb.start();
+            
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        }
+            
+        int exitCode = process.waitFor();
+        System.out.println("Exited with code: " + exitCode);
 
         /* Serialize POJO to String
         String jacksonJson = mapper.writeValueAsString(user);
