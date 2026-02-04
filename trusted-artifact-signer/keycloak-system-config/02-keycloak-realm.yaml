@@ -4,6 +4,7 @@ metadata:
   labels:
     app: sso
   name: trusted-artifact-signer
+  namespace: keycloak-system
 spec:
   instanceSelector:
     matchLabels:
