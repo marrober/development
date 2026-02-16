@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: layer3
+    version: v1
+    app.kubernetes.io/part-of: layers
+    app.openshift.io/runtime: nodejs
+  name: layer3-v1
+  namespace: ocp-101-01-app-connectivity
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: layer3
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: layer3
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+      - name: layer3
+        image: quay.io/marrober/layers:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+          - name: THIS_LAYER_NAME
+            value: layer3
+          - name: VERSION_ID
+            value: v1
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: 
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: layer3
+  namespace: ocp-101-01-app-connectivity
+  labels:
+    app: layer3
+spec:
+  ports:
+  - name: http
+    port: 8080
+  selector:
+    app: layer3            
