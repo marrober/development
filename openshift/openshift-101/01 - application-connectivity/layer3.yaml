@@ -7,9 +7,9 @@ metadata:
     app.kubernetes.io/part-of: layers
     app.openshift.io/runtime: nodejs
   name: layer3-v1
-  namespace: ocp-101-01-app-connectivity
+  namespace: ocp-101-01
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: layer3
@@ -48,7 +48,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: layer3
-  namespace: ocp-101-01-app-connectivity
+  namespace: ocp-101-01
   labels:
     app: layer3
 spec:

@@ -2,12 +2,16 @@ kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
   name: 01-app-con
-  namespace: ocp-101-01-app-connectivity
+  namespace: ocp-101-01
 spec:
   to:
     kind: Service
-    name: layer1
-    weight: 100
+    name: layer1-v1
+    weight: 75
+  alternateBackends:
+    - kind: Service
+      name: layer1-v2
+      weight: 25
   port:
     targetPort: http
   wildcardPolicy: None
