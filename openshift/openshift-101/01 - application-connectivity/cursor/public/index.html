@@ -136,9 +136,8 @@
 
     .call-structure-pods {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 0.5rem;
-      justify-content: center;
       align-items: center;
     }
 
@@ -569,7 +568,7 @@
       ];
       const layerBlocks = layers.map(({ key, title }, i) => {
         const podList = (pods[key] || []).map(
-          (p) => `<div class="pod-icon" title="${p.version} @ ${p.ip}"><span class="pod-version">${p.version}</span><span class="pod-ip">${p.ip.split('.').pop()}</span></div>`
+          (p) => `<div class="pod-icon" title="${p.version} @ ${p.ip}"><span class="pod-version">${p.version}</span><span class="pod-ip">${p.ip}</span></div>`
         ).join('');
         const arrow = i < layers.length - 1 ? '<div class="call-structure-arrow" aria-hidden="true">→</div>' : '';
         return `<div class="call-structure-layer ${key}"><span class="layer-title">${title}</span><div class="call-structure-pods">${podList || '<span class="pod-ip">—</span>'}</div></div>${arrow}`;
