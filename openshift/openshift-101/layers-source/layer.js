@@ -16,10 +16,17 @@ var thisLayerName = process.env.THIS_LAYER_NAME;
 var ignoreDelays = process.env.IGNORE_DELAYS;
 var healthDelay = process.env.HEALTH_DELAY;
 var versionID = process.env.VERSION_ID;
+var startupDelay = process.env.STARTUP_DELAY;
 var ignoreDelaysFlag = false;
 var skipCounter = 0;
 
 var skipCallLayersResponses = 0;
+
+if (typeof startupDelay == 'undefined') {
+  startupDelay = 0;
+} else {
+  startupDelay = startupDelay * 1000;
+}
 
 if (typeof ignoreDelays != 'undefined') {
   if (ignoreDelays.toUpperCase() == "TRUE") {
@@ -246,9 +253,12 @@ app.get('/skip-off', (request, response) => {
 const sleep = (waitTimeInMs) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 
 
+console.log("waiting for the startup delay time to expire : " + startupDelay);
 
-console.log("Listening on port " + port);
-app.listen(port, () => console.log("phase: setup", "Listening on port " + port));
+  sleep(startupDelay).then(() => {
+    console.log("Listening on port " + port);
+    app.listen(port, () => console.log("phase: setup", "Listening on port " + port));
+  });
 
 function sendNextRequest(cb) {
   var nextURL = "http://" + options.host + ":" + options.port + options.path;
