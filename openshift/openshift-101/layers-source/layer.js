@@ -14,6 +14,7 @@ const app = express();
 var serviceNames = process.env.NEXT_LAYER_NAME;
 var thisLayerName = process.env.THIS_LAYER_NAME;
 var ignoreDelays = process.env.IGNORE_DELAYS;
+var healthDelay = process.env.HEALTH_DELAY;
 var versionID = process.env.VERSION_ID;
 var ignoreDelaysFlag = false;
 var skipCounter = 0;
@@ -139,6 +140,21 @@ app.get('/call-layers', (request, response) => {
       response.send(messageText);
     }
   }
+});
+
+app.get('/health', (request, response) => {
+  console.log("health probe");
+  counter++;
+  messageText = thisLayerName + " (" + versionID + ") " +  "[" + ip.address() + "]";
+  var sleepTime = healthDelay * 1000;
+
+  console.log("phase: timing", "sleeping ... " + sleepTime);
+
+  sleep(sleepTime).then(() => {
+    console.log("setting the response code to 200 and sending now ...");
+    response.code = 200;
+    response.send("sleep done ...");
+  })
 });
 
 app.get('/call-layers-sleep:sleepTime', (request, response) => {
