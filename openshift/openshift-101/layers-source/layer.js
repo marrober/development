@@ -250,6 +250,13 @@ app.get('/skip-off', (request, response) => {
   response.send("skipping calls to /call-layers switched off : " +  "[" + ip.address() + "]");
 });
 
+app.get('/shutdown', (request, response) => {
+  console.log("Application shuting down and has stopped listening");
+  server.close(() => {
+    console.log('Server has stopped listening.');
+  });
+});
+
 const sleep = (waitTimeInMs) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 
 
@@ -257,7 +264,7 @@ console.log("waiting for the startup delay time to expire : " + startupDelay);
 
   sleep(startupDelay).then(() => {
     console.log("Listening on port " + port);
-    app.listen(port, () => console.log("phase: setup", "Listening on port " + port));
+    const server = app.listen(port, () => console.log("phase: setup", "Listening on port " + port));
   });
 
 function sendNextRequest(cb) {
