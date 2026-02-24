@@ -254,8 +254,12 @@ app.get('/skip-off', (request, response) => {
 });
 
 app.get('/shutdown', (request, response) => {
-  console.log("Application stopped listening and draining current workload");
-    listen = false;
+  console.log("Application stopping listening and draining current workload");
+  listen = false;
+  sleep(20000).then(() => {
+    console.log("Listening on port " + port);
+    response.send("No further requests processed");
+  });
 });
 
 const sleep = (waitTimeInMs) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
