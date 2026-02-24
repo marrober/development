@@ -255,6 +255,8 @@ app.get('/shutdown', (request, response) => {
   console.log("Application shuting down and has stopped listening");
   server.close(() => {
     console.log('Server has stopped listening.');
+
+    process.exit(0);
   });
 });
 
