@@ -19,6 +19,7 @@ var versionID = process.env.VERSION_ID;
 var startupDelay = process.env.STARTUP_DELAY;
 var ignoreDelaysFlag = false;
 var skipCounter = 0;
+var server = "";
 
 var skipCallLayersResponses = 0;
 
@@ -264,7 +265,7 @@ console.log("waiting for the startup delay time to expire : " + startupDelay);
 
   sleep(startupDelay).then(() => {
     console.log("Listening on port " + port);
-    const server = app.listen(port, () => console.log("phase: setup", "Listening on port " + port));
+    server = app.listen(port, () => console.log("phase: setup", "Listening on port " + port));
   });
 
 function sendNextRequest(cb) {
