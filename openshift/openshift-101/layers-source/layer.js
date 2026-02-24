@@ -256,7 +256,6 @@ app.get('/skip-off', (request, response) => {
 app.get('/shutdown', (request, response) => {
   console.log("Application stopped listening and draining current workload");
     listen = false;
-  });
 });
 
 const sleep = (waitTimeInMs) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
