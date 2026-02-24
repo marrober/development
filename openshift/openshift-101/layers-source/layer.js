@@ -19,7 +19,7 @@ var versionID = process.env.VERSION_ID;
 var startupDelay = process.env.STARTUP_DELAY;
 var ignoreDelaysFlag = false;
 var skipCounter = 0;
-var server = "";
+var listen = true;
 
 var skipCallLayersResponses = 0;
 
@@ -91,10 +91,12 @@ var ip = require("ip");
 var messageText = "";
 
 app.get('/', (request, response) => {
-  counter++;
-  messageText = sprintfJS.sprintf("this ip address ##### %-15s  %04d", ip.address(), counter);
-  console.log("phase: root", messageText);
-  response.send(messageText + "\n");
+  if (listen) {
+    counter++;
+    messageText = sprintfJS.sprintf("this ip address ##### %-15s  %04d", ip.address(), counter);
+    console.log("phase: root", messageText);
+    response.send(messageText + "\n");
+  }
 });
 
 app.get('/call-layers', (request, response) => {
@@ -252,11 +254,8 @@ app.get('/skip-off', (request, response) => {
 });
 
 app.get('/shutdown', (request, response) => {
-  console.log("Application shuting down and has stopped listening");
-  server.close(() => {
-    console.log('Server has stopped listening.');
-
-    process.exit(0);
+  console.log("Application stopped listening and draining current workload");
+    listen = false;
   });
 });
 
@@ -267,7 +266,7 @@ console.log("waiting for the startup delay time to expire : " + startupDelay);
 
   sleep(startupDelay).then(() => {
     console.log("Listening on port " + port);
-    server = app.listen(port, () => console.log("phase: setup", "Listening on port " + port));
+    app.listen(port, () => console.log("phase: setup", "Listening on port " + port));
   });
 
 function sendNextRequest(cb) {
