@@ -31,3 +31,7 @@ oc expose svc/rogue --namespace rogue
 oc get route/one -n left -o jsonpath='{"http://"}{.spec.host}{"/call-layers\n"}'
 
 oc get route/rogue -n rogue -o jsonpath='{"http://"}{.spec.host}{"/call-layers\n"}'
+
+echo "Copy and paste this command : export LEFTROUTE=$(oc get route/one -n left -o jsonpath='{"http://"}{.spec.host}{"/call-layers\n"}')"
+echo "Copy and paste this command : export ROGUEROUTE=$(oc get route/rogue -n rogue -o jsonpath='{"http://"}{.spec.host}{"/call-layers\n"}')"
+
