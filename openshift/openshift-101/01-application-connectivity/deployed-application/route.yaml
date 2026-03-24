@@ -7,11 +7,11 @@ spec:
   to:
     kind: Service
     name: layer1-v1
-    weight: 75
+    weight: 70
   alternateBackends:
     - kind: Service
       name: layer1-v2
-      weight: 25
+      weight: 30
   port:
     targetPort: http
   wildcardPolicy: None
