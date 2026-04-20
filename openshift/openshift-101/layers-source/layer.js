@@ -35,10 +35,10 @@ if (typeof ignoreDelays != 'undefined') {
   }
 }
 
-var targePort = 8080;
-var nextServicePort = targePort;
+var targetPort = 8080;
+var nextServicePort = targetPort;
 
-const port = targePort;
+const port = targetPort;
 console.log("phase: setup", "This app target port : " + port);
 console.log("phase: setup", "This app ip address  : " + ip.address());
 

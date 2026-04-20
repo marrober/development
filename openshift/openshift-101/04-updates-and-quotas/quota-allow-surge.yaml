@@ -1,0 +1,12 @@
+kind: ResourceQuota
+apiVersion: v1
+metadata:
+  name: allow-surge
+  namespace: app-2
+spec:
+  hard:
+   limits.cpu: 4800m
+   limits.memory: 6000Mi
+   pods: '20'
+   requests.cpu: 1200m
+   requests.memory: 2400Mi

@@ -1,0 +1,12 @@
+kind: ResourceQuota
+apiVersion: v1
+metadata:
+  name: allow-deployment
+  namespace: app-2
+spec:
+  hard:
+    limits.cpu: 4000m
+    limits.memory: 5000Mi
+    pods: '20'
+    requests.cpu: 1000m
+    requests.memory: 2000Mi
