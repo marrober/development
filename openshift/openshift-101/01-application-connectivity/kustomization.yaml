@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- deployed-application/namespace.yaml
+- deployed-application/layer3.yaml
+- deployed-application/layer2.yaml
+- deployed-application/layer1.yaml
+- deployed-application/route.yaml
+- analyser-application/deployment.yaml

@@ -127,7 +127,7 @@ spec:
     type: Git
     git:
       uri: 'https://github.com/marrober/development.git'
-    contextDir: /openshift/openshift-101/01 - application-connectivity/cursor
+    contextDir: /openshift/openshift-101/01-application-connectivity/cursor
   triggers:
     - type: Generic
       generic:
