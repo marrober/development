@@ -1,0 +1,248 @@
+:root {
+  color-scheme: light dark;
+  --bg: #0f1419;
+  --panel: #171d25;
+  --panel-border: #2a3441;
+  --text: #e7edf4;
+  --muted: #9aa7b5;
+  --accent: #4da3ff;
+  --accent-hover: #79baff;
+  --ok: #3ecf8e;
+  --warn: #f0b429;
+  --bad: #ff6b6b;
+  --cluster-row: #1f2a38;
+  --sticky-bg: #121820;
+  --font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: linear-gradient(180deg, #0b1015 0%, var(--bg) 180px);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  padding: 1.5rem 1.75rem 1rem;
+  border-bottom: 1px solid var(--panel-border);
+  background: rgba(15, 20, 25, 0.9);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+select,
+button {
+  font: inherit;
+}
+
+select {
+  min-width: 220px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+button {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #041018;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-bar {
+  margin: 1rem 1.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--muted);
+}
+
+.status-bar.error {
+  border-color: rgba(255, 107, 107, 0.5);
+  color: #ffc9c9;
+}
+
+.status-bar.success {
+  border-color: rgba(62, 207, 142, 0.4);
+  color: #c7f5df;
+}
+
+main {
+  padding: 1rem 1.75rem 2rem;
+}
+
+.empty-state {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--panel-border);
+  border-radius: 12px;
+  background: rgba(23, 29, 37, 0.5);
+}
+
+.table-wrap {
+  overflow: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--panel-border);
+  vertical-align: top;
+  text-align: left;
+}
+
+th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: #11161d;
+  white-space: nowrap;
+}
+
+.sticky-col,
+td.label-cell {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--sticky-bg);
+  min-width: 260px;
+  max-width: 360px;
+  border-right: 1px solid var(--panel-border);
+}
+
+tr.cluster-version-row td {
+  background: rgba(77, 163, 255, 0.08);
+}
+
+tr.cluster-version-row td.label-cell {
+  background: var(--cluster-row);
+  font-weight: 600;
+}
+
+.section-divider td {
+  background: #10151c;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.version {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.status-pill {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(154, 167, 181, 0.15);
+  color: var(--muted);
+}
+
+.status-pill.ok {
+  background: rgba(62, 207, 142, 0.15);
+  color: var(--ok);
+}
+
+.status-pill.warn {
+  background: rgba(240, 180, 41, 0.15);
+  color: var(--warn);
+}
+
+.status-pill.bad {
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--bad);
+}
+
+.cell-empty {
+  color: #5f6c7a;
+}
+
+.changed {
+  box-shadow: inset 0 0 0 1px rgba(77, 163, 255, 0.35);
+}
+
+@media (max-width: 720px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  select {
+    min-width: 100%;
+  }
+}

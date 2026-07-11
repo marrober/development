@@ -1,0 +1,73 @@
+{
+  "clusterName": "cluster1",
+  "date": "2026-07-07T15:30:00Z",
+  "clusterVersion": {
+    "version": "4.16.12",
+    "status": "Available",
+    "message": ""
+  },
+  "clusterOperators": [
+    {
+      "name": "authentication",
+      "version": "4.16.12",
+      "available": "True",
+      "progressing": "False",
+      "degraded": "False",
+      "status": "Available",
+      "message": ""
+    },
+    {
+      "name": "console",
+      "version": "4.16.12",
+      "available": "True",
+      "progressing": "False",
+      "degraded": "False",
+      "status": "Available",
+      "message": ""
+    },
+    {
+      "name": "kube-apiserver",
+      "version": "4.16.12",
+      "available": "True",
+      "progressing": "False",
+      "degraded": "False",
+      "status": "Available",
+      "message": ""
+    },
+    {
+      "name": "openshift-samples",
+      "version": "4.16.12",
+      "available": "False",
+      "progressing": "False",
+      "degraded": "True",
+      "status": "Degraded",
+      "message": "Samples operator is degraded because the samples imagestream install is failing"
+    }
+  ],
+  "installedOperators": [
+    {
+      "namespace": "openshift-operators",
+      "name": "advanced-cluster-management.v2.12.0",
+      "version": "2.12.0",
+      "phase": "Succeeded",
+      "status": "Succeeded",
+      "message": "all requirements found, attempting install"
+    },
+    {
+      "namespace": "openshift-operators",
+      "name": "cert-manager-operator.v1.14.0",
+      "version": "1.14.0",
+      "phase": "Succeeded",
+      "status": "Succeeded",
+      "message": "install strategy completed with no errors"
+    },
+    {
+      "namespace": "openshift-logging",
+      "name": "cluster-logging.v5.9.0",
+      "version": "5.9.0",
+      "phase": "Failed",
+      "status": "Failed (InstallComponentFailed)",
+      "message": "installing: waiting for deployment cluster-logging to become ready"
+    }
+  ]
+}

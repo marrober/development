@@ -1,0 +1,16 @@
+{
+  "name": "cluster-info-compare",
+  "version": "1.0.0",
+  "description": "Read HelloSpoke CRDs from OpenShift, store cluster version snapshots, and compare them over time",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "sync": "node -e \"require('./lib/sync').syncFromCluster().then(r => { console.log(JSON.stringify(r, null, 2)); process.exit(0); }).catch(e => { console.error(e); process.exit(1); })\""
+  },
+  "dependencies": {
+    "@kubernetes/client-node": "^1.0.0",
+    "better-sqlite3": "^11.8.1",
+    "express": "^4.21.2"
+  }
+}
