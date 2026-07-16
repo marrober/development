@@ -1,6 +1,6 @@
 apiVersion: example.open-cluster-management.io/v1alpha1
-kind: HelloSpoke
+kind: ClusterCollector
 metadata:
-  name: hellospoke
+  name: clustercollector
 #status:
 #  spokeURL: hello

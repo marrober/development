@@ -19,7 +19,7 @@ function snapshotDateFrom(input) {
 }
 
 /**
- * Normalize HelloSpoke CRs and flat JSON payloads into a single snapshot shape:
+ * Normalize ClusterCollector CRs and flat JSON payloads into a single snapshot shape:
  * { clusterName, date, spokeURL, clusterVersion, clusterOperators, installedOperators }
  */
 function normalizeClusterSnapshot(input) {

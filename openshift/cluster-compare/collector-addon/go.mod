@@ -1,10 +1,12 @@
-module open-cluster-management.io/addon-contrib/hellospoke-addon
+module open-cluster-management.io/addon-contrib/cluster-compare-collector-addon
 
 go 1.21
 
 require (
 	github.com/go-logr/logr v1.3.0
 	github.com/go-logr/zapr v1.2.4
+	github.com/openshift/api v0.0.0-20231218131639-7a5aa77cc72d
+	github.com/openshift/client-go v0.0.0-20231218140158-47f6d749b9d9
 	github.com/openshift/library-go v0.0.0-20240116081341-964bcb3f545c
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5

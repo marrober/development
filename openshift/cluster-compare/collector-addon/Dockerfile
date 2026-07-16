@@ -1,16 +1,13 @@
 FROM golang:1.21 AS builder
-WORKDIR /go/src/open-cluster-management.io/addon-contrib/hellospoke-addon
+WORKDIR /go/src/open-cluster-management.io/addon-contrib/cluster-compare-collector-addon
 COPY . .
-ENV GO_PACKAGE open-cluster-management.io/addon-contrib/hellospoke-addon
+ENV GO_PACKAGE open-cluster-management.io/addon-contrib/cluster-compare-collector-addon
 
 # Build
 RUN make build --warn-undefined-variables
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
-# Add the binaries
-COPY --from=builder go/src/open-cluster-management.io/addon-contrib/hellospoke-addon/bin/hellospoke-addon /
+COPY --from=builder go/src/open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/bin/cluster-compare-collector-addon /
 
-ENTRYPOINT ["/hellospoke-addon"]
+ENTRYPOINT ["/cluster-compare-collector-addon"]

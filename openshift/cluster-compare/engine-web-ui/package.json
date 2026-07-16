@@ -1,7 +1,7 @@
 {
   "name": "cluster-info-compare",
   "version": "1.0.0",
-  "description": "Read HelloSpoke CRDs from OpenShift, store cluster version snapshots, and compare them over time",
+  "description": "Read ClusterCollector CRDs from OpenShift, store cluster version snapshots, and compare them over time",
   "main": "server.js",
   "private": true,
   "scripts": {

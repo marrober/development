@@ -4,47 +4,44 @@ metadata:
   name: {{ .SpokeRolebindingName }}-agent
   namespace: {{ .AddonInstallNamespace }}
 rules:
-  # Allow addon agent run with openshift library-go
   - apiGroups:
       - ""
     resources:
       - pods
-    verbs: 
+    verbs:
       - get
       - list
   - apiGroups:
       - ""
     resources:
       - configmaps
-    verbs: 
+    verbs:
       - '*'
   - apiGroups:
       - apps
     resources:
       - replicasets
-    verbs: 
+    verbs:
       - get
   - apiGroups:
       - ""
       - events.k8s.io
     resources:
       - events
-    verbs: 
+    verbs:
       - create
       - patch
       - update
-  # Allow addon agent run with addon
   - apiGroups:
       - coordination.k8s.io
     resources:
       - leases
     verbs:
       - '*'
-  # Allow addon agent run with hellospoke
   - apiGroups:
       - example.open-cluster-management.io
     resources:
-      - hellospokes
+      - clustercollectors
     verbs:
       - create
       - get
@@ -56,7 +53,24 @@ rules:
   - apiGroups:
       - example.open-cluster-management.io
     resources:
-      - hellospokes/status
+      - clustercollectors/status
     verbs:
       - update
       - patch
+  - apiGroups:
+      - config.openshift.io
+    resources:
+      - clusterversions
+      - clusteroperators
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - operators.coreos.com
+    resources:
+      - clusterserviceversions
+    verbs:
+      - get
+      - list
+      - watch

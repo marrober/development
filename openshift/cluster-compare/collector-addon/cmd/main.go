@@ -14,8 +14,9 @@ import (
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"
 	utilflag "k8s.io/component-base/cli/flag"
-	"open-cluster-management.io/addon-contrib/hellospoke-addon/pkg/agent"
-	"open-cluster-management.io/addon-contrib/hellospoke-addon/pkg/manager"
+	"open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/pkg/agent"
+	"open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/pkg/constants"
+	"open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/pkg/manager"
 	"open-cluster-management.io/addon-framework/pkg/version"
 )
 
@@ -45,8 +46,8 @@ func main() {
 
 func newCommand(logger logr.Logger) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "hellospoke-addon",
-		Short: "hellospoke addon for OCM.",
+		Use:   constants.AddonName,
+		Short: "Cluster compare collector addon for OCM.",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cmd.Help(); err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -61,8 +62,8 @@ func newCommand(logger logr.Logger) *cobra.Command {
 		cmd.Version = v
 	}
 
-	cmd.AddCommand(manager.NewManagerCommand("hellospoke-addon", logger.WithName("hellospoke-manager")))
-	cmd.AddCommand(agent.NewAgentCommand("hellospoke-addon", logger.WithName("hellospoke-agent")))
+	cmd.AddCommand(manager.NewManagerCommand(constants.AddonName, logger.WithName("cluster-compare-collector-manager")))
+	cmd.AddCommand(agent.NewAgentCommand(constants.AddonName, logger.WithName("cluster-compare-collector-agent")))
 
 	return cmd
 }

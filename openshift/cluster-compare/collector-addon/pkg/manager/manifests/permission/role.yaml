@@ -5,8 +5,8 @@ metadata:
   namespace: {{ .ClusterName }}
 rules:
   - apiGroups: ["example.open-cluster-management.io"]
-    resources: ["hellospokes"]
+    resources: ["clustercollectors"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["example.open-cluster-management.io"]
-    resources: ["hellospokes/status"]
+    resources: ["clustercollectors/status"]
     verbs: ["update", "patch"]

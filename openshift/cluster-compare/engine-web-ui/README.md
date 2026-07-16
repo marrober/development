@@ -1,10 +1,10 @@
 # cluster-info-compare
 
-Node.js application that reads `HelloSpoke` custom resources from an OpenShift / OCM hub cluster, stores cluster version and operator snapshots in SQLite, and presents a comparison table with one column per snapshot `date`.
+Node.js application that reads `ClusterCollector` custom resources from an OpenShift / OCM hub cluster, stores cluster version and operator snapshots in SQLite, and presents a comparison table with one column per snapshot `date`.
 
 ## Snapshot format
 
-Snapshots use this flat JSON shape (from HelloSpoke `status` or posted directly):
+Snapshots use this flat JSON shape (from ClusterCollector `status` or posted directly):
 
 ```json
 {
@@ -51,19 +51,19 @@ curl -X POST http://localhost:3950/api/snapshots \
 
 ## Data source
 
-The app expects `HelloSpoke` CRs created by [hellospoke-addon](https://github.com/open-cluster-management-io/addon-contrib/tree/main/hellospoke-addon). Each CR's `status` contains:
+The app expects `ClusterCollector` CRs created by [cluster-compare-collector-addon](../collector-addon/). Each CR's `status` contains:
 
 - `clusterVersion` — OpenShift cluster version (shown at the top of the table)
 - `clusterOperators` — core OpenShift operators and versions
 - `installedOperators` — OLM-installed operators (CSV)
-- `date` — snapshot date and time used as the column identifier (HelloSpoke CRs fall back to `status.lastSync` when syncing)
+- `date` — snapshot date and time used as the column identifier (ClusterCollector CRs fall back to `status.lastSync` when syncing)
 
-On an OCM hub, HelloSpoke resources are typically stored in a namespace named after the spoke cluster.
+On an OCM hub, ClusterCollector resources are typically stored in a namespace named after the spoke cluster.
 
 ## Quick start
 
 ```bash
-cd development/nodejs/cluster-info-compare
+cd development/openshift/cluster-compare/engine-web-ui
 npm install
 cp .env.example .env
 # edit .env — set WATCH_NAMESPACE if needed
@@ -84,9 +84,9 @@ npm run sync
 |----------|---------|-------------|
 | `PORT` | `3950` | HTTP port |
 | `WATCH_NAMESPACE` | _(empty)_ | Limit sync to one namespace; empty lists all namespaces |
-| `CRD_GROUP` | `example.open-cluster-management.io` | HelloSpoke API group |
-| `CRD_VERSION` | `v1alpha1` | HelloSpoke API version |
-| `CRD_PLURAL` | `hellospokes` | HelloSpoke resource plural |
+| `CRD_GROUP` | `example.open-cluster-management.io` | ClusterCollector API group |
+| `CRD_VERSION` | `v1alpha1` | ClusterCollector API version |
+| `CRD_PLURAL` | `clustercollectors` | ClusterCollector resource plural |
 | `CLUSTER_NAME_FROM` | `metadata.namespace` | Field used as cluster name in the database |
 | `POLL_INTERVAL_MS` | `0` | Background sync interval; `0` disables polling |
 | `DATABASE_PATH` | `./data/cluster-info.db` | SQLite database location |

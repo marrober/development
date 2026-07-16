@@ -3,7 +3,7 @@ const { normalizeClusterSnapshot } = require("./normalize");
 
 const GROUP = process.env.CRD_GROUP || "example.open-cluster-management.io";
 const VERSION = process.env.CRD_VERSION || "v1alpha1";
-const PLURAL = process.env.CRD_PLURAL || "hellospokes";
+const PLURAL = process.env.CRD_PLURAL || "clustercollectors";
 const WATCH_NAMESPACE = process.env.WATCH_NAMESPACE || "";
 
 function createKubeConfig() {
@@ -21,7 +21,7 @@ function getCustomObjectsApi() {
   return kc.makeApiClient(k8s.CustomObjectsApi);
 }
 
-async function listHelloSpokes() {
+async function listClusterCollectors() {
   const api = getCustomObjectsApi();
   const namespace = WATCH_NAMESPACE.trim();
 
@@ -41,7 +41,7 @@ async function listHelloSpokes() {
   return response?.items || [];
 }
 
-function normalizeHelloSpoke(cr) {
+function normalizeClusterCollector(cr) {
   const snapshot = normalizeClusterSnapshot(cr);
   return {
     clusterName: snapshot.clusterName,
@@ -52,8 +52,8 @@ function normalizeHelloSpoke(cr) {
 }
 
 module.exports = {
-  listHelloSpokes,
-  normalizeHelloSpoke,
+  listClusterCollectors,
+  normalizeClusterCollector,
   config: {
     group: GROUP,
     version: VERSION,

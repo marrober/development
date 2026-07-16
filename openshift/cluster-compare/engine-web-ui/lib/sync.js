@@ -1,12 +1,12 @@
 const { saveSnapshot } = require("./db");
-const { listHelloSpokes, normalizeHelloSpoke } = require("./k8s");
+const { listClusterCollectors, normalizeClusterCollector } = require("./k8s");
 
 async function syncFromCluster() {
-  const resources = await listHelloSpokes();
+  const resources = await listClusterCollectors();
   const results = [];
 
   for (const cr of resources) {
-    const normalized = normalizeHelloSpoke(cr);
+    const normalized = normalizeClusterCollector(cr);
     const outcome = saveSnapshot(normalized.snapshot);
     results.push({
       clusterName: normalized.clusterName,

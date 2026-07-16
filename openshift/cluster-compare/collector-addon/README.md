@@ -1,71 +1,89 @@
-# hellospoke-addon
+# cluster-compare-collector-addon
 
- hellospoke-addon is an example addon that showcase the capability of syncing a CR from the managed cluster to the hub cluster.
+OCM addon that collects OpenShift cluster version, cluster operator, and OLM operator snapshots from managed clusters and syncs them to the hub as `ClusterCollector` custom resources. The [cluster-compare engine web UI](../engine-web-ui/) reads those hub CRs to build comparison tables.
 
-## Install the hellospoke-addon to the Hub cluster
+## Install the addon on the hub cluster
 
-Switch context to Hub cluster.
+Switch context to the hub cluster.
 
 ```
 make deploy
 ```
 
-You can check the addon manager status by:
-```
-$ kubectl -n open-cluster-management get deploy hellospoke-addon-manager
-NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
-hellospoke-addon-manager   1/1     1            1           2m17s
-
-kubectl -n cluster1 get managedclusteraddon hellospoke-addon # Replace 'cluster1' with the managed cluster name
-NAME               AVAILABLE   DEGRADED   PROGRESSING
-hellospoke-addon   True                   
-```
-
-## Verify the hellospoke-addon agent is installed on the Managed cluster and create a HelloSpoke CR
-
-Switch context to Managed cluster.
+Check the addon manager status:
 
 ```
-$ kubectl -n open-cluster-management-agent-addon get deploy hellospoke-addon-agent
-NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
-hellospoke-addon-agent   1/1     1            1           4m23s
+$ kubectl -n open-cluster-management get deploy cluster-compare-collector-addon-manager
+NAME                                      READY   UP-TO-DATE   AVAILABLE   AGE
+cluster-compare-collector-addon-manager   1/1     1            1           2m17s
+
+kubectl -n cluster1 get managedclusteraddon cluster-compare-collector-addon
+NAME                                AVAILABLE   DEGRADED   PROGRESSING
+cluster-compare-collector-addon     True
+```
+
+## Verify the agent on the managed cluster and create a ClusterCollector CR
+
+Switch context to the managed cluster.
+
+```
+$ kubectl -n open-cluster-management-agent-addon get deploy cluster-compare-collector-addon-agent
+NAME                                    READY   UP-TO-DATE   AVAILABLE   AGE
+cluster-compare-collector-addon-agent   1/1     1            1           4m23s
 ```
 
 ```
-make deploy-hellospoke-cr-sample
+make deploy-clustercollector-cr-sample
 ```
 
-## Verify the HelloSpoke CR is created on the Hub cluster
+The agent collects cluster snapshots on reconcile and every hour by default.
 
-Switch context to Hub cluster.
+## Verify the ClusterCollector CR on the hub cluster
 
-```
-$ kubectl -n cluster1 get hellospoke # Replace 'cluster1' with the managed cluster name
-NAME         AGE
-hellospoke   5m35s
-```
-
-## Update the HelloSpoke status on the Managed cluster
-
-Using a tool such as [kubectl-edit-status](https://github.com/ulucinar/kubectl-edit-status), 
-modify the HelloSpoke CR status to have the following:
+Switch context to the hub cluster.
 
 ```
-status:
-  spokeURL: hello
-```
+$ kubectl -n cluster1 get clustercollector
+NAME               AGE
+clustercollector   5m35s
 
-## Verify the  HelloSpoke CR status is updated on the Hub cluster
-
-```
-$ kubectl -n cluster1 get hellospoke hellospoke -o yaml
+$ kubectl -n cluster1 get clustercollector clustercollector -o yaml
 apiVersion: example.open-cluster-management.io/v1alpha1
-kind: HelloSpoke
+kind: ClusterCollector
 metadata:
-...
-  name: hellospoke
+  name: clustercollector
   namespace: cluster1
-...
 status:
-  spokeURL: hello
+  date: "2026-07-07T15:30:00Z"
+  lastSync: "2026-07-07T15:30:00Z"
+  clusterVersion:
+    version: "4.16.12"
+    status: Available
+  clusterOperators:
+    - name: authentication
+      version: "4.16.12"
+      status: Available
+  installedOperators:
+    - namespace: openshift-operators
+      name: advanced-cluster-management.v2.12.0
+      version: "2.12.0"
+      phase: Succeeded
 ```
+
+## Snapshot format
+
+Each synced `ClusterCollector` status matches the snapshot shape consumed by the engine web UI:
+
+- `clusterVersion` — OpenShift cluster version
+- `clusterOperators` — core OpenShift operators and versions
+- `installedOperators` — OLM-installed operators (CSV)
+- `date` / `lastSync` — snapshot timestamp used as the comparison column identifier
+
+See [engine-web-ui/examples/cluster1-snapshot.json](../engine-web-ui/examples/cluster1-snapshot.json) for a full example.
+
+## Configuration
+
+| Flag / env | Default | Description |
+|------------|---------|-------------|
+| `--resync-interval` | `1h` | How often the agent re-collects and syncs snapshots |
+| `ADDON_IMAGE` | `quay.io/open-cluster-management/addon-contrib/cluster-compare-collector-addon:latest` | Agent image override for the manager |

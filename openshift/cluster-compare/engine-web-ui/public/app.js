@@ -154,7 +154,7 @@ clusterSelect.addEventListener("change", () => {
 
 syncBtn.addEventListener("click", async () => {
   syncBtn.disabled = true;
-  setStatus("Syncing HelloSpoke resources from the cluster…");
+  setStatus("Syncing ClusterCollector resources from the cluster…");
   try {
     const result = await fetchJson("/api/sync", { method: "POST" });
     const stored = result.results.filter((item) => item.stored).length;

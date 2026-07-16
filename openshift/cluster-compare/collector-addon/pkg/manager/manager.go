@@ -22,8 +22,8 @@ import (
 	"k8s.io/component-base/version"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	ocmv1alpha1 "open-cluster-management.io/addon-contrib/hellospoke-addon/api/v1alpha1"
-	"open-cluster-management.io/addon-contrib/hellospoke-addon/pkg/constants"
+	ocmv1alpha1 "open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/api/v1alpha1"
+	"open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/pkg/constants"
 	"open-cluster-management.io/addon-framework/pkg/addonfactory"
 	"open-cluster-management.io/addon-framework/pkg/addonmanager"
 	frameworkagent "open-cluster-management.io/addon-framework/pkg/agent"
