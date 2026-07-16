@@ -1,12 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: pacman-ci
+  name: cluster-collector-ci
   namespace: openshift-gitops
 spec:
-  project: pacman
+  project: default
   destination:
-    namespace: pacman-ci
+    namespace: cluster-compare
     server: https://kubernetes.default.svc
   ignoreDifferences:
   - group: image.openshift.io
@@ -35,7 +35,7 @@ spec:
     - /spec/host
     kind: Route
   source:
-    path: openshift/cluster-compare/collector-addon
+    path: openshift/cluster-compare/collector-addon/ci/
     targetRevision: main
     repoURL: https://github.com/marrober/development.git
   syncPolicy:
