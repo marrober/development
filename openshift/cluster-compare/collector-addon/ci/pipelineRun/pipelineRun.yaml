@@ -23,8 +23,10 @@ spec:
       value: Dockerfile
     - name: target-container-location
       value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/cluster-collector
-      # If using the push-to-quay task update the following fields.
-      # The quay.io user account field.
+    - name: image-short-name
+      value: cluster-collector
+    - name: imagestream-url
+      value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/cluster-collector
   workspaces:
   - name: files
     volumeClaimTemplate:

@@ -25,6 +25,10 @@ spec:
       type: string
     - name: target-container-location
       type: string
+    - name: image-short-name
+      type: string
+    - name: imagestream-url
+      type: string
   tasks:
 ##------------------------------------------------------------------
 # Git clone resources task
@@ -40,7 +44,7 @@ spec:
       - name: deleteExisting
         value: 'true'
       taskRef:
-        kind: ClusterTask
+        kind: Task
         name:  git-clone
       workspaces:
       - name: output
@@ -83,6 +87,8 @@ spec:
         value: "$(params.TLSVERIFY)"
       - name: pipelineRunName
         value: $(context.pipelineRun.name)
+      - name: image-short-name
+        value: $(params.image-short-name)
       taskRef:
         kind: Task
         name: push-image-to-ocp
