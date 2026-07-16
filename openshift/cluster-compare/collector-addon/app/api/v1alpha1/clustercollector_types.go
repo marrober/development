@@ -52,8 +52,13 @@ type InstalledOperatorSnapshot struct {
 	Message   string `json:"message,omitempty"`
 }
 
-// ClusterCollectorStatus defines the observed state of ClusterCollector
+// ClusterCollectorStatus defines the observed state of ClusterCollector.
+// Fields match the cluster snapshot JSON shape used by the engine web UI:
+// clusterName, date, clusterVersion, clusterOperators, installedOperators.
 type ClusterCollectorStatus struct {
+	// ClusterName is the managed cluster name (also used as hub namespace).
+	ClusterName string `json:"clusterName,omitempty"`
+
 	// SpokeURL is the url of spoke cluster
 	SpokeURL string `json:"spokeURL,omitempty"`
 

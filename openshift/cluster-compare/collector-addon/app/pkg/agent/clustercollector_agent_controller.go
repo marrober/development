@@ -51,6 +51,13 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	clusterCollector.Status = mergeStatus(clusterCollector.Status, collectedStatus)
+	c.log.Info("collected cluster snapshot",
+		"clusterName", collectedStatus.ClusterName,
+		"date", collectedStatus.Date,
+		"clusterVersion", collectedStatus.ClusterVersion.Version,
+		"clusterOperators", len(collectedStatus.ClusterOperators),
+		"installedOperators", len(collectedStatus.InstalledOperators),
+	)
 	if err = c.spokeClient.Status().Update(ctx, &clusterCollector); err != nil {
 		c.log.Error(err, "unable to update spoke ClusterCollector status")
 		return ctrl.Result{RequeueAfter: c.resyncAfter}, err
@@ -84,6 +91,9 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 func mergeStatus(existing, collected ocmv1alpha1.ClusterCollectorStatus) ocmv1alpha1.ClusterCollectorStatus {
 	if existing.SpokeURL != "" {
 		collected.SpokeURL = existing.SpokeURL
+	}
+	if collected.ClusterName == "" {
+		collected.ClusterName = existing.ClusterName
 	}
 	return collected
 }

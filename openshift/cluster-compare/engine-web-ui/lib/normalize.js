@@ -30,7 +30,7 @@ function normalizeClusterSnapshot(input) {
   if (input.metadata && !input.clusterName) {
     const status = input.status || {};
     return {
-      clusterName: clusterNameFromCr(input),
+      clusterName: status.clusterName || clusterNameFromCr(input),
       date: snapshotDateFrom({ status, ...input }),
       spokeURL: status.spokeURL || "",
       clusterVersion: status.clusterVersion || {},

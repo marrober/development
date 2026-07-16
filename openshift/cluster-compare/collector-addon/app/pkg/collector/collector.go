@@ -29,20 +29,33 @@ var csvGVR = schema.GroupVersionResource{
 type Collector struct {
 	configClient  configclient.Interface
 	dynamicClient dynamic.Interface
+	clusterName   string
 }
 
-func New(configClient configclient.Interface, dynamicClient dynamic.Interface) *Collector {
+func New(configClient configclient.Interface, dynamicClient dynamic.Interface, clusterName string) *Collector {
 	return &Collector{
 		configClient:  configClient,
 		dynamicClient: dynamicClient,
+		clusterName:   clusterName,
 	}
 }
 
+// Collect reads ClusterVersion, ClusterOperators, and ClusterServiceVersions from the
+// local OpenShift cluster and returns status in the cluster-snapshot JSON shape:
+//
+//	{
+//	  "clusterName": "...",
+//	  "date": "...",
+//	  "clusterVersion": { "version", "status", "message" },
+//	  "clusterOperators": [ { "name", "version", "available", "progressing", "degraded", "status", "message" } ],
+//	  "installedOperators": [ { "namespace", "name", "version", "phase", "status", "message" } ]
+//	}
 func (c *Collector) Collect(ctx context.Context) (ocmv1alpha1.ClusterCollectorStatus, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	status := ocmv1alpha1.ClusterCollectorStatus{
-		Date:     now,
-		LastSync: now,
+		ClusterName: c.clusterName,
+		Date:        now,
+		LastSync:    now,
 	}
 
 	cv, err := c.configClient.ConfigV1().ClusterVersions().Get(ctx, clusterVersionName, metav1.GetOptions{})
@@ -67,18 +80,11 @@ func (c *Collector) Collect(ctx context.Context) (ocmv1alpha1.ClusterCollectorSt
 }
 
 func clusterVersionFromCV(cv *configv1.ClusterVersion) ocmv1alpha1.ClusterVersionSnapshot {
-	snapshot := ocmv1alpha1.ClusterVersionSnapshot{
+	return ocmv1alpha1.ClusterVersionSnapshot{
 		Version: completedClusterVersion(cv),
-		Status:  conditionStatus(cv.Status.Conditions, configv1.OperatorAvailable),
-		Message: conditionMessage(cv.Status.Conditions, configv1.OperatorAvailable),
+		Status:  overallOperatorStatus(cv.Status.Conditions),
+		Message: problemConditionMessage(cv.Status.Conditions),
 	}
-	if snapshot.Status == "" {
-		snapshot.Status = conditionStatus(cv.Status.Conditions, configv1.OperatorProgressing)
-	}
-	if snapshot.Message == "" {
-		snapshot.Message = conditionMessage(cv.Status.Conditions, configv1.OperatorProgressing)
-	}
-	return snapshot
 }
 
 func completedClusterVersion(cv *configv1.ClusterVersion) string {
@@ -86,6 +92,9 @@ func completedClusterVersion(cv *configv1.ClusterVersion) string {
 		if history.State == configv1.CompletedUpdate {
 			return history.Version
 		}
+	}
+	if cv.Status.Desired.Version != "" {
+		return cv.Status.Desired.Version
 	}
 	if cv.Spec.DesiredUpdate != nil {
 		return cv.Spec.DesiredUpdate.Version
@@ -103,7 +112,7 @@ func clusterOperatorsFromList(items []configv1.ClusterOperator) []ocmv1alpha1.Cl
 			Progressing: conditionStatus(operator.Status.Conditions, configv1.OperatorProgressing),
 			Degraded:    conditionStatus(operator.Status.Conditions, configv1.OperatorDegraded),
 			Status:      overallOperatorStatus(operator.Status.Conditions),
-			Message:     operatorConditionMessage(operator.Status.Conditions),
+			Message:     problemConditionMessage(operator.Status.Conditions),
 		})
 	}
 
@@ -139,14 +148,17 @@ func overallOperatorStatus(conditions []configv1.ClusterOperatorStatusCondition)
 	return "Unknown"
 }
 
-func operatorConditionMessage(conditions []configv1.ClusterOperatorStatusCondition) string {
+// problemConditionMessage returns a message only when Degraded or Progressing is True,
+// matching the snapshot example where healthy operators have an empty message.
+func problemConditionMessage(conditions []configv1.ClusterOperatorStatusCondition) string {
 	for _, conditionType := range []configv1.ClusterStatusConditionType{
 		configv1.OperatorDegraded,
 		configv1.OperatorProgressing,
-		configv1.OperatorAvailable,
 	} {
-		if message := conditionMessage(conditions, conditionType); message != "" {
-			return message
+		if conditionStatus(conditions, conditionType) == string(metav1.ConditionTrue) {
+			if message := conditionMessage(conditions, conditionType); message != "" {
+				return message
+			}
 		}
 	}
 	return ""
@@ -198,7 +210,8 @@ func installedOperatorFromCSV(csv *unstructured.Unstructured) ocmv1alpha1.Instal
 	version, _, _ := unstructured.NestedString(csv.Object, "spec", "version")
 
 	status := phase
-	if reason != "" && !strings.Contains(status, reason) {
+	// Append reason for non-Succeeded phases (e.g. "Failed (InstallComponentFailed)").
+	if phase != "Succeeded" && reason != "" && !strings.Contains(status, reason) {
 		status = fmt.Sprintf("%s (%s)", phase, reason)
 	}
 
