@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-collector-template
+  namespace: openshift-gitops
+spec:
+  project: cluster-compare
+  destination:
+    namespace: cluster-compare
+    server: https://kubernetes.default.svc
+  ignoreDifferences:
+  - group: image.openshift.io
+    kind: ImageStream
+    jqPathExpressions:
+    - .spec.tags[].annotations
+    - .spec.tags[].generation
+  - group: argoproj.io
+    jsonPointers:
+    - /status
+    kind: Application
+  - group: triggers.tekton.dev
+    jsonPointers:
+    - /status
+    kind: EventListener
+  - group: triggers.tekton.dev
+    jsonPointers:
+    - /status
+    kind: TriggerTemplate
+  - group: triggers.tekton.dev
+    jsonPointers:
+    - /status
+    kind: TriggerBinding
+  - group: route.openshift.io
+    jsonPointers:
+    - /spec/host
+    kind: Route
+  source:
+    path: openshift/cluster-compare/collector-addon/deploy
+    targetRevision: main
+    repoURL: https://github.com/marrober/development.git
+  syncPolicy:
+    automated: 
+      prune: true 
+      selfHeal: true 
+      allowEmpty: false 
+    syncOptions:     
+    - Validate=true 
+    - CreateNamespace=false 
+    - PrunePropagationPolicy=foreground 
+    - PruneLast=true 
+    retry:
+      limit: 1 
+      backoff:
+        duration: 5s 
+        factor: 2 
+        maxDuration: 20s 

@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
 - cluster-compare-project.yaml
 - tekton-ci-argocd-app.yaml
+- collector-deployment.yaml
