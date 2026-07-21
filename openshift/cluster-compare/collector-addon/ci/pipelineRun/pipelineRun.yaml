@@ -6,14 +6,14 @@ spec:
   pipelineRef:
     name: collector-addon
   params:
-  - name: GIT_REPO
-    value: https://github.com/marrober/development.git
-  - name: GIT_REVISION
-    value: "main"
-  - name: GIT_REPO_NAME
-    value: development
+    - name: GIT_REPO
+      value: https://github.com/marrober/development.git
+    - name: GIT_REVISION
+      value: "main"
+    - name: GIT_REPO_NAME
+      value: development
     - name: app-dir
-      value: openshift/cluster-compare/collector-addon
+      value: openshift/cluster-compare/collector-addon/app
     - name: dockerfile
       value: Dockerfile
     - name: target-container-location
