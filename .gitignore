@@ -1,3 +1,5 @@
 **/node_modules/
 **/.odo/
 **/bin/*
+**/nodejs/cluster-info-compare/data/*
+

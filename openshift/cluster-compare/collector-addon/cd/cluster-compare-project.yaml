@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cluster-compare
+  namespace: openshift-gitops
+spec:
+  description: Applications related to cluster compare process
+
+  sourceRepos:
+  - '*'
+  - https://github.com/marrober/development
+
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: '*'
+
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: 'rbac.authorization.k8s.io'
+    kind: ClusterRole
+  - group: 'rbac.authorization.k8s.io'
+    kind: ClusterRoleBinding
+
+  namespaceResourceBlacklist:
+  namespaceResourceWhitelist:
+
+
+  roles:
+  - name: developer
+    groups:
+    - developers
+    policies:
+    - p, proj:cluster-compare:developer, applications, get, *, allow
+    - p, proj:cluster-compare:developer, applications, sync, *, allow  
