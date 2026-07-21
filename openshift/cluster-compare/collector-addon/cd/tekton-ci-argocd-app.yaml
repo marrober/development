@@ -4,7 +4,7 @@ metadata:
   name: cluster-collector-ci
   namespace: openshift-gitops
 spec:
-  project: default
+  project: cluster-compare
   destination:
     namespace: cluster-compare
     server: https://kubernetes.default.svc

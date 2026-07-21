@@ -1,8 +1,0 @@
-apiVersion: addon.open-cluster-management.io/v1alpha1
-kind: ClusterManagementAddOn
-metadata:
-  name: cluster-compare-collector-addon
-spec:
-  addOnMeta:
-    displayName: Cluster Compare Collector Addon
-    description: "Collects OpenShift cluster version and operator snapshots from spokes and syncs them to the hub"

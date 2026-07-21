@@ -1,0 +1,17 @@
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: ClusterManagementAddOn
+metadata:
+  name: cluster-collector
+spec:
+  addOnMeta:
+    displayName: cluster-collector
+  supportedConfigs:
+    - group: addon.open-cluster-management.io
+      resource: addontemplates
+      defaultConfig:
+        name: cluster-collector
+  installStrategy:
+    type: Placements
+    placements:
+      - name: global
+        namespace: open-cluster-management-addon
