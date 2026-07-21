@@ -32,7 +32,7 @@ spec:
         capabilities:
           add:
           - SETFCAP
-      workingDir: /resources/$(params.app-dir)
+      workingDir: /resources
     - name: build
       command:
       - buildah
