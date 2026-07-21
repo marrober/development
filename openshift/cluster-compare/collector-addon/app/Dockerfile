@@ -1,13 +1,20 @@
 FROM golang:1.21 AS builder
-WORKDIR /go/src/open-cluster-management.io/addon-contrib/cluster-compare-collector-addon
+WORKDIR /go/src/cluster-compare/collector-addon
 COPY . .
-ENV GO_PACKAGE open-cluster-management.io/addon-contrib/cluster-compare-collector-addon
+RUN ls -al 
+
+RUN ls -al /
+ENV GO_PACKAGE /cluster-compare/collector-addon
 
 # Build
 RUN make build --warn-undefined-variables
 
+RUN ls -al /go/src/cluster-compare/collector-addon/bin/cluster-compare-collector-addon
+
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
-COPY --from=builder go/src/open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/bin/cluster-compare-collector-addon /
+COPY --from=builder /go/src/cluster-compare/collector-addon/bin/cluster-compare-collector-addon /
+
+RUN ls -al 
 
 ENTRYPOINT ["/cluster-compare-collector-addon"]
