@@ -6,8 +6,7 @@ RUN ls -al
 RUN ls -al /
 ENV GO_PACKAGE /cluster-compare/collector-addon
 
-# Build
-RUN make build --warn-undefined-variables .SHELLFLAGS="-ec"
+RUN GOFLAGS="-buildvcs=false" go build -o bin/cluster-compare-collector-addon cmd/main.go
 
 RUN ls -al /go/src/cluster-compare/collector-addon/bin/cluster-compare-collector-addon
 
