@@ -37,6 +37,7 @@ spec:
       command:
       - buildah
       - bud
+      - --isolation=chroot
       - --tls-verify=$(params.TLSVERIFY)
       - --storage-driver=$(params.STORAGE_DRIVER)
       - --root
