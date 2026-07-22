@@ -146,8 +146,6 @@ spec:
       runAfter:
         - build
       workspaces:
-      - name: resources
-        workspace: resources
       - name: files
         workspace: files
 ##------------------------------------------------------------------
@@ -178,7 +176,7 @@ spec:
         kind: Task
         name: update-and-commit-dev-env
       runAfter:
-      - push-image-to-imagestream
+      - push-image-to-quay
       workspaces:
       - name: files
         workspace: files
