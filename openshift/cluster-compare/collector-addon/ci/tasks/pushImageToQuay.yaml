@@ -20,6 +20,19 @@ spec:
       description: The Buildah storage STORAGE_DRIVER
       type: string
   steps:
+    - name: list-images-1
+      command:
+        - buildah
+        - images
+        - '--storage-driver=$(params.STORAGE_DRIVER)'
+        - '--root'
+        - '/files/buildah-containers'
+      image: registry.redhat.io/rhel8/buildah
+      securityContext:
+        capabilities:
+          add: ["SETFCAP"]
+      workingDir: /
+      resources: {}
     - name: buildah-tag-image
       command:
         - buildah
@@ -27,14 +40,14 @@ spec:
         - '--storage-driver=$(params.STORAGE_DRIVER)'
         - '--root'
         - '/files/buildah-containers'
-        - 'my-container-image:latest'
+        - 'localhost/cluster-collector:latest'
         - 'quay.io/$(params.quay-io-account)/$(params.quay-io-repository):$(params.quay-io-image-tag-name)'
       image: registry.redhat.io/rhel8/buildah
       securityContext:
         capabilities:
           add: ["SETFCAP"]
       resources: {}
-    - name: list-images
+    - name: list-images-2
       command:
         - buildah
         - images
