@@ -5,7 +5,7 @@ metadata:
   namespace: cluster-compare
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: addon-template-role
 subjects:
 - kind: ServiceAccount
@@ -19,7 +19,7 @@ metadata:
   namespace: open-cluster-management-addon
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: addon-template-role
 subjects:
 - kind: ServiceAccount
