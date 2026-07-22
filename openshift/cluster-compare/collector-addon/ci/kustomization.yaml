@@ -7,6 +7,7 @@ resources:
 - tasks/build.yaml
 - tasks/git-clone.yaml
 - tasks/pushImageToOCPImageStream.yaml
+- tasks/update-and-commit-dev-env.yaml
 - triggers/eventListener.yaml
 - triggers/eventListenerRoute.yaml
 - triggers/triggerBinding.yaml

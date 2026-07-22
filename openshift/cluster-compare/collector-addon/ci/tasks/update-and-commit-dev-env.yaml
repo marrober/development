@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: update-and-commit-argocd-app-file
+  name: update-and-commit-dev-env
 spec:
   params:
   - name: GIT_URL

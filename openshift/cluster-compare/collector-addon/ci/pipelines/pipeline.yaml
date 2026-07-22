@@ -120,7 +120,7 @@ spec:
 # Clone the cd repository and update the argocd application file 
 # to refer to the new tagged image.
 ##------------------------------------------------------------------
-    - name: update-dev-deployment
+    - name: update-and-commit-dev-env
       params:
       - name: GIT_URL
         value: $(params.repo_type)/$(params.cd-git-url)
@@ -142,7 +142,7 @@ spec:
         value: "dev"
       taskRef:
         kind: Task
-        name: update-and-commit-argocd-app-file
+        name: update-and-commit-dev-env
       runAfter:
       - push-image-to-imagestream
       workspaces:
