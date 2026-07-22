@@ -50,7 +50,7 @@ spec:
                 serviceAccount: cluster-collector-agent-sa
                 containers:
                   - name: cluster-collector-agent
-                    image: example-addon-image
+                    image: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/cluster-compare/cluster-collector
                     imagePullPolicy: IfNotPresent
                     args:
                       - "/addon"

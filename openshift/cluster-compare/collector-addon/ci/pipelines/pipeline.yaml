@@ -31,6 +31,21 @@ spec:
       type: string
     - name: imagestream-url
       type: string
+      ## Update Kustomize file for the deployment of the application to development
+    - name: repo_type
+      type: string
+    - name: cd-git-url
+      type: string
+    - name: cd-git-repo-name
+      type: string
+    - name: cd-git-repo-path-to-content-development
+      type: string
+    - name: cd-git-user-name
+      type: string
+    - name: cd-git-user-email
+      type: string
+    - name: cd-git-commit-comment-dev 
+      type: string
   tasks:
 ##------------------------------------------------------------------
 # Git clone resources task

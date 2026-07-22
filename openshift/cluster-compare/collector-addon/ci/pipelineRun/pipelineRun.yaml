@@ -20,6 +20,22 @@ spec:
       value: cluster-collector
     - name: imagestream-url
       value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/cluster-collector
+      ## Update Kustomize file for the deployment of the application to development      
+    - name: repo_type
+      value: github.com
+    - name: cd-git-url
+      value: marrober/development
+    - name: cd-git-repo-name
+      value: development
+    - name: cd-git-repo-path-to-content-development
+      value: openshift/cluster-compare/collector-addon/deploy
+    - name: cd-git-commit-comment-dev
+      value: "Update from ci process - dev"
+    - name: cd-git-user-name
+      value: "Mark Roberts"
+    - name: cd-git-user-email
+      value: "mroberts@redhat.com"
+
   workspaces:
   - name: files
     volumeClaimTemplate:

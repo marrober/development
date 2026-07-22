@@ -1,12 +1,12 @@
-resources:
-- resources/addon-template.yaml
-- resources/cluster-management-addon.yaml
-- resources/cluster-role.yaml
-- resources/placement.yaml
-
-images:
-- name: example-addon-image
-  newName: quay.io/open-cluster-management/cluster-collector-addon
-  newTag: latest
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+resources:
+- addon-template.yaml
+- cluster-management-addon.yaml
+- cluster-role.yaml
+- placement.yaml
+
+images:
+- name: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/cluster-compare/cluster-collector
+  newTag: latest
+
