@@ -10,4 +10,4 @@ resources:
 
 images:
 - name: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/cluster-compare/cluster-collector
-  newTag: vpg04
+  newTag: kh7tk
