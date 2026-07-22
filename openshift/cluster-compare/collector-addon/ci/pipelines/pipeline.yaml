@@ -46,6 +46,13 @@ spec:
       type: string
     - name: cd-git-commit-comment-dev 
       type: string
+      ## Push to quay
+    - name: quay-instance-url
+      type: string
+    - name: quay-account                   # Quay account name
+      type: string
+    - name: quay-repository                # Quay repository name
+      type: string
   tasks:
 ##------------------------------------------------------------------
 # Git clone resources task
@@ -114,6 +121,33 @@ spec:
       runAfter:
         - build
       workspaces:
+      - name: files
+        workspace: files
+##------------------------------------------------------------------
+# Push the new runtime image to quay.io
+##------------------------------------------------------------------
+    - name: push-image-to-quay
+      params:
+      - name: quay-instance-url
+        value: $(params.quay-instance-url)
+      - name: quay-account
+        value: $(params.quay-account)
+      - name: quay-repository
+        value: $(params.quay-repository)
+      - name: image-stream-location
+        value: $(params.imagestream-url)
+      - name: STORAGE_DRIVER
+        value: $(params.STORAGE_DRIVER)
+      - name: imageTag
+        value: $(tasks.push-image-to-imagestream.results.new-tag)
+      taskRef:
+        kind: Task
+        name: push-image-to-quay
+      runAfter:
+        - build
+      workspaces:
+      - name: resources
+        workspace: workspace
       - name: files
         workspace: files
 ##------------------------------------------------------------------
