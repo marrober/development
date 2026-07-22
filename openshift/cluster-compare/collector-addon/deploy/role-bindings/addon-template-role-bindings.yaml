@@ -1,5 +1,5 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: addon-template-role-role-binding
   namespace: cluster-compare
@@ -13,7 +13,7 @@ subjects:
   namespace: openshift-gitops
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: addon-template-role-role-binding-ocm-addon
   namespace: open-cluster-management-addon
