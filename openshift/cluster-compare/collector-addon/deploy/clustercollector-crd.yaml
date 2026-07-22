@@ -18,7 +18,6 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ClusterCollector is the Schema for the clustercollectors API
         properties:
           apiVersion:
             type: string
@@ -27,22 +26,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: ClusterCollectorSpec defines the desired state of ClusterCollector
             type: object
           status:
-            description: ClusterCollectorStatus defines the observed state of ClusterCollector
             properties:
               date:
-                description: Snapshot timestamp used as the comparison column identifier
                 type: string
               lastSync:
-                description: Time the snapshot was last collected
                 type: string
               clusterName:
-                description: Managed cluster name
                 type: string
               spokeURL:
-                description: SpokeURL is the url of spoke cluster
                 type: string
               clusterVersion:
                 properties:
