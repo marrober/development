@@ -82,6 +82,9 @@ func (o *AgentOptions) AddFlags(cmd *cobra.Command) {
 func (o *AgentOptions) runControllerManager(ctx context.Context) error {
 	log := o.Log.WithName("controller-manager-setup")
 
+	// controller-runtime uses a global logger; without this, Kind/source errors are hidden.
+	ctrl.SetLogger(o.Log)
+
 	flag.Parse()
 
 	spokeConfig := ctrl.GetConfigOrDie()

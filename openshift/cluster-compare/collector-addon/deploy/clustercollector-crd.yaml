@@ -1,0 +1,97 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.2
+  creationTimestamp: null
+  name: clustercollectors.example.open-cluster-management.io
+spec:
+  group: example.open-cluster-management.io
+  names:
+    kind: ClusterCollector
+    listKind: ClusterCollectorList
+    plural: clustercollectors
+    singular: clustercollector
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ClusterCollector is the Schema for the clustercollectors API
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ClusterCollectorSpec defines the desired state of ClusterCollector
+            type: object
+          status:
+            description: ClusterCollectorStatus defines the observed state of ClusterCollector
+            properties:
+              date:
+                description: Snapshot timestamp used as the comparison column identifier
+                type: string
+              lastSync:
+                description: Time the snapshot was last collected
+                type: string
+              clusterName:
+                description: Managed cluster name
+                type: string
+              spokeURL:
+                description: SpokeURL is the url of spoke cluster
+                type: string
+              clusterVersion:
+                properties:
+                  version:
+                    type: string
+                  status:
+                    type: string
+                  message:
+                    type: string
+                type: object
+              clusterOperators:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    version:
+                      type: string
+                    available:
+                      type: string
+                    progressing:
+                      type: string
+                    degraded:
+                      type: string
+                    status:
+                      type: string
+                    message:
+                      type: string
+                  type: object
+                type: array
+              installedOperators:
+                items:
+                  properties:
+                    namespace:
+                      type: string
+                    name:
+                      type: string
+                    version:
+                      type: string
+                    phase:
+                      type: string
+                    status:
+                      type: string
+                    message:
+                      type: string
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

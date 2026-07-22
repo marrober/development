@@ -4,6 +4,7 @@ resources:
 - addon-template.yaml
 - cluster-management-addon.yaml
 - cluster-role.yaml
+- clustercollector-crd.yaml
 - placement.yaml
 - role-bindings/addon-template-role-bindings.yaml
 - role-bindings/addon-template-role.yaml
