@@ -22,9 +22,9 @@ spec:
   - group: 'rbac.authorization.k8s.io'
     kind: ClusterRoleBinding
   - group: 'addon.open-cluster-management.io'
-    kind: AddOnTemplate
-  - group: 'addon.open-cluster-management.io'
-    kind: ClusterManagementAddOn 
+    kind: '*'
+  - group: 'cluster.open-cluster-management.io'
+    kind: '*'
 
   roles:
   - name: developer
