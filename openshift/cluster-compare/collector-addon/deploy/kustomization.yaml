@@ -5,6 +5,8 @@ resources:
 - cluster-management-addon.yaml
 - cluster-role.yaml
 - placement.yaml
+- role-bindings/addon-template-role-bindings.yaml
+- role-bindings/addon-template-role.yaml
 
 images:
 - name: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/cluster-compare/cluster-collector

@@ -1,0 +1,27 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: addon-template-role-role-binding
+  namespace: cluster-compare
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: addon-template-role
+subjects:
+- kind: ServiceAccount
+  name: openshift-gitops-argocd-application-controller
+  namespace: openshift-gitops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: addon-template-role-role-binding-ocm-addon
+  namespace: open-cluster-management-addon
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: addon-template-role
+subjects:
+- kind: ServiceAccount
+  name: openshift-gitops-argocd-application-controller
+  namespace: openshift-gitops
