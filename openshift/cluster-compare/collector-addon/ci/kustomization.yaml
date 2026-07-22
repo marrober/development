@@ -8,6 +8,7 @@ resources:
 - tasks/git-clone.yaml
 - tasks/pushImageToOCPImageStream.yaml
 - tasks/update-and-commit-dev-env.yaml
+- tasks/pushImageToQuay.yaml
 - triggers/eventListener.yaml
 - triggers/eventListenerRoute.yaml
 - triggers/triggerBinding.yaml
