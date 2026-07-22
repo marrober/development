@@ -147,7 +147,7 @@ spec:
         - build
       workspaces:
       - name: resources
-        workspace: workspace
+        workspace: resources
       - name: files
         workspace: files
 ##------------------------------------------------------------------
