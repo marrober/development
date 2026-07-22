@@ -21,10 +21,10 @@ spec:
     kind: ClusterRole
   - group: 'rbac.authorization.k8s.io'
     kind: ClusterRoleBinding
-
-  namespaceResourceBlacklist:
-  namespaceResourceWhitelist:
-
+  - group: 'addon.open-cluster-management.io'
+    kind: AddOnTemplate
+  - group: 'addon.open-cluster-management.io'
+    kind: ClusterManagementAddOn 
 
   roles:
   - name: developer
