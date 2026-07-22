@@ -117,6 +117,38 @@ spec:
       - name: files
         workspace: files
 ##------------------------------------------------------------------
+# Clone the cd repository and update the argocd application file 
+# to refer to the new tagged image.
+##------------------------------------------------------------------
+    - name: update-dev-deployment
+      params:
+      - name: GIT_URL
+        value: $(params.repo_type)/$(params.cd-git-url)
+      - name: GIT_REPO_NAME
+        value: $(params.cd-git-repo-name)
+      - name: GIT_BRANCH
+        value: "main"
+      - name: GIT_PATH_TO_CONTENT
+        value: $(params.cd-git-repo-path-to-content-development)
+      - name: GIT_USER_NAME
+        value: $(params.cd-git-user-name)
+      - name: GIT_USER_EMAIL
+        value: $(params.cd-git-user-email)
+      - name: GIT_COMMIT_COMMENT
+        value: $(params.cd-git-commit-comment-dev)
+      - name: IMAGE
+        value: $(params.imagestream-url):$(tasks.push-image-to-imagestream.results.new-tag)
+      - name: LOCATION
+        value: "dev"
+      taskRef:
+        kind: Task
+        name: update-and-commit-argocd-app-file
+      runAfter:
+      - push-image-to-imagestream
+      workspaces:
+      - name: files
+        workspace: files
+##------------------------------------------------------------------
 # Workspace definitions
 ##------------------------------------------------------------------
   workspaces:
