@@ -23,9 +23,13 @@ spec:
 
         set +x
 
+        ls -al /etc/secret-volume
+
         buildah push --storage-driver=$(params.STORAGE_DRIVER) \
 
         --tls-verify=$(params.TLSVERIFY) --root /files/buildah-containers \
+
+        --authfile /etc/secret-volume/.dockerconfigjson \
 
         localhost/cluster-collector:latest \
 
