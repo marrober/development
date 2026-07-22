@@ -20,60 +20,19 @@ spec:
       description: The Buildah storage STORAGE_DRIVER
       type: string
   steps:
-    - name: list-images-1
-      command:
-        - buildah
-        - images
-        - '--storage-driver=$(params.STORAGE_DRIVER)'
-        - '--root'
-        - '/files/buildah-containers'
-      image: registry.redhat.io/rhel8/buildah
-      securityContext:
-        capabilities:
-          add: ["SETFCAP"]
-      workingDir: /
-      resources: {}
-    - name: buildah-tag-image
-      command:
-        - buildah
-        - tag
-        - '--storage-driver=$(params.STORAGE_DRIVER)'
-        - '--root'
-        - '/files/buildah-containers'
-        - 'localhost/cluster-collector:latest'
-        - 'quay.io/$(params.quay-io-account)/$(params.quay-io-repository):$(params.quay-io-image-tag-name)'
-      image: registry.redhat.io/rhel8/buildah
-      securityContext:
-        capabilities:
-          add: ["SETFCAP"]
-      resources: {}
-    - name: list-images-2
-      command:
-        - buildah
-        - images
-        - '--storage-driver=$(params.STORAGE_DRIVER)'
-        - '--root'
-        - '/files/buildah-containers'
-      image: registry.redhat.io/rhel8/buildah
-      securityContext:
-        capabilities:
-          add: ["SETFCAP"]
-      workingDir: /
-      resources: {}
-    - name: push-image-to-quay
-      command:
-        - buildah
-        - push
-        - '--storage-driver=$(params.STORAGE_DRIVER)'
-        - '--authfile'
-        - /etc/secret-volume/.dockerconfigjson
-        - '--root'
-        - '/files/buildah-containers'
-        - 'quay.io/$(params.quay-io-account)/$(params.quay-io-repository):$(params.quay-io-image-tag-name)'
-      image: registry.redhat.io/rhel8/buildah
-      securityContext:
-        capabilities:
-          add: ["SETFCAP"]
+    - name: push-to-quay
+      script: >-
+        #!/usr/bin/env bash
+
+        set +x
+
+        buildah push --storage-driver=$(params.STORAGE_DRIVER) \
+
+        --tls-verify=$(params.TLSVERIFY) --root /files/buildah-containers \
+
+        localhost/cluster-collector:latest \
+
+        docker://quay.io/$(params.quay-io-account)/$(params.quay-io-repository):$(params.quay-io-image-tag-name)  
       volumeMounts:
         - name: quay-auth-secret
           mountPath: /etc/secret-volume
