@@ -12,3 +12,4 @@ resources:
 - triggers/eventListenerRoute.yaml
 - triggers/triggerBinding.yaml
 - triggers/triggerTemplate.yaml
+- image-streams/terminal.yaml
