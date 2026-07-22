@@ -16,8 +16,6 @@ spec:
       value: development/openshift/cluster-compare/collector-addon/app
     - name: dockerfile
       value: Dockerfile
-    - name: target-container-location
-      value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/cluster-collector
     - name: image-short-name
       value: cluster-collector
     - name: imagestream-url

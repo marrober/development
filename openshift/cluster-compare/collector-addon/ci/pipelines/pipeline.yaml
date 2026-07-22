@@ -27,8 +27,6 @@ spec:
       type: string
     - name: dockerfile
       type: string
-    - name: target-container-location
-      type: string
     - name: image-short-name
       type: string
     - name: imagestream-url
@@ -70,8 +68,6 @@ spec:
           value: $(params.app-dir)
         - name: dockerfile
           value: $(params.dockerfile)
-        - name: target-container-location
-          value: $(params.target-container-location)
       taskRef:
         kind: Task
         name: build
