@@ -3,13 +3,9 @@ kind: ClusterRole
 metadata:
   name: addon-template-role
 rules:
-- apiGroups:
-  - "addon.open-cluster-management.io"
-  resources:
-  - addontemplates
-  - managedclustersetbindings
-  verbs:
-  - patch
-  - get
-  - create
-  - delete
+- apiGroups: ["addon.open-cluster-management.io"]
+  resources: ["addontemplates", "clustermanagementaddons"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["cluster.open-cluster-management.io"]
+  resources: ["managedclustersetbindings"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
