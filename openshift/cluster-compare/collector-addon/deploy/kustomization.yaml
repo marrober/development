@@ -10,4 +10,4 @@ resources:
 
 images:
 - name: quay.io/marrober/cluster-compare-collector
-  newTag: '1'
+  newTag: lsvwn
