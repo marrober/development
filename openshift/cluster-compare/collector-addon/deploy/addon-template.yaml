@@ -106,10 +106,6 @@ spec:
                   app: cluster-collector-agent
               spec:
                 serviceAccountName: cluster-collector-agent-sa
-                volumes:
-                  - name: hub-kubeconfig
-                    secret:
-                      secretName: cluster-collector-hub-kubeconfig
                 containers:
                   - name: cluster-collector-agent
                     image: quay.io/marrober/cluster-compare-collector
@@ -119,9 +115,6 @@ spec:
                       - "--hub-kubeconfig={{HUB_KUBECONFIG}}"
                       - "--cluster-name={{CLUSTER_NAME}}"
                       - "--resync-interval=1h"
-                    volumeMounts:
-                      - name: hub-kubeconfig
-                        mountPath: /var/run/hub
       manifestConfigs:
         - resourceIdentifier:
             group: apps
