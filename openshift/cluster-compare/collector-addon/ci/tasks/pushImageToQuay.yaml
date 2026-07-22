@@ -4,20 +4,17 @@ metadata:
   name: push-image-to-quay
 spec:
   params:
-    - name: quay-io-account
-      description: The quay.io account that matches the credentials stored in the mounted secret.
+    - name: quay-instance-url
       type: string
-      default: ""
-    - name: quay-io-repository
-      description: The quay.io repository in which to store the image.
+    - name: quay-account
       type: string
-      default: ""
-    - name: quay-io-image-tag-name
-      description: The tag to use to identify the image.
+    - name: quay-repository
       type: string
-      default: "latest"
     - name: STORAGE_DRIVER
-      description: The Buildah storage STORAGE_DRIVER
+      type: string
+    - name: TLSVERIFY
+      type: string
+    - name: imageTag
       type: string
   steps:
     - name: push-to-quay
@@ -32,7 +29,7 @@ spec:
 
         localhost/cluster-collector:latest \
 
-        docker://quay.io/$(params.quay-io-account)/$(params.quay-io-repository):$(params.quay-io-image-tag-name)  
+        docker://quay.io/$(params.quay-io-account)/$(params.quay-io-repository):$(params.imageTag)  
       image: registry.redhat.io/rhel8/buildah    
       securityContext:
         capabilities:
