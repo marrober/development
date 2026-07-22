@@ -144,7 +144,7 @@ spec:
         kind: Task
         name: push-image-to-quay
       runAfter:
-        - build
+        - push-image-to-imagestream
       workspaces:
       - name: files
         workspace: files
@@ -169,7 +169,7 @@ spec:
       - name: GIT_COMMIT_COMMENT
         value: $(params.cd-git-commit-comment-dev)
       - name: IMAGE
-        value: $(params.imagestream-url):$(tasks.push-image-to-imagestream.results.new-tag)
+        value: $(params.quay-instance-url)/$(params.quay-account)/$(params.quay-repository):$(tasks.push-image-to-imagestream.results.new-tag)
       - name: LOCATION
         value: "dev"
       taskRef:

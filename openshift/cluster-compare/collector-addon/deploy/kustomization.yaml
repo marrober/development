@@ -9,5 +9,5 @@ resources:
 - role-bindings/addon-template-role.yaml
 
 images:
-- name: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/cluster-compare/cluster-collector
-  newTag: kh7tk
+- name: quay.io/marrober/cluster-compare-collector
+  newTag: 1
