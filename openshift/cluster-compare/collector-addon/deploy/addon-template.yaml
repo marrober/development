@@ -166,7 +166,7 @@ spec:
                     imagePullPolicy: IfNotPresent
                     args:
                       - "agent"
-                      - "--hub-kubeconfig=/var/run/hub/kubeconfig"
+                      - "--hub-kubeconfig={{HUB_KUBECONFIG}}"
                       - "--cluster-name={{CLUSTER_NAME}}"
                       - "--resync-interval=1h"
                     volumeMounts:
@@ -176,7 +176,7 @@ spec:
         - resourceIdentifier:
             group: apps
             resource: deployments
-            name: luster-collector-agent
+            name: cluster-collector-agent
             namespace: open-cluster-management-agent-addon
           updateStrategy:
             type: ServerSideApply
