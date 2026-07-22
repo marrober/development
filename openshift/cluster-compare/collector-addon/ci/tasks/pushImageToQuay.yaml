@@ -33,6 +33,11 @@ spec:
         localhost/cluster-collector:latest \
 
         docker://quay.io/$(params.quay-io-account)/$(params.quay-io-repository):$(params.quay-io-image-tag-name)  
+      image: registry.redhat.io/rhel8/buildah    
+      securityContext:
+        capabilities:
+          add: ["SETFCAP"]
+      resources: {}        
       volumeMounts:
         - name: quay-auth-secret
           mountPath: /etc/secret-volume
