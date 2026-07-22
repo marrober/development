@@ -48,51 +48,6 @@ spec:
                             type: string
                           lastSync:
                             type: string
-                          clusterVersion:
-                            type: object
-                            properties:
-                              version:
-                                type: string
-                              status:
-                                type: string
-                              message:
-                                type: string
-                          clusterOperators:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                name:
-                                  type: string
-                                version:
-                                  type: string
-                                available:
-                                  type: string
-                                progressing:
-                                  type: string
-                                degraded:
-                                  type: string
-                                status:
-                                  type: string
-                                message:
-                                  type: string
-                          installedOperators:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                namespace:
-                                  type: string
-                                name:
-                                  type: string
-                                version:
-                                  type: string
-                                phase:
-                                  type: string
-                                status:
-                                  type: string
-                                message:
-                                  type: string
         - kind: ClusterRole
           apiVersion: rbac.authorization.k8s.io/v1
           metadata:
@@ -132,11 +87,6 @@ spec:
           apiVersion: v1
           metadata:
             name: cluster-collector-agent-sa
-            namespace: open-cluster-management-agent-addon
-        - kind: ClusterCollector
-          apiVersion: example.open-cluster-management.io/v1alpha1
-          metadata:
-            name: clustercollector
             namespace: open-cluster-management-agent-addon
         - kind: Deployment
           apiVersion: apps/v1
