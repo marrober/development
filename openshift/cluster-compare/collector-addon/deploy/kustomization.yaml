@@ -11,4 +11,4 @@ resources:
 
 images:
 - name: quay.io/marrober/cluster-compare-collector
-  newTag: lsvwn
+  newTag: s3z0h
