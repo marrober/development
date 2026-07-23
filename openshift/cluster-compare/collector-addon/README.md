@@ -86,6 +86,7 @@ See [engine-web-ui/examples/cluster1-snapshot.json](../engine-web-ui/examples/cl
 
 | Flag / env | Default | Description |
 |------------|---------|-------------|
-| `--resync-interval` | `60` | How often the agent re-collects and syncs snapshots, in minutes |
-| `--verbose` | `false` | Print the full cluster snapshot payload that will be sent to the hub cluster |
+| `--resync-interval` | `60` | How often the agent re-collects and syncs snapshots (minutes) |
+| `--verbose` | `false` | Log detailed collection and hub sync progress (excludes snapshot JSON) |
+| `--json` | `false` | Print the full cluster snapshot JSON sent to the hub |
 | `ADDON_IMAGE` | `quay.io/open-cluster-management/addon-contrib/cluster-compare-collector-addon:latest` | Agent image override for the manager |

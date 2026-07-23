@@ -29,6 +29,7 @@ type ClusterCollectorController struct {
 	clusterName string
 	resyncAfter time.Duration
 	verbose     bool
+	reportJSON  bool
 }
 
 func (c *ClusterCollectorController) SetupWithManager(mgr ctrl.Manager) error {
@@ -57,7 +58,7 @@ func (c *ClusterCollectorController) EnsureSpokeCollector(ctx context.Context) e
 	err := c.spokeClient.Get(ctx, key, existing)
 	switch {
 	case err == nil:
-		c.log.Info("spoke ClusterCollector already exists", "namespace", key.Namespace, "name", key.Name)
+		c.vInfo("spoke ClusterCollector already exists", "namespace", key.Namespace, "name", key.Name)
 		return nil
 	case !errors.IsNotFound(err):
 		return fmt.Errorf("get spoke ClusterCollector: %w", err)
@@ -72,16 +73,16 @@ func (c *ClusterCollectorController) EnsureSpokeCollector(ctx context.Context) e
 	if err := c.spokeClient.Create(ctx, cr); err != nil {
 		return fmt.Errorf("create spoke ClusterCollector: %w", err)
 	}
-	c.log.Info("created spoke ClusterCollector", "namespace", key.Namespace, "name", key.Name)
+	c.vInfo("created spoke ClusterCollector", "namespace", key.Namespace, "name", key.Name)
 	return nil
 }
 
 func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	c.log.Info("reconciling ClusterCollector", "namespacedName", req.String())
-	defer c.log.Info("done reconcile", "namespacedName", req.String())
+	c.vInfo("reconciling ClusterCollector", "namespacedName", req.String())
+	defer c.vInfo("done reconcile", "namespacedName", req.String())
 
 	if req.Namespace != constants.AgentInstallationNamespace || req.Name != spokeCollectorName {
-		c.log.Info("ignoring ClusterCollector outside addon namespace", "namespacedName", req.String())
+		c.vInfo("ignoring ClusterCollector outside addon namespace", "namespacedName", req.String())
 		return ctrl.Result{}, nil
 	}
 
@@ -91,14 +92,36 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	c.log.Info("collected cluster snapshot",
+	c.vInfo("collected cluster snapshot",
 		"clusterName", collectedStatus.ClusterName,
 		"date", collectedStatus.Date,
 		"clusterVersion", collectedStatus.ClusterVersion.Version,
+		"clusterVersionStatus", collectedStatus.ClusterVersion.Status,
 		"clusterOperators", len(collectedStatus.ClusterOperators),
 		"installedOperators", len(collectedStatus.InstalledOperators),
 	)
 	if c.verbose {
+		for _, operator := range collectedStatus.ClusterOperators {
+			c.log.Info("cluster operator",
+				"name", operator.Name,
+				"version", operator.Version,
+				"status", operator.Status,
+				"available", operator.Available,
+				"progressing", operator.Progressing,
+				"degraded", operator.Degraded,
+			)
+		}
+		for _, operator := range collectedStatus.InstalledOperators {
+			c.log.Info("installed operator",
+				"name", operator.Name,
+				"version", operator.Version,
+				"phase", operator.Phase,
+				"status", operator.Status,
+				"namespaces", operator.Namespaces,
+			)
+		}
+	}
+	if c.reportJSON {
 		c.reportSnapshot("collected snapshot (pre-hub-sync)", collectedStatus)
 	}
 
@@ -107,13 +130,13 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 		c.log.Error(err, "unable to update spoke ClusterCollector status")
 		return ctrl.Result{}, err
 	}
-	c.log.Info("updated spoke ClusterCollector status")
+	c.vInfo("updated spoke ClusterCollector status")
 
 	if err = c.syncToHub(ctx, spoke); err != nil {
 		c.log.Error(err, "unable to sync ClusterCollector to hub")
 		return ctrl.Result{}, err
 	}
-	c.log.Info("synced ClusterCollector status to hub",
+	c.vInfo("synced ClusterCollector status to hub",
 		"hubNamespace", c.clusterName,
 		"name", spoke.Name,
 	)
@@ -157,7 +180,7 @@ func (c *ClusterCollectorController) syncToHub(ctx context.Context, spoke *ocmv1
 			if err = c.hubClient.Create(ctx, toCreate); err != nil {
 				return fmt.Errorf("create hub ClusterCollector: %w", err)
 			}
-			c.log.Info("created hub ClusterCollector", "namespace", hubKey.Namespace, "name", hubKey.Name)
+			c.vInfo("created hub ClusterCollector", "namespace", hubKey.Namespace, "name", hubKey.Name)
 			hubClusterCollector = *toCreate
 		case err != nil:
 			return fmt.Errorf("get hub ClusterCollector: %w", err)
@@ -165,11 +188,19 @@ func (c *ClusterCollectorController) syncToHub(ctx context.Context, spoke *ocmv1
 
 		hubClusterCollector.Status = spoke.Status
 		if c.verbose {
+			c.reportHubSyncSummary(hubKey, hubClusterCollector.Status)
+		}
+		if c.reportJSON {
 			c.reportSnapshot("hub sync payload", hubClusterCollector.Status)
 		}
 		if err = c.hubClient.Status().Update(ctx, &hubClusterCollector); err != nil {
 			return fmt.Errorf("update hub ClusterCollector status: %w", err)
 		}
+		c.vInfo("updated hub ClusterCollector status",
+			"namespace", hubKey.Namespace,
+			"name", hubKey.Name,
+			"date", hubClusterCollector.Status.Date,
+		)
 		return nil
 	})
 }
@@ -187,10 +218,54 @@ func mergeStatus(existing, collected ocmv1alpha1.ClusterCollectorStatus) ocmv1al
 func (c *ClusterCollectorController) reportSnapshot(label string, status ocmv1alpha1.ClusterCollectorStatus) {
 	payload, err := json.MarshalIndent(status, "", "  ")
 	if err != nil {
-		c.log.Error(err, "failed to marshal snapshot for verbose reporting", "label", label)
+		c.log.Error(err, "failed to marshal snapshot for json reporting", "label", label)
 		return
 	}
 	c.log.Info(label, "json", string(payload))
+}
+
+// reportHubSyncSummary logs what will be sent to the hub without dumping JSON.
+func (c *ClusterCollectorController) reportHubSyncSummary(hubKey types.NamespacedName, status ocmv1alpha1.ClusterCollectorStatus) {
+	c.log.Info("sending snapshot to hub",
+		"hubNamespace", hubKey.Namespace,
+		"name", hubKey.Name,
+		"clusterName", status.ClusterName,
+		"date", status.Date,
+		"lastSync", status.LastSync,
+		"spokeURL", status.SpokeURL,
+		"clusterVersion", status.ClusterVersion.Version,
+		"clusterVersionStatus", status.ClusterVersion.Status,
+		"clusterOperators", len(status.ClusterOperators),
+		"installedOperators", len(status.InstalledOperators),
+	)
+	for _, operator := range status.ClusterOperators {
+		c.log.Info("hub sync cluster operator",
+			"name", operator.Name,
+			"version", operator.Version,
+			"status", operator.Status,
+			"available", operator.Available,
+			"progressing", operator.Progressing,
+			"degraded", operator.Degraded,
+			"message", operator.Message,
+		)
+	}
+	for _, operator := range status.InstalledOperators {
+		c.log.Info("hub sync installed operator",
+			"name", operator.Name,
+			"version", operator.Version,
+			"phase", operator.Phase,
+			"status", operator.Status,
+			"namespaces", operator.Namespaces,
+			"message", operator.Message,
+		)
+	}
+}
+
+// vInfo logs at Info level when --verbose is enabled.
+func (c *ClusterCollectorController) vInfo(msg string, keysAndValues ...interface{}) {
+	if c.verbose {
+		c.log.Info(msg, keysAndValues...)
+	}
 }
 
 // resyncInterval converts a minute count into a duration. Invalid or non-positive

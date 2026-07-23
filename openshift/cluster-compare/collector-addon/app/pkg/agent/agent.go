@@ -62,6 +62,7 @@ type AgentOptions struct {
 	AddonName         string
 	ResyncInterval    int
 	Verbose           bool
+	ReportJSON        bool
 }
 
 // NewAgentOptions returns the flags with default value set
@@ -78,7 +79,8 @@ func (o *AgentOptions) AddFlags(cmd *cobra.Command) {
 	flags.StringVar(&o.HubKubeconfigFile, "hub-kubeconfig", o.HubKubeconfigFile, "Location of kubeconfig file to connect to hub cluster.")
 	flags.StringVar(&o.SpokeClusterName, "cluster-name", o.SpokeClusterName, "Name of spoke cluster.")
 	flags.IntVar(&o.ResyncInterval, "resync-interval", o.ResyncInterval, "How often to collect and sync cluster snapshots, in minutes.")
-	flags.BoolVar(&o.Verbose, "verbose", o.Verbose, "Print the full cluster snapshot payload that will be sent to the hub cluster.")
+	flags.BoolVar(&o.Verbose, "verbose", o.Verbose, "Log detailed collection and hub sync progress (excludes snapshot JSON).")
+	flags.BoolVar(&o.ReportJSON, "json", o.ReportJSON, "Print the full cluster snapshot JSON that will be sent to the hub cluster.")
 }
 
 func (o *AgentOptions) runControllerManager(ctx context.Context) error {
@@ -147,6 +149,7 @@ func (o *AgentOptions) runControllerManager(ctx context.Context) error {
 		clusterName: o.SpokeClusterName,
 		resyncAfter: resyncInterval(o.ResyncInterval),
 		verbose:     o.Verbose,
+		reportJSON:  o.ReportJSON,
 	}
 
 	if err = clusterCollectorController.SetupWithManager(mgr); err != nil {
@@ -160,7 +163,10 @@ func (o *AgentOptions) runControllerManager(ctx context.Context) error {
 			return err
 		}
 		if o.Verbose {
-			log.Info("verbose reporting enabled; full snapshot JSON will be logged each sync")
+			log.Info("verbose reporting enabled; detailed collection and hub sync progress will be logged")
+		}
+		if o.ReportJSON {
+			log.Info("json reporting enabled; full snapshot JSON will be logged each sync")
 		}
 		return nil
 	})); err != nil {
