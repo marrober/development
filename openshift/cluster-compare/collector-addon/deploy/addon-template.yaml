@@ -118,7 +118,7 @@ spec:
       manifestConfigs:
         - resourceIdentifier:
             group: apps
-            resource: deployments
+            resource: "*"
             name: cluster-collector-agent
             namespace: open-cluster-management-agent-addon
           updateStrategy:
