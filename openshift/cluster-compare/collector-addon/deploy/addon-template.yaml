@@ -118,6 +118,7 @@ spec:
                       - "--hub-kubeconfig={{HUB_KUBECONFIG}}"
                       - "--cluster-name={{CLUSTER_NAME}}"
                       - "--resync-interval=60"
+                      - "--verbose"
   registration:
     - type: KubeClient
       kubeClient:
