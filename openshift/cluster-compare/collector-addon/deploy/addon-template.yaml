@@ -98,6 +98,9 @@ spec:
             namespace: open-cluster-management-agent-addon
             labels:
               app: cluster-collector-agent
+          annotations:
+            cluster-collector.addon/image-image: quay.io/marrober/cluster-compare-collector:88f6q
+
           spec:
             replicas: 1
             selector:

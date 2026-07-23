@@ -104,7 +104,7 @@ spec:
 
         kustomize edit set image $(params.IMAGE)
 
-        kustomize edit set annotation addon.open-cluster-management.io/image-version:$(params.IMAGE)
+        sed -i 's|\(cluster-collector\.addon/image-image:\).*|\1 $(params.IMAGE)|g' kustomization.yaml
 
         echo "-----------------------------------------------------------------"
 
