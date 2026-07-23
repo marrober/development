@@ -9,4 +9,4 @@ spec:
     targetPort: http-listener
   to:
     kind: Service
-    name: el-scollector-addon-listener-interceptor
+    name: el-collector-addon-listener-interceptor
