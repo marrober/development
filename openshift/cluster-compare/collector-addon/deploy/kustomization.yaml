@@ -14,4 +14,4 @@ images:
   newTag: 25f79
 
 commonAnnotations:
-  addon.open-cluster-management.io/image-version: quay.io/marrober/cluster-compare-collector:123tag
+  addon.open-cluster-management.io/image-version: quay.io/marrober/cluster-compare-collector:blah
