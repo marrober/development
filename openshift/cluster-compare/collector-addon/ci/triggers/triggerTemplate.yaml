@@ -1,7 +1,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
-  name: simple-pipeline-template
+  name: collector-addon-template
 spec:
   params:
   - name: gitrepository.url
@@ -15,22 +15,46 @@ spec:
     spec:
       serviceAccountName: pipeline
       pipelineRef:
-        name: simple-pipeline
+        name: collector-addon
       params:
-        - name: git-url
+        - name: GIT_REPO
           value: $(tt.params.gitrepository.url)
-        - name: git-revision
+        - name: GIT_REVISION
           value: $(tt.params.gitrevision)
-        - name: branch
-          value: $(tt.params.branch)
-          # Directory within the git repo that holds the dockerfile. The example dockerfile makes reference to 
-          # files within this directory too.
+        - name: GIT_REPO_NAME
+          value: development
         - name: app-dir
-          value: node/layers
-          # The imagestream url for where the created container image will be stored. Update the namespace element if this is
-          # created in a different namespace. also update the namespace file in the location namespace/namespace.yaml.
+          value: development/openshift/cluster-compare/collector-addon/app
+        - name: dockerfile
+          value: Dockerfile
+        - name: image-short-name
+          value: cluster-collector
         - name: imagestream-url
-          value: image-registry.openshift-image-registry.svc:5000/simple-pipeline-1/my-app
+          value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/cluster-collector
+          ## Update Kustomize file for the deployment of the application to development      
+        - name: repo_type
+          value: github.com
+        - name: cd-git-url
+          value: marrober/development
+        - name: cd-git-repo-name
+          value: development
+        - name: cd-git-repo-path-to-content-development
+          value: openshift/cluster-compare/collector-addon/deploy
+        - name: cd-git-commit-comment-dev
+          value: "Update from ci process - dev"
+        - name: cd-git-user-name
+          value: "Mark Roberts"
+        - name: cd-git-user-email
+          value: "mroberts@redhat.com"
+        - name: quay-instance-url
+          value: "quay.io"
+        - name: quay-account
+          value: "marrober"
+        - name: quay-repository
+          value: "cluster-compare-collector" 
+
+
+
       workspaces:
       - name: files
         volumeClaimTemplate:
