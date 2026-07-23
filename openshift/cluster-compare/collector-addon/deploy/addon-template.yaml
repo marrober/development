@@ -1,7 +1,7 @@
 apiVersion: addon.open-cluster-management.io/v1alpha1
 kind: AddOnTemplate
 metadata:
-  name: cluster-collector
+  name: clustercollector
 spec:
   addonName: cluster-collector
   agentSpec:
@@ -12,7 +12,7 @@ spec:
           metadata:
             name: clustercollectors.open-cluster-management.io
           spec:
-            group: example.open-cluster-management.io
+            group: open-cluster-management.io
             names:
               kind: ClusterCollector
               listKind: ClusterCollectorList
