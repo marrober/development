@@ -104,6 +104,8 @@ spec:
 
         kustomize edit set image $(params.IMAGE)
 
+        kustomize edit set annotation addon.open-cluster-management.io/image-version: $(params.IMAGE)
+
         echo "-----------------------------------------------------------------"
 
         echo "File after change"

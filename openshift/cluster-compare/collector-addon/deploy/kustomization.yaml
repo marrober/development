@@ -12,3 +12,6 @@ resources:
 images:
 - name: quay.io/marrober/cluster-compare-collector
   newTag: 9ht99
+
+commonAnnotations:
+  addon.open-cluster-management.io/image-version: quay.io/marrober/cluster-compare-collector:123tag
