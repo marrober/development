@@ -4,9 +4,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.2
   creationTimestamp: null
-  name: clustercollectors.example.open-cluster-management.io
+  name: clustercollectors.open-cluster-management.io
 spec:
-  group: example.open-cluster-management.io
+  group: open-cluster-management.io
   names:
     kind: ClusterCollector
     listKind: ClusterCollectorList
@@ -15,6 +15,8 @@ spec:
   scope: Namespaced
   versions:
   - name: v1alpha1
+    served: true
+    storage: true
     schema:
       openAPIV3Schema:
         type: object
