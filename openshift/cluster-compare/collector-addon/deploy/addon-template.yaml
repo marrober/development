@@ -62,10 +62,10 @@ spec:
             - apiGroups: ["coordination.k8s.io"]
               resources: ["leases"]
               verbs: ["create", "get", "list", "update", "watch", "patch"]
-            - apiGroups: ["example.open-cluster-management.io"]
+            - apiGroups: ["open-cluster-management.io"]
               resources: ["clustercollectors"]
               verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
-            - apiGroups: ["example.open-cluster-management.io"]
+            - apiGroups: ["open-cluster-management.io"]
               resources: ["clustercollectors/status"]
               verbs: ["get", "update", "patch"]
             - apiGroups: ["config.openshift.io"]
@@ -117,7 +117,7 @@ spec:
                       - "agent"
                       - "--hub-kubeconfig={{HUB_KUBECONFIG}}"
                       - "--cluster-name={{CLUSTER_NAME}}"
-                      - "--resync-interval=1h"
+                      - "--resync-interval=60"
       manifestConfigs:
         - resourceIdentifier:
             group: apps

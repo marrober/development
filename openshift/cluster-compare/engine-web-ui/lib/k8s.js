@@ -1,7 +1,7 @@
 const k8s = require("@kubernetes/client-node");
 const { normalizeClusterSnapshot } = require("./normalize");
 
-const GROUP = process.env.CRD_GROUP || "example.open-cluster-management.io";
+const GROUP = process.env.CRD_GROUP || "open-cluster-management.io";
 const VERSION = process.env.CRD_VERSION || "v1alpha1";
 const PLURAL = process.env.CRD_PLURAL || "clustercollectors";
 const WATCH_NAMESPACE = process.env.WATCH_NAMESPACE || "";

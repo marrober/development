@@ -60,7 +60,8 @@ type AgentOptions struct {
 	HubKubeconfigFile string
 	SpokeClusterName  string
 	AddonName         string
-	ResyncInterval    string
+	ResyncInterval    int
+	Verbose           bool
 }
 
 // NewAgentOptions returns the flags with default value set
@@ -76,7 +77,8 @@ func (o *AgentOptions) AddFlags(cmd *cobra.Command) {
 	flags := cmd.Flags()
 	flags.StringVar(&o.HubKubeconfigFile, "hub-kubeconfig", o.HubKubeconfigFile, "Location of kubeconfig file to connect to hub cluster.")
 	flags.StringVar(&o.SpokeClusterName, "cluster-name", o.SpokeClusterName, "Name of spoke cluster.")
-	flags.StringVar(&o.ResyncInterval, "resync-interval", o.ResyncInterval, "How often to collect and sync cluster snapshots.")
+	flags.IntVar(&o.ResyncInterval, "resync-interval", o.ResyncInterval, "How often to collect and sync cluster snapshots, in minutes.")
+	flags.BoolVar(&o.Verbose, "verbose", o.Verbose, "Print the full cluster snapshot payload that will be sent to the hub cluster.")
 }
 
 func (o *AgentOptions) runControllerManager(ctx context.Context) error {
@@ -143,7 +145,8 @@ func (o *AgentOptions) runControllerManager(ctx context.Context) error {
 		collector:   collector.New(configClient, dynamicClient, o.SpokeClusterName),
 		log:         o.Log,
 		clusterName: o.SpokeClusterName,
-		resyncAfter: parseResyncInterval(o.ResyncInterval),
+		resyncAfter: resyncInterval(o.ResyncInterval),
+		verbose:     o.Verbose,
 	}
 
 	if err = clusterCollectorController.SetupWithManager(mgr); err != nil {

@@ -4,9 +4,9 @@ metadata:
   name: {{ .RoleAndRolebindingName }}
   namespace: {{ .ClusterName }}
 rules:
-  - apiGroups: ["example.open-cluster-management.io"]
+  - apiGroups: ["open-cluster-management.io"]
     resources: ["clustercollectors"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["example.open-cluster-management.io"]
+  - apiGroups: ["open-cluster-management.io"]
     resources: ["clustercollectors/status"]
     verbs: ["update", "patch"]

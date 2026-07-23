@@ -2,7 +2,9 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -22,6 +24,7 @@ type ClusterCollectorController struct {
 	log         logr.Logger
 	clusterName string
 	resyncAfter time.Duration
+	verbose     bool
 }
 
 func (c *ClusterCollectorController) SetupWithManager(mgr ctrl.Manager) error {
@@ -58,6 +61,9 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 		"clusterOperators", len(collectedStatus.ClusterOperators),
 		"installedOperators", len(collectedStatus.InstalledOperators),
 	)
+	if c.verbose {
+		c.reportHubPayload(clusterCollector.Status)
+	}
 	if err = c.spokeClient.Status().Update(ctx, &clusterCollector); err != nil {
 		c.log.Error(err, "unable to update spoke ClusterCollector status")
 		return ctrl.Result{RequeueAfter: c.resyncAfter}, err
@@ -98,15 +104,21 @@ func mergeStatus(existing, collected ocmv1alpha1.ClusterCollectorStatus) ocmv1al
 	return collected
 }
 
-func parseResyncInterval(value string) time.Duration {
-	if value == "" {
-		value = constants.DefaultResyncInterval
-	}
-
-	parsed, err := time.ParseDuration(value)
+func (c *ClusterCollectorController) reportHubPayload(status ocmv1alpha1.ClusterCollectorStatus) {
+	payload, err := json.MarshalIndent(status, "", "  ")
 	if err != nil {
-		return time.Hour
+		c.log.Error(err, "failed to marshal hub sync payload for verbose reporting")
+		return
 	}
+	fmt.Fprintln(os.Stdout, "hub sync payload:")
+	fmt.Fprintln(os.Stdout, string(payload))
+}
 
-	return parsed
+// resyncInterval converts a minute count into a duration. Invalid or non-positive
+// values fall back to the default resync interval.
+func resyncInterval(minutes int) time.Duration {
+	if minutes <= 0 {
+		minutes = constants.DefaultResyncInterval
+	}
+	return time.Duration(minutes) * time.Minute
 }

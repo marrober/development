@@ -3,10 +3,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: open-cluster-management:cluster-collector:agent
 rules:
-  - apiGroups: ["example.open-cluster-management.io"]
+  - apiGroups: ["open-cluster-management.io"]
     resources: ["clustercollectors"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["example.open-cluster-management.io"]
+  - apiGroups: ["open-cluster-management.io"]
     resources: ["clustercollectors/status"]
     verbs: ["get", "update", "patch"]
 

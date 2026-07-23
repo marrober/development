@@ -84,7 +84,7 @@ npm run sync
 |----------|---------|-------------|
 | `PORT` | `3950` | HTTP port |
 | `WATCH_NAMESPACE` | _(empty)_ | Limit sync to one namespace; empty lists all namespaces |
-| `CRD_GROUP` | `example.open-cluster-management.io` | ClusterCollector API group |
+| `CRD_GROUP` | `open-cluster-management.io` | ClusterCollector API group |
 | `CRD_VERSION` | `v1alpha1` | ClusterCollector API version |
 | `CRD_PLURAL` | `clustercollectors` | ClusterCollector resource plural |
 | `CLUSTER_NAME_FROM` | `metadata.namespace` | Field used as cluster name in the database |

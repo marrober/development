@@ -28,7 +28,7 @@ spec:
           - "agent"
           - "--hub-kubeconfig=/var/run/hub/kubeconfig"
           - "--cluster-name={{ .ClusterName }}"
-          - "--resync-interval=1h"
+          - "--resync-interval=60"
         volumeMounts:
           - name: hub-config
             mountPath: /var/run/hub

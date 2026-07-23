@@ -36,7 +36,7 @@ cluster-compare-collector-addon-agent   1/1     1            1           4m23s
 make deploy-clustercollector-cr-sample
 ```
 
-The agent collects cluster snapshots on reconcile and every hour by default.
+The agent collects cluster snapshots on reconcile and every 60 minutes by default.
 
 ## Verify the ClusterCollector CR on the hub cluster
 
@@ -48,7 +48,7 @@ NAME               AGE
 clustercollector   5m35s
 
 $ kubectl -n cluster1 get clustercollector clustercollector -o yaml
-apiVersion: example.open-cluster-management.io/v1alpha1
+apiVersion: open-cluster-management.io/v1alpha1
 kind: ClusterCollector
 metadata:
   name: clustercollector
@@ -85,5 +85,6 @@ See [engine-web-ui/examples/cluster1-snapshot.json](../engine-web-ui/examples/cl
 
 | Flag / env | Default | Description |
 |------------|---------|-------------|
-| `--resync-interval` | `1h` | How often the agent re-collects and syncs snapshots |
+| `--resync-interval` | `60` | How often the agent re-collects and syncs snapshots, in minutes |
+| `--verbose` | `false` | Print the full cluster snapshot payload that will be sent to the hub cluster |
 | `ADDON_IMAGE` | `quay.io/open-cluster-management/addon-contrib/cluster-compare-collector-addon:latest` | Agent image override for the manager |

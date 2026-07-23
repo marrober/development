@@ -39,7 +39,7 @@ rules:
     verbs:
       - '*'
   - apiGroups:
-      - example.open-cluster-management.io
+      - open-cluster-management.io
     resources:
       - clustercollectors
     verbs:
@@ -51,7 +51,7 @@ rules:
       - patch
       - delete
   - apiGroups:
-      - example.open-cluster-management.io
+      - open-cluster-management.io
     resources:
       - clustercollectors/status
     verbs:
