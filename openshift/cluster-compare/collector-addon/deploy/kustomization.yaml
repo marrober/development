@@ -15,3 +15,13 @@ images:
 
 commonAnnotations:
   addon.open-cluster-management.io/image-version: quay.io/marrober/cluster-compare-collector:88f6q
+
+patches:
+  - target:
+      kind: AddOnTemplate
+      name: clustercollector
+    patch: |
+      - op: add
+        path: /spec/agentSpec/workload/manifests/4/metadata/annotations
+        value:
+          cluster-collector.addon/image-image:TAG_PLACEHOLDER
