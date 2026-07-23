@@ -1,7 +1,7 @@
 apiVersion: addon.open-cluster-management.io/v1alpha1
 kind: AddOnTemplate
 metadata:
-  name: clustercollector
+  name: cluster-collector
   annotations:
     # Forces ArgoCD to skip local schema validation on this specific block
     argocd.argoproj.io/sync-options: SkipDryRunOnFields=spec.agentSpec.workload.manifestConfigs
