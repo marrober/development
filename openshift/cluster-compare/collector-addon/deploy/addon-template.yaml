@@ -120,14 +120,6 @@ spec:
                       - "--hub-kubeconfig={{HUB_KUBECONFIG}}"
                       - "--cluster-name={{CLUSTER_NAME}}"
                       - "--resync-interval=60"
-      manifestConfigs:
-        - resourceIdentifier:
-            group: apps
-            resource: "*"
-            name: cluster-collector-agent
-            namespace: open-cluster-management-agent-addon
-          updateStrategy:
-            type: ServerSideApply
   registration:
     - type: KubeClient
       kubeClient:
