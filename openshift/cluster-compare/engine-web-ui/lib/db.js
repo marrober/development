@@ -147,19 +147,25 @@ function buildEntries(snapshot) {
     });
   }
 
-  const installedOperators = [...(snapshot.installedOperators || [])].sort((a, b) => {
-    const ns = a.namespace.localeCompare(b.namespace);
-    return ns !== 0 ? ns : a.name.localeCompare(b.name);
-  });
+  const installedOperators = [...(snapshot.installedOperators || [])].sort((a, b) =>
+    (a.name || "").localeCompare(b.name || "")
+  );
   for (const operator of installedOperators) {
-    const label = `${operator.namespace}/${operator.name}`;
+    const namespaces = Array.isArray(operator.namespaces)
+      ? operator.namespaces
+      : operator.namespace
+        ? [operator.namespace]
+        : [];
+    const nsLabel = namespaces.length > 0 ? namespaces.join(", ") : "unknown";
+    const label = `${operator.name} [${nsLabel}]`;
     entries.push({
-      rowKey: `installed-operator:${operator.namespace}/${operator.name}`,
+      rowKey: `installed-operator:${operator.name}`,
       rowLabel: label,
       sortOrder: 200,
       version: operator.version || "",
       status: operator.status || "",
       details: JSON.stringify({
+        namespaces,
         phase: operator.phase || "",
         message: operator.message || "",
       }),

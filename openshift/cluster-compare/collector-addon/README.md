@@ -64,7 +64,8 @@ status:
       version: "4.16.12"
       status: Available
   installedOperators:
-    - namespace: openshift-operators
+    - namespaces:
+        - openshift-operators
       name: advanced-cluster-management.v2.12.0
       version: "2.12.0"
       phase: Succeeded

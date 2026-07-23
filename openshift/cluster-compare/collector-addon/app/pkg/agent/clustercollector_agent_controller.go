@@ -10,11 +10,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ocmv1alpha1 "open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/api/v1alpha1"
 	"open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/pkg/collector"
 	"open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/pkg/constants"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const spokeCollectorName = "clustercollector"
@@ -30,8 +32,17 @@ type ClusterCollectorController struct {
 }
 
 func (c *ClusterCollectorController) SetupWithManager(mgr ctrl.Manager) error {
+	// Only reconcile the spoke collector CR in the addon namespace. Watching every
+	// ClusterCollector (e.g. copies under managed-cluster namespaces) causes
+	// overlapping status updates and resourceVersion conflicts.
+	nsPredicate := predicate.NewPredicateFuncs(func(obj client.Object) bool {
+		return obj.GetNamespace() == constants.AgentInstallationNamespace &&
+			obj.GetName() == spokeCollectorName
+	})
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ocmv1alpha1.ClusterCollector{}).
+		WithEventFilter(nsPredicate).
 		Complete(c)
 }
 
@@ -69,23 +80,17 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 	c.log.Info("reconciling ClusterCollector", "namespacedName", req.String())
 	defer c.log.Info("done reconcile", "namespacedName", req.String())
 
-	clusterCollector := ocmv1alpha1.ClusterCollector{}
-	err := c.spokeClient.Get(ctx, req.NamespacedName, &clusterCollector)
-	switch {
-	case errors.IsNotFound(err):
+	if req.Namespace != constants.AgentInstallationNamespace || req.Name != spokeCollectorName {
+		c.log.Info("ignoring ClusterCollector outside addon namespace", "namespacedName", req.String())
 		return ctrl.Result{}, nil
-	case err != nil:
-		c.log.Error(err, "unable to get ClusterCollector")
-		return ctrl.Result{}, err
 	}
 
 	collectedStatus, err := c.collector.Collect(ctx)
 	if err != nil {
 		c.log.Error(err, "failed to collect cluster snapshot")
-		return ctrl.Result{RequeueAfter: c.resyncAfter}, err
+		return ctrl.Result{}, err
 	}
 
-	clusterCollector.Status = mergeStatus(clusterCollector.Status, collectedStatus)
 	c.log.Info("collected cluster snapshot",
 		"clusterName", collectedStatus.ClusterName,
 		"date", collectedStatus.Date,
@@ -94,57 +99,79 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 		"installedOperators", len(collectedStatus.InstalledOperators),
 	)
 	if c.verbose {
-		c.reportSnapshot("collected snapshot (pre-hub-sync)", clusterCollector.Status)
+		c.reportSnapshot("collected snapshot (pre-hub-sync)", collectedStatus)
 	}
 
-	if err = c.spokeClient.Status().Update(ctx, &clusterCollector); err != nil {
+	spoke, err := c.updateSpokeStatus(ctx, req.NamespacedName, collectedStatus)
+	if err != nil {
 		c.log.Error(err, "unable to update spoke ClusterCollector status")
-		return ctrl.Result{RequeueAfter: c.resyncAfter}, err
+		return ctrl.Result{}, err
 	}
 	c.log.Info("updated spoke ClusterCollector status")
 
-	if err = c.syncToHub(ctx, &clusterCollector); err != nil {
+	if err = c.syncToHub(ctx, spoke); err != nil {
 		c.log.Error(err, "unable to sync ClusterCollector to hub")
-		return ctrl.Result{RequeueAfter: c.resyncAfter}, err
+		return ctrl.Result{}, err
 	}
 	c.log.Info("synced ClusterCollector status to hub",
 		"hubNamespace", c.clusterName,
-		"name", clusterCollector.Name,
+		"name", spoke.Name,
 	)
 
 	return ctrl.Result{RequeueAfter: c.resyncAfter}, nil
 }
 
+func (c *ClusterCollectorController) updateSpokeStatus(
+	ctx context.Context,
+	key types.NamespacedName,
+	collectedStatus ocmv1alpha1.ClusterCollectorStatus,
+) (*ocmv1alpha1.ClusterCollector, error) {
+	var latest ocmv1alpha1.ClusterCollector
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		if err := c.spokeClient.Get(ctx, key, &latest); err != nil {
+			return err
+		}
+		latest.Status = mergeStatus(latest.Status, collectedStatus)
+		return c.spokeClient.Status().Update(ctx, &latest)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &latest, nil
+}
+
 func (c *ClusterCollectorController) syncToHub(ctx context.Context, spoke *ocmv1alpha1.ClusterCollector) error {
 	hubKey := types.NamespacedName{Namespace: c.clusterName, Name: spoke.Name}
-	hubClusterCollector := ocmv1alpha1.ClusterCollector{}
-	err := c.hubClient.Get(ctx, hubKey, &hubClusterCollector)
-	switch {
-	case errors.IsNotFound(err):
-		// Create the object first (status is ignored on create), then update status.
-		toCreate := &ocmv1alpha1.ClusterCollector{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      spoke.Name,
-				Namespace: c.clusterName,
-			},
-		}
-		if err = c.hubClient.Create(ctx, toCreate); err != nil {
-			return fmt.Errorf("create hub ClusterCollector: %w", err)
-		}
-		c.log.Info("created hub ClusterCollector", "namespace", hubKey.Namespace, "name", hubKey.Name)
-		hubClusterCollector = *toCreate
-	case err != nil:
-		return fmt.Errorf("get hub ClusterCollector: %w", err)
-	}
 
-	hubClusterCollector.Status = spoke.Status
-	if c.verbose {
-		c.reportSnapshot("hub sync payload", hubClusterCollector.Status)
-	}
-	if err = c.hubClient.Status().Update(ctx, &hubClusterCollector); err != nil {
-		return fmt.Errorf("update hub ClusterCollector status: %w", err)
-	}
-	return nil
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		hubClusterCollector := ocmv1alpha1.ClusterCollector{}
+		err := c.hubClient.Get(ctx, hubKey, &hubClusterCollector)
+		switch {
+		case errors.IsNotFound(err):
+			toCreate := &ocmv1alpha1.ClusterCollector{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      spoke.Name,
+					Namespace: c.clusterName,
+				},
+			}
+			if err = c.hubClient.Create(ctx, toCreate); err != nil {
+				return fmt.Errorf("create hub ClusterCollector: %w", err)
+			}
+			c.log.Info("created hub ClusterCollector", "namespace", hubKey.Namespace, "name", hubKey.Name)
+			hubClusterCollector = *toCreate
+		case err != nil:
+			return fmt.Errorf("get hub ClusterCollector: %w", err)
+		}
+
+		hubClusterCollector.Status = spoke.Status
+		if c.verbose {
+			c.reportSnapshot("hub sync payload", hubClusterCollector.Status)
+		}
+		if err = c.hubClient.Status().Update(ctx, &hubClusterCollector); err != nil {
+			return fmt.Errorf("update hub ClusterCollector status: %w", err)
+		}
+		return nil
+	})
 }
 
 func mergeStatus(existing, collected ocmv1alpha1.ClusterCollectorStatus) ocmv1alpha1.ClusterCollectorStatus {
@@ -163,7 +190,6 @@ func (c *ClusterCollectorController) reportSnapshot(label string, status ocmv1al
 		c.log.Error(err, "failed to marshal snapshot for verbose reporting", "label", label)
 		return
 	}
-	// Use the controller logger so output appears with the same sink as other agent logs.
 	c.log.Info(label, "json", string(payload))
 }
 

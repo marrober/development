@@ -48,7 +48,7 @@ func New(configClient configclient.Interface, dynamicClient dynamic.Interface, c
 //	  "date": "...",
 //	  "clusterVersion": { "version", "status", "message" },
 //	  "clusterOperators": [ { "name", "version", "available", "progressing", "degraded", "status", "message" } ],
-//	  "installedOperators": [ { "namespace", "name", "version", "phase", "status", "message" } ]
+//	  "installedOperators": [ { "namespaces", "name", "version", "phase", "status", "message" } ]
 //	}
 func (c *Collector) Collect(ctx context.Context) (ocmv1alpha1.ClusterCollectorStatus, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -188,16 +188,32 @@ func (c *Collector) listInstalledOperators(ctx context.Context) ([]ocmv1alpha1.I
 		return nil, err
 	}
 
-	snapshots := make([]ocmv1alpha1.InstalledOperatorSnapshot, 0, len(list.Items))
-	for _, item := range list.Items {
-		snapshots = append(snapshots, installedOperatorFromCSV(&item))
+	byName := map[string]*ocmv1alpha1.InstalledOperatorSnapshot{}
+	for i := range list.Items {
+		entry := installedOperatorFromCSV(&list.Items[i])
+		existing, ok := byName[entry.Name]
+		if !ok {
+			cp := entry
+			byName[entry.Name] = &cp
+			continue
+		}
+		existing.Namespaces = mergeUniqueSorted(existing.Namespaces, entry.Namespaces)
+		// Prefer the least-healthy phase/status when the same operator appears in multiple namespaces.
+		if operatorPhaseRank(entry.Phase) > operatorPhaseRank(existing.Phase) {
+			existing.Version = entry.Version
+			existing.Phase = entry.Phase
+			existing.Status = entry.Status
+			existing.Message = entry.Message
+		}
+	}
+
+	snapshots := make([]ocmv1alpha1.InstalledOperatorSnapshot, 0, len(byName))
+	for _, snapshot := range byName {
+		snapshots = append(snapshots, *snapshot)
 	}
 
 	sort.Slice(snapshots, func(i, j int) bool {
-		if snapshots[i].Namespace == snapshots[j].Namespace {
-			return snapshots[i].Name < snapshots[j].Name
-		}
-		return snapshots[i].Namespace < snapshots[j].Namespace
+		return snapshots[i].Name < snapshots[j].Name
 	})
 
 	return snapshots, nil
@@ -216,11 +232,44 @@ func installedOperatorFromCSV(csv *unstructured.Unstructured) ocmv1alpha1.Instal
 	}
 
 	return ocmv1alpha1.InstalledOperatorSnapshot{
-		Namespace: csv.GetNamespace(),
-		Name:      csv.GetName(),
-		Version:   version,
-		Phase:     phase,
-		Status:    status,
-		Message:   message,
+		Namespaces: []string{csv.GetNamespace()},
+		Name:       csv.GetName(),
+		Version:    version,
+		Phase:      phase,
+		Status:     status,
+		Message:    message,
+	}
+}
+
+func mergeUniqueSorted(existing, incoming []string) []string {
+	seen := map[string]struct{}{}
+	merged := make([]string, 0, len(existing)+len(incoming))
+	for _, values := range [][]string{existing, incoming} {
+		for _, value := range values {
+			if value == "" {
+				continue
+			}
+			if _, ok := seen[value]; ok {
+				continue
+			}
+			seen[value] = struct{}{}
+			merged = append(merged, value)
+		}
+	}
+	sort.Strings(merged)
+	return merged
+}
+
+// operatorPhaseRank ranks OLM CSV phases so higher means less healthy.
+func operatorPhaseRank(phase string) int {
+	switch phase {
+	case "Succeeded":
+		return 0
+	case "Installing", "Pending", "Replacing":
+		return 1
+	case "Failed":
+		return 2
+	default:
+		return 1
 	}
 }

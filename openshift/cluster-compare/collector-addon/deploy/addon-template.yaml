@@ -84,8 +84,10 @@ spec:
                             items:
                               type: object
                               properties:
-                                namespace:
-                                  type: string
+                                namespaces:
+                                  type: array
+                                  items:
+                                    type: string
                                 name:
                                   type: string
                                 version:

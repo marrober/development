@@ -46,7 +46,7 @@
   ],
   "installedOperators": [
     {
-      "namespace": "openshift-operators",
+      "namespaces": ["openshift-operators"],
       "name": "advanced-cluster-management.v2.12.0",
       "version": "2.12.0",
       "phase": "Succeeded",
@@ -54,7 +54,7 @@
       "message": "all requirements found, attempting install"
     },
     {
-      "namespace": "openshift-operators",
+      "namespaces": ["openshift-operators"],
       "name": "cert-manager-operator.v1.14.0",
       "version": "1.14.0",
       "phase": "Succeeded",
@@ -62,7 +62,7 @@
       "message": "install strategy completed with no errors"
     },
     {
-      "namespace": "openshift-logging",
+      "namespaces": ["openshift-logging", "openshift-operators"],
       "name": "cluster-logging.v5.9.0",
       "version": "5.9.0",
       "phase": "Failed",

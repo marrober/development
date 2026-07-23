@@ -28,7 +28,7 @@ Snapshots use this flat JSON shape (from ClusterCollector `status` or posted dir
   ],
   "installedOperators": [
     {
-      "namespace": "openshift-operators",
+      "namespaces": ["openshift-operators"],
       "name": "advanced-cluster-management.v2.12.0",
       "version": "2.12.0",
       "phase": "Succeeded",

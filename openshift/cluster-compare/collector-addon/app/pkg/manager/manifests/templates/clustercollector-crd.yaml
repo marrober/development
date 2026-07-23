@@ -75,8 +75,10 @@ spec:
               installedOperators:
                 items:
                   properties:
-                    namespace:
-                      type: string
+                    namespaces:
+                      items:
+                        type: string
+                      type: array
                     name:
                       type: string
                     version:
