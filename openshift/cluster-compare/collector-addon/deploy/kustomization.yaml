@@ -11,17 +11,17 @@ resources:
 
 images:
 - name: quay.io/marrober/cluster-compare-collector
-  newTag: 88f6q
+  newTag: vp2rq
 
 commonAnnotations:
   addon.open-cluster-management.io/image-version: quay.io/marrober/cluster-compare-collector:88f6q
 
 patches:
-  - target:
-      kind: AddOnTemplate
-      name: clustercollector
-    patch: |
-      - op: add
-        path: /spec/agentSpec/workload/manifests/4/metadata/annotations
-        value:
-          cluster-collector.addon/image-image: quay.io/marrober/cluster-compare-collector:fred
+- patch: |
+    - op: add
+      path: /spec/agentSpec/workload/manifests/4/metadata/annotations
+      value:
+        cluster-collector.addon/image-image: quay.io/marrober/cluster-compare-collector:vp2rq
+  target:
+    kind: AddOnTemplate
+    name: clustercollector
