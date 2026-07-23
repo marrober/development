@@ -153,5 +153,25 @@ func (o *AgentOptions) runControllerManager(ctx context.Context) error {
 		return fmt.Errorf("unable to create cluster compare collector agent controller: %s, err: %w", "cluster-compare-collector-agent", err)
 	}
 
+	// Create the spoke CR once the cache is ready so the controller has something to reconcile.
+	if err := mgr.Add(managerRunnable(func(ctx context.Context) error {
+		if err := clusterCollectorController.EnsureSpokeCollector(ctx); err != nil {
+			log.Error(err, "failed to ensure spoke ClusterCollector exists")
+			return err
+		}
+		if o.Verbose {
+			log.Info("verbose reporting enabled; full snapshot JSON will be logged each sync")
+		}
+		return nil
+	})); err != nil {
+		return fmt.Errorf("unable to register spoke ClusterCollector ensurer: %w", err)
+	}
+
 	return mgr.Start(ctrl.SetupSignalHandler())
+}
+
+type managerRunnable func(context.Context) error
+
+func (r managerRunnable) Start(ctx context.Context) error {
+	return r(ctx)
 }
