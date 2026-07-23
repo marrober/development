@@ -25,16 +25,16 @@ subjects:
 - kind: ServiceAccount
   name: openshift-gitops-argocd-application-controller
   namespace: openshift-gitops
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: fix-ocm-addon-controller-cache
-subjects:
-- kind: ServiceAccount
-  name: klusterlet-addon-controller-v2
-  namespace: open-cluster-management
-roleRef:
-  kind: ClusterRole
-  name: open-cluster-management:cluster-manager-admin
-  apiGroup: rbac.authorization.k8s.io
+#---
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: ClusterRoleBinding
+#metadata:
+#  name: fix-ocm-addon-controller-cache
+#subjects:
+#- kind: ServiceAccount
+#  name: klusterlet-addon-controller-v2
+#  namespace: open-cluster-management
+#roleRef:
+#  kind: ClusterRole
+#  name: open-cluster-management:cluster-manager-admin
+#  apiGroup: rbac.authorization.k8s.io
