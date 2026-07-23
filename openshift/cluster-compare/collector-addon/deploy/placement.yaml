@@ -1,19 +1,19 @@
 apiVersion: cluster.open-cluster-management.io/v1beta2
 kind: ManagedClusterSetBinding
 metadata:
-  name: global
+  name: dev-clusters
   namespace: open-cluster-management-addon
 spec:
-  clusterSet: global
+  clusterSet: dev-clusters
 ---
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
-  name: global
+  name: dev-clusters
   namespace: open-cluster-management-addon
 spec:
   clusterSets:
-    - global
+    - dev-clusters
   tolerations:
   - key: cluster.open-cluster-management.io/unreachable
     operator: Equal

@@ -13,5 +13,5 @@ spec:
   installStrategy:
     type: Placements
     placements:
-      - name: global
+      - name: dev-clusters
         namespace: open-cluster-management-addon
