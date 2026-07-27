@@ -5,6 +5,7 @@ resources:
 - role-binding/argocd-admin-role.yaml
 - pipelines/pipeline.yaml
 - tasks/build.yaml
+- tasks/build-node-js.yaml
 - tasks/git-clone.yaml
 - tasks/pushImageToOCPImageStream.yaml
 - tasks/update-and-commit-dev-env.yaml
@@ -14,3 +15,5 @@ resources:
 - triggers/triggerBinding.yaml
 - triggers/triggerTemplate.yaml
 - image-streams/terminal.yaml
+- image-streams/buildah-image.yaml
+- image-streams/ose.yaml
