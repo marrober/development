@@ -16,6 +16,8 @@ spec:
       type: string
     - name: imageTag
       type: string
+    - name: image-short-name
+      type: string
   steps:
     - name: push-to-quay
       script: >-
@@ -31,7 +33,7 @@ spec:
 
         --authfile /etc/secret-volume/.dockerconfigjson \
 
-        localhost/cluster-collector:latest \
+        localhost/$(params.image-short-name):latest \
 
         docker://$(params.quay-instance-url)/$(params.quay-account)/$(params.quay-repository):$(params.imageTag)  
       image: registry.redhat.io/rhel8/buildah    

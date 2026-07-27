@@ -140,6 +140,8 @@ spec:
         value: "$(params.TLSVERIFY)"
       - name: imageTag
         value: $(tasks.push-image-to-imagestream.results.new-tag)
+      - name: image-short-name
+        value: $(params.image-short-name)
       taskRef:
         kind: Task
         name: push-image-to-quay

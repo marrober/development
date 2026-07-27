@@ -1,8 +1,19 @@
 const syncBtn = document.getElementById("syncBtn");
+const clustersCompareBtn = document.getElementById("clustersCompareBtn");
 const statusBar = document.getElementById("statusBar");
+const pageTitle = document.getElementById("pageTitle");
+const pageSubtitle = document.getElementById("pageSubtitle");
 const tileView = document.getElementById("tileView");
 const tileGrid = document.getElementById("tileGrid");
 const emptyState = document.getElementById("emptyState");
+const crossCompareView = document.getElementById("crossCompareView");
+const crossCompareBackBtn = document.getElementById("crossCompareBackBtn");
+const crossCompareMeta = document.getElementById("crossCompareMeta");
+const crossCompareEmpty = document.getElementById("crossCompareEmpty");
+const crossTableWrap = document.getElementById("crossTableWrap");
+const crossTableHeadRow = document.getElementById("crossTableHeadRow");
+const crossTableBody = document.getElementById("crossTableBody");
+const crossDiffOnlyCheckbox = document.getElementById("crossDiffOnlyCheckbox");
 const detailView = document.getElementById("detailView");
 const backBtn = document.getElementById("backBtn");
 const detailTitle = document.getElementById("detailTitle");
@@ -34,6 +45,7 @@ const nsDiffOnlyAWhen = document.getElementById("nsDiffOnlyAWhen");
 const nsDiffOnlyBWhen = document.getElementById("nsDiffOnlyBWhen");
 
 const MAX_COMPARE_COLUMNS = 3;
+const MAX_CLUSTER_COMPARE = 3;
 
 let clustersCache = [];
 let selectedCluster = null;
@@ -42,6 +54,10 @@ let comparisonData = null;
 let selectedColumnIds = new Set();
 let compareMode = false;
 let compareColumnIds = [];
+let selectedClustersForCompare = new Set();
+let crossCompareDataByCluster = {};
+let crossCompareSelectedDates = {};
+let inCrossCompare = false;
 
 function displayRowLabel(row) {
   if (row.rowKey?.startsWith("installed-operator:")) {
@@ -250,27 +266,56 @@ function updateCompareControls() {
   compareColumnsBtn.hidden = compareMode;
 }
 
+function setPageHeading(title, subtitle) {
+  pageTitle.textContent = title;
+  pageSubtitle.textContent = subtitle;
+  document.title = title;
+}
+
+function updateClustersCompareButton() {
+  const count = selectedClustersForCompare.size;
+  clustersCompareBtn.disabled = count < 2 || count > MAX_CLUSTER_COMPARE;
+  clustersCompareBtn.textContent = count > 0 ? `Compare (${count})` : "Compare";
+  clustersCompareBtn.hidden = inCrossCompare || Boolean(selectedCluster);
+}
+
 function showTiles() {
   selectedCluster = null;
+  inCrossCompare = false;
   comparisonData = null;
   selectedColumnIds = new Set();
   compareMode = false;
   compareColumnIds = [];
   diffOnlyCheckbox.checked = false;
+  crossDiffOnlyCheckbox.checked = false;
+  crossCompareDataByCluster = {};
+  crossCompareSelectedDates = {};
   tileView.hidden = false;
   detailView.hidden = true;
+  crossCompareView.hidden = true;
+  setPageHeading(
+    "Managed Clusters",
+    "Information on the configuration of managed clusters"
+  );
   updateCompareControls();
+  updateClustersCompareButton();
   renderTiles(clustersCache);
 }
 
 function showDetail(clusterName) {
   selectedCluster = clusterName;
+  inCrossCompare = false;
   selectedColumnIds = new Set();
   compareMode = false;
   compareColumnIds = [];
   diffOnlyCheckbox.checked = false;
   tileView.hidden = true;
   detailView.hidden = false;
+  crossCompareView.hidden = true;
+  setPageHeading(
+    "Cluster details",
+    "Detailed information on the cluster configuration over time"
+  );
   detailTitle.textContent = clusterName;
   const meta = clustersCache.find((c) => c.clusterName === clusterName);
   detailMeta.textContent = meta
@@ -278,7 +323,23 @@ function showDetail(clusterName) {
     : "";
   updateClusterNavButtons();
   updateCompareControls();
+  updateClustersCompareButton();
   loadComparison(clusterName).catch((err) => setStatus(err.message, "error"));
+}
+
+function onTileClusterSelect(clusterName, checked, checkbox) {
+  if (checked) {
+    if (selectedClustersForCompare.size >= MAX_CLUSTER_COMPARE) {
+      checkbox.checked = false;
+      setStatus(`Select at most ${MAX_CLUSTER_COMPARE} clusters to compare.`, "error");
+      return;
+    }
+    selectedClustersForCompare.add(clusterName);
+    setStatus("");
+  } else {
+    selectedClustersForCompare.delete(clusterName);
+  }
+  updateClustersCompareButton();
 }
 
 function renderTiles(clusters) {
@@ -290,10 +351,28 @@ function renderTiles(clusters) {
   emptyState.hidden = true;
 
   for (const cluster of clusters) {
-    const tile = document.createElement("button");
-    tile.type = "button";
+    const tile = document.createElement("div");
     tile.className = "cluster-tile";
-    tile.setAttribute("aria-label", `Open ${cluster.clusterName}`);
+
+    const top = document.createElement("div");
+    top.className = "tile-top";
+
+    const selectLabel = document.createElement("label");
+    selectLabel.className = "tile-select";
+    selectLabel.title = "Select for compare";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = selectedClustersForCompare.has(cluster.clusterName);
+    checkbox.addEventListener("click", (event) => event.stopPropagation());
+    checkbox.addEventListener("change", (event) => {
+      onTileClusterSelect(cluster.clusterName, event.target.checked, event.target);
+    });
+    selectLabel.appendChild(checkbox);
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "tile-open";
+    openBtn.setAttribute("aria-label", `Open ${cluster.clusterName}`);
 
     const name = document.createElement("div");
     name.className = "tile-name";
@@ -314,9 +393,275 @@ function renderTiles(clusters) {
     pill.textContent = cluster.available === "True" ? "Available" : cluster.available || "Unknown";
 
     footer.append(count, pill);
-    tile.append(name, sync, footer);
-    tile.addEventListener("click", () => showDetail(cluster.clusterName));
+    openBtn.append(name, sync, footer);
+    openBtn.addEventListener("click", () => showDetail(cluster.clusterName));
+    top.append(selectLabel, openBtn);
+    tile.appendChild(top);
     tileGrid.appendChild(tile);
+  }
+
+  updateClustersCompareButton();
+}
+
+function sectionTitleForSortOrder(sortOrder) {
+  if (sortOrder >= 400) return "Network";
+  if (sortOrder >= 300) return "Nodes";
+  if (sortOrder >= 200) return "Installed Operators (OLM)";
+  return "Cluster Operators";
+}
+
+function buildCrossCompareRows() {
+  const clusterNames = [...selectedClustersForCompare].sort((a, b) => a.localeCompare(b));
+  const rowMap = new Map();
+
+  for (const clusterName of clusterNames) {
+    const data = crossCompareDataByCluster[clusterName];
+    if (!data) continue;
+    const dateId = crossCompareSelectedDates[clusterName];
+    for (const row of data.rows || []) {
+      if (!rowMap.has(row.rowKey)) {
+        rowMap.set(row.rowKey, {
+          rowKey: row.rowKey,
+          label: row.label,
+          sortOrder: row.sortOrder,
+          cells: {},
+        });
+      }
+      const merged = rowMap.get(row.rowKey);
+      merged.cells[clusterName] = row.cells?.[dateId] || null;
+      if (row.sortOrder < merged.sortOrder) merged.sortOrder = row.sortOrder;
+      if (row.label && !merged.label) merged.label = row.label;
+    }
+  }
+
+  return [...rowMap.values()].sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return displayRowLabel(a).localeCompare(displayRowLabel(b));
+  });
+}
+
+function crossCellPresent(cell) {
+  if (!cell) return false;
+  return Boolean(cell.version || cell.status || cell.details);
+}
+
+function crossCellDiffers(leftCell, rightCell) {
+  const leftPresent = crossCellPresent(leftCell);
+  const rightPresent = crossCellPresent(rightCell);
+  if (leftPresent !== rightPresent) return true;
+  if (!leftPresent && !rightPresent) return false;
+  return cellFingerprint(leftCell) !== cellFingerprint(rightCell);
+}
+
+function renderCrossCompareTable() {
+  const clusterNames = [...selectedClustersForCompare].sort((a, b) => a.localeCompare(b));
+  if (!clusterNames.length) {
+    crossCompareEmpty.hidden = false;
+    crossTableWrap.hidden = true;
+    return;
+  }
+
+  const rows = buildCrossCompareRows();
+  const showDiffOnly = crossDiffOnlyCheckbox.checked;
+  const baseline = clusterNames[0];
+
+  crossTableHeadRow.innerHTML = '<th class="sticky-col">Component</th>';
+  for (const clusterName of clusterNames) {
+    const th = document.createElement("th");
+    const head = document.createElement("div");
+    head.className = "column-head cross-column-head";
+
+    const title = document.createElement("div");
+    title.className = "column-label";
+    title.textContent = clusterName;
+
+    const select = document.createElement("select");
+    select.className = "cross-time-select";
+    select.setAttribute("aria-label", `Snapshot time for ${clusterName}`);
+    const data = crossCompareDataByCluster[clusterName] || { columns: [] };
+    const columns = data.columns || [];
+    if (!columns.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No snapshots";
+      select.appendChild(option);
+      select.disabled = true;
+    } else {
+      for (const column of columns) {
+        const option = document.createElement("option");
+        option.value = column.id;
+        option.textContent = column.label;
+        select.appendChild(option);
+      }
+      if (!crossCompareSelectedDates[clusterName] || !columns.some((c) => c.id === crossCompareSelectedDates[clusterName])) {
+        crossCompareSelectedDates[clusterName] = columns[columns.length - 1].id;
+      }
+      select.value = crossCompareSelectedDates[clusterName];
+      select.addEventListener("change", () => {
+        crossCompareSelectedDates[clusterName] = select.value;
+        renderCrossCompareTable();
+      });
+    }
+
+    head.append(title, select);
+    th.appendChild(head);
+    crossTableHeadRow.appendChild(th);
+  }
+
+  crossTableBody.innerHTML = "";
+  let lastSortOrder = null;
+  let rendered = 0;
+
+  for (const row of rows) {
+    if (showDiffOnly) {
+      const baselineCell = row.cells[baseline];
+      const differs = clusterNames.slice(1).some((name) => crossCellDiffers(baselineCell, row.cells[name]));
+      if (!differs) continue;
+    }
+
+    if (lastSortOrder !== null && Math.floor(row.sortOrder / 100) !== Math.floor(lastSortOrder / 100)) {
+      const divider = document.createElement("tr");
+      divider.className = "section-divider";
+      const td = document.createElement("td");
+      td.colSpan = clusterNames.length + 1;
+      td.textContent = sectionTitleForSortOrder(row.sortOrder);
+      divider.appendChild(td);
+      crossTableBody.appendChild(divider);
+    }
+    lastSortOrder = row.sortOrder;
+    rendered += 1;
+
+    const tr = document.createElement("tr");
+    if (row.sortOrder === 0) tr.className = "cluster-version-row";
+
+    const labelTd = document.createElement("td");
+    labelTd.className = "label-cell";
+    labelTd.textContent = displayRowLabel(row);
+    tr.appendChild(labelTd);
+
+    const baselineCell = row.cells[baseline];
+
+    clusterNames.forEach((clusterName, index) => {
+      const td = document.createElement("td");
+      const cell = row.cells[clusterName];
+      const isInstalledOperator = row.sortOrder >= 200 && row.sortOrder < 300;
+
+      if (!crossCellPresent(cell)) {
+        const missing = document.createElement("span");
+        missing.className = "not-present";
+        missing.textContent = "not present";
+        td.appendChild(missing);
+        if (index > 0 && crossCellPresent(baselineCell)) {
+          td.classList.add("cross-diff");
+        }
+      } else {
+        const title = cellTitle(cell);
+        if (title) td.title = title;
+
+        const versionSpan = document.createElement("span");
+        versionSpan.className = "version";
+        versionSpan.textContent = cell.version || "—";
+        td.appendChild(versionSpan);
+
+        if (cell.status) {
+          const pill = document.createElement("span");
+          pill.className = `status-pill ${statusClass(cell.status)}`;
+          pill.textContent = cell.status;
+          td.appendChild(pill);
+        }
+
+        if (isInstalledOperator) {
+          const namespaces = Array.isArray(cell.details?.namespaces) ? cell.details.namespaces : [];
+          const nsBtn = document.createElement("button");
+          nsBtn.type = "button";
+          nsBtn.className = "ns-btn secondary";
+          nsBtn.textContent = namespaces.length
+            ? `Namespaces (${namespaces.length})`
+            : "Namespaces";
+          nsBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const data = crossCompareDataByCluster[clusterName];
+            const dateId = crossCompareSelectedDates[clusterName];
+            const sourceRow = (data?.rows || []).find((r) => r.rowKey === row.rowKey);
+            if (sourceRow && data?.columns) {
+              openNamespacesDialog(sourceRow, data.columns, dateId);
+            }
+          });
+          td.appendChild(nsBtn);
+        }
+
+        if (index > 0 && crossCellDiffers(baselineCell, cell)) {
+          td.classList.add("cross-diff");
+        }
+      }
+
+      tr.appendChild(td);
+    });
+
+    crossTableBody.appendChild(tr);
+  }
+
+  if (!rows.length) {
+    crossCompareEmpty.hidden = false;
+    crossCompareEmpty.innerHTML = "<p>No snapshot data available for the selected clusters.</p>";
+    crossTableWrap.hidden = true;
+  } else if (showDiffOnly && rendered === 0) {
+    crossCompareEmpty.hidden = true;
+    crossTableWrap.hidden = false;
+    const empty = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = clusterNames.length + 1;
+    td.className = "cell-empty";
+    td.textContent = "No differences across the selected clusters.";
+    empty.appendChild(td);
+    crossTableBody.appendChild(empty);
+  } else {
+    crossCompareEmpty.hidden = true;
+    crossTableWrap.hidden = false;
+  }
+
+  crossCompareMeta.textContent = `Comparing ${clusterNames.join(", ")}`;
+}
+
+async function showCrossCompare() {
+  const clusterNames = [...selectedClustersForCompare].sort((a, b) => a.localeCompare(b));
+  if (clusterNames.length < 2) {
+    setStatus("Select at least two clusters to compare.", "error");
+    return;
+  }
+
+  setStatus("Loading cluster comparisons…");
+  try {
+    const results = await Promise.all(
+      clusterNames.map(async (name) => {
+        const data = await fetchJson(`/api/compare/${encodeURIComponent(name)}`);
+        return { name, data };
+      })
+    );
+
+    crossCompareDataByCluster = {};
+    crossCompareSelectedDates = {};
+    for (const { name, data } of results) {
+      crossCompareDataByCluster[name] = data;
+      const columns = data.columns || [];
+      crossCompareSelectedDates[name] = columns.length ? columns[columns.length - 1].id : "";
+    }
+
+    inCrossCompare = true;
+    selectedCluster = null;
+    tileView.hidden = true;
+    detailView.hidden = true;
+    crossCompareView.hidden = false;
+    setPageHeading(
+      "Cluster compare",
+      "Compare configuration across managed clusters"
+    );
+    updateClustersCompareButton();
+    crossDiffOnlyCheckbox.checked = false;
+    renderCrossCompareTable();
+    setStatus(`Comparing ${clusterNames.length} clusters.`, "success");
+  } catch (err) {
+    setStatus(err.message, "error");
   }
 }
 
@@ -524,7 +869,14 @@ function renderTable() {
 async function loadClusters() {
   const { clusters } = await fetchJson("/api/clusters");
   clustersCache = clusters;
-  if (selectedCluster) {
+  selectedClustersForCompare = new Set(
+    [...selectedClustersForCompare].filter((name) =>
+      clusters.some((cluster) => cluster.clusterName === name)
+    )
+  );
+  if (inCrossCompare) {
+    await showCrossCompare();
+  } else if (selectedCluster) {
     showDetail(selectedCluster);
   } else {
     renderTiles(clusters);
@@ -592,6 +944,20 @@ backBtn.addEventListener("click", () => {
   showTiles();
 });
 
+crossCompareBackBtn.addEventListener("click", () => {
+  showTiles();
+});
+
+clustersCompareBtn.addEventListener("click", () => {
+  showCrossCompare().catch((err) => setStatus(err.message, "error"));
+});
+
+crossDiffOnlyCheckbox.addEventListener("change", () => {
+  if (inCrossCompare) {
+    renderCrossCompareTable();
+  }
+});
+
 syncBtn.addEventListener("click", async () => {
   syncBtn.disabled = true;
   setStatus("Syncing ManagedClusters and ClusterCollector resources…");
@@ -612,4 +978,5 @@ syncBtn.addEventListener("click", async () => {
 });
 
 updateCompareControls();
+updateClustersCompareButton();
 loadClusters().catch((err) => setStatus(err.message, "error"));

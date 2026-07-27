@@ -43,7 +43,7 @@ spec:
 
         --tls-verify=$(params.TLSVERIFY) --root /files/buildah-containers \
 
-        localhost/cluster-collector:latest \
+        localhost/$(params.image-short-name):latest \
 
         docker://$(params.imagestream-url):$tag
 
