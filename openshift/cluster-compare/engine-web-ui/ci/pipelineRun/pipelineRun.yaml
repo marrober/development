@@ -1,0 +1,67 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: compare-engine-pr-
+spec:
+  pipelineRef:
+    name: compare-engine
+  params:
+    - name: GIT_REPO
+      value: https://github.com/marrober/development.git
+    - name: GIT_REVISION
+      value: "main"
+    - name: GIT_REPO_NAME
+      value: development
+    - name: app-dir
+      value: development/openshift/cluster-compare/engine-web-ui/app
+    - name: node_js_image_repo
+      value: registry.access.redhat.com/hi
+    - name: node_js_short_name
+      value: nodejs
+    - name: node_js_image_name
+      value: nodejs
+    - name: node_js_image_tag
+      value: latest
+    - name: image-short-name
+      value: cluster-collector
+    - name: imagestream-url
+      value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/cluster-compare-engine
+      ## Update Kustomize file for the deployment of the application to development      
+    - name: repo_type
+      value: github.com
+    - name: cd-git-url
+      value: marrober/development
+    - name: cd-git-repo-name
+      value: development
+    - name: cd-git-repo-path-to-content-development
+      value: openshift/cluster-compare/engine-web-ui/deploy
+    - name: cd-git-commit-comment-dev
+      value: "Update from ci process - dev"
+    - name: cd-git-user-name
+      value: "Mark Roberts"
+    - name: cd-git-user-email
+      value: "mroberts@redhat.com"
+    - name: quay-instance-url
+      value: "quay.io"
+    - name: quay-account
+      value: "marrober"
+    - name: quay-repository
+      value: "cluster-compare-engine" 
+  workspaces:
+  - name: files
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+  - name: resources
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+        
+          requests:
+            storage: 5Gi

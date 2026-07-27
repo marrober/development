@@ -1,0 +1,22 @@
+# Non-secret PostgreSQL connection settings for the engine web UI.
+# Mount or inject these keys as environment variables on the application
+# Deployment. The password is provided by the Secret created by the
+# PostgresCluster operator (cluster-compare-pg-pguser-clustercompare).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-compare-db-config
+  namespace: cluster-compare
+  labels:
+    app.kubernetes.io/name: cluster-compare
+    app.kubernetes.io/part-of: cluster-compare
+    app.kubernetes.io/component: database-config
+data:
+  DATABASE_TYPE: postgresql
+  PGHOST: cluster-compare-pg-primary.cluster-compare.svc
+  PGPORT: "5432"
+  PGDATABASE: clustercompare
+  PGUSER: clustercompare
+  # Optional SSL mode for in-cluster traffic (operator default is typically require).
+  PGSSLMODE: require
+  POLL_INTERVAL_MS: "60000"

@@ -98,13 +98,61 @@ spec:
                                   type: string
                                 message:
                                   type: string
+                          nodes:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                roles:
+                                  type: array
+                                  items:
+                                    type: string
+                                ready:
+                                  type: string
+                                gpuResource:
+                                  type: string
+                                cpu:
+                                  type: object
+                                  properties:
+                                    capacity:
+                                      type: string
+                                    allocatable:
+                                      type: string
+                                    allocated:
+                                      type: string
+                                    available:
+                                      type: string
+                                memory:
+                                  type: object
+                                  properties:
+                                    capacity:
+                                      type: string
+                                    allocatable:
+                                      type: string
+                                    allocated:
+                                      type: string
+                                    available:
+                                      type: string
+                                gpu:
+                                  type: object
+                                  properties:
+                                    capacity:
+                                      type: string
+                                    allocatable:
+                                      type: string
+                                    allocated:
+                                      type: string
+                                    available:
+                                      type: string
         - kind: ClusterRole
           apiVersion: rbac.authorization.k8s.io/v1
           metadata:
             name: cluster-collector-agent
           rules:
             - apiGroups: [""]
-              resources: ["pods", "configmaps", "events"]
+              resources: ["pods", "nodes", "configmaps", "events"]
               verbs: ["get", "list", "watch", "create", "update", "patch"]
             - apiGroups: ["coordination.k8s.io"]
               resources: ["leases"]

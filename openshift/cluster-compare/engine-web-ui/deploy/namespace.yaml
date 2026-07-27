@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cluster-compare
+  labels:
+    app.kubernetes.io/name: cluster-compare
+    app.kubernetes.io/part-of: cluster-compare

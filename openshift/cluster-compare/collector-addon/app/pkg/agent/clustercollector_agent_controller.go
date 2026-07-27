@@ -102,6 +102,7 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 		"clusterVersionStatus", collectedStatus.ClusterVersion.Status,
 		"clusterOperators", len(collectedStatus.ClusterOperators),
 		"installedOperators", len(collectedStatus.InstalledOperators),
+		"nodes", len(collectedStatus.Nodes),
 	)
 	if c.verbose {
 		for _, operator := range collectedStatus.ClusterOperators {
@@ -121,6 +122,23 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 				"phase", operator.Phase,
 				"status", operator.Status,
 				"namespaces", operator.Namespaces,
+			)
+		}
+		for _, node := range collectedStatus.Nodes {
+			c.log.Info("node resources",
+				"name", node.Name,
+				"roles", node.Roles,
+				"ready", node.Ready,
+				"cpuCapacity", node.CPU.Capacity,
+				"cpuAllocated", node.CPU.Allocated,
+				"cpuAvailable", node.CPU.Available,
+				"memoryCapacity", node.Memory.Capacity,
+				"memoryAllocated", node.Memory.Allocated,
+				"memoryAvailable", node.Memory.Available,
+				"gpuResource", node.GPUResource,
+				"gpuCapacity", node.GPU.Capacity,
+				"gpuAllocated", node.GPU.Allocated,
+				"gpuAvailable", node.GPU.Available,
 			)
 		}
 	}
@@ -241,6 +259,7 @@ func (c *ClusterCollectorController) reportHubSyncSummary(hubKey types.Namespace
 		"clusterVersionStatus", status.ClusterVersion.Status,
 		"clusterOperators", len(status.ClusterOperators),
 		"installedOperators", len(status.InstalledOperators),
+		"nodes", len(status.Nodes),
 	)
 	for _, operator := range status.ClusterOperators {
 		c.log.Info("hub sync cluster operator",
@@ -261,6 +280,23 @@ func (c *ClusterCollectorController) reportHubSyncSummary(hubKey types.Namespace
 			"status", operator.Status,
 			"namespaces", operator.Namespaces,
 			"message", operator.Message,
+		)
+	}
+	for _, node := range status.Nodes {
+		c.log.Info("hub sync node",
+			"name", node.Name,
+			"roles", node.Roles,
+			"ready", node.Ready,
+			"cpuCapacity", node.CPU.Capacity,
+			"cpuAllocated", node.CPU.Allocated,
+			"cpuAvailable", node.CPU.Available,
+			"memoryCapacity", node.Memory.Capacity,
+			"memoryAllocated", node.Memory.Allocated,
+			"memoryAvailable", node.Memory.Available,
+			"gpuResource", node.GPUResource,
+			"gpuCapacity", node.GPU.Capacity,
+			"gpuAllocated", node.GPU.Allocated,
+			"gpuAvailable", node.GPU.Available,
 		)
 	}
 }

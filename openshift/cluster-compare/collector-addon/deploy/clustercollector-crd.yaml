@@ -83,6 +83,54 @@ spec:
                       type: string
                     version:
                       type: string
+              nodes:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    roles:
+                      type: array
+                      items:
+                        type: string
+                    ready:
+                      type: string
+                    gpuResource:
+                      type: string
+                    cpu:
+                      type: object
+                      properties:
+                        capacity:
+                          type: string
+                        allocatable:
+                          type: string
+                        allocated:
+                          type: string
+                        available:
+                          type: string
+                    memory:
+                      type: object
+                      properties:
+                        capacity:
+                          type: string
+                        allocatable:
+                          type: string
+                        allocated:
+                          type: string
+                        available:
+                          type: string
+                    gpu:
+                      type: object
+                      properties:
+                        capacity:
+                          type: string
+                        allocatable:
+                          type: string
+                        allocated:
+                          type: string
+                        available:
+                          type: string
               lastSync:
                 type: string
               spokeURL:

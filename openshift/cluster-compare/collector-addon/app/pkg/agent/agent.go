@@ -145,7 +145,7 @@ func (o *AgentOptions) runControllerManager(ctx context.Context) error {
 	clusterCollectorController := &ClusterCollectorController{
 		spokeClient: spokeKubeClient,
 		hubClient:   hubClient,
-		collector:   collector.New(configClient, dynamicClient, o.SpokeClusterName),
+		collector:   collector.New(configClient, dynamicClient, leaseClient, o.SpokeClusterName),
 		log:         o.Log,
 		clusterName: o.SpokeClusterName,
 		resyncAfter: resyncInterval(o.ResyncInterval),

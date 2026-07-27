@@ -53,9 +53,29 @@ type InstalledOperatorSnapshot struct {
 	Message    string   `json:"message,omitempty"`
 }
 
+// NodeResourceSnapshot holds capacity, allocatable, allocated (pod requests),
+// and remaining available quantities for a single resource at collection time.
+type NodeResourceSnapshot struct {
+	Capacity    string `json:"capacity,omitempty"`
+	Allocatable string `json:"allocatable,omitempty"`
+	Allocated   string `json:"allocated,omitempty"`
+	Available   string `json:"available,omitempty"`
+}
+
+// NodeSnapshot holds per-node identity and CPU, memory, and GPU resource usage.
+type NodeSnapshot struct {
+	Name        string               `json:"name,omitempty"`
+	Roles       []string             `json:"roles,omitempty"`
+	Ready       string               `json:"ready,omitempty"`
+	CPU         NodeResourceSnapshot `json:"cpu,omitempty"`
+	Memory      NodeResourceSnapshot `json:"memory,omitempty"`
+	GPU         NodeResourceSnapshot `json:"gpu,omitempty"`
+	GPUResource string               `json:"gpuResource,omitempty"`
+}
+
 // ClusterCollectorStatus defines the observed state of ClusterCollector.
 // Fields match the cluster snapshot JSON shape used by the engine web UI:
-// clusterName, date, clusterVersion, clusterOperators, installedOperators.
+// clusterName, date, clusterVersion, clusterOperators, installedOperators, nodes.
 type ClusterCollectorStatus struct {
 	// ClusterName is the managed cluster name (also used as hub namespace).
 	ClusterName string `json:"clusterName,omitempty"`
@@ -72,6 +92,7 @@ type ClusterCollectorStatus struct {
 	ClusterVersion     ClusterVersionSnapshot      `json:"clusterVersion,omitempty"`
 	ClusterOperators   []ClusterOperatorSnapshot   `json:"clusterOperators,omitempty"`
 	InstalledOperators []InstalledOperatorSnapshot `json:"installedOperators,omitempty"`
+	Nodes              []NodeSnapshot              `json:"nodes,omitempty"`
 }
 
 //+kubebuilder:object:root=true

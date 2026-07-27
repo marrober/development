@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cluster Compare</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <div>
+      <h1>Cluster Compare</h1>
+      <p class="subtitle">Managed cluster snapshots from ClusterCollector</p>
+    </div>
+    <div class="header-actions">
+      <button id="syncBtn" type="button" class="secondary">Refresh sync</button>
+    </div>
+  </header>
+
+  <section id="statusBar" class="status-bar" hidden></section>
+
+  <main>
+    <section id="tileView">
+      <div id="tileGrid" class="tile-grid"></div>
+      <div id="emptyState" class="empty-state" hidden>
+        <p>No managed clusters found yet. Sync from the hub or wait for the next poll.</p>
+      </div>
+    </section>
+
+    <section id="detailView" hidden>
+      <div class="detail-toolbar">
+        <button id="backBtn" type="button" class="secondary">← All clusters</button>
+        <div>
+          <h2 id="detailTitle"></h2>
+          <p id="detailMeta" class="detail-meta"></p>
+        </div>
+      </div>
+      <div id="detailEmpty" class="empty-state" hidden>
+        <p>No snapshots stored for this cluster yet.</p>
+      </div>
+      <div id="tableWrap" class="table-wrap" hidden>
+        <table id="compareTable">
+          <thead>
+            <tr id="tableHeadRow">
+              <th class="sticky-col">Component</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="namespacesDialog" class="namespaces-dialog">
+    <form method="dialog" class="namespaces-dialog-form">
+      <header class="namespaces-dialog-header">
+        <div>
+          <h3 id="namespacesDialogTitle">Namespaces</h3>
+          <p id="namespacesDialogSubtitle" class="namespaces-dialog-subtitle"></p>
+        </div>
+        <button type="submit" class="secondary" value="close" aria-label="Close">Close</button>
+      </header>
+
+      <div class="namespaces-compare-controls">
+        <label class="namespaces-compare-label">
+          Compare with import
+          <select id="namespacesCompareSelect">
+            <option value="">No comparison</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="namespacesSingleView" class="namespaces-single-view">
+        <p id="namespacesDialogCount" class="namespaces-dialog-count"></p>
+        <ul id="namespacesDialogList" class="namespaces-dialog-list"></ul>
+      </div>
+
+      <div id="namespacesCompareView" class="namespaces-compare-view" hidden>
+        <div class="ns-diff-column ns-diff-removed">
+          <h4 id="nsDiffOnlyATitle">Only in this import</h4>
+          <ul id="nsDiffOnlyA"></ul>
+        </div>
+        <div class="ns-diff-column ns-diff-shared">
+          <h4>In both</h4>
+          <ul id="nsDiffBoth"></ul>
+        </div>
+        <div class="ns-diff-column ns-diff-added">
+          <h4 id="nsDiffOnlyBTitle">Only in compared import</h4>
+          <ul id="nsDiffOnlyB"></ul>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>

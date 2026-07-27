@@ -1,0 +1,42 @@
+# Instantiates a PostgreSQL database from the Crunchy Data Postgres Operator
+# (postgres-operator.crunchydata.com) PostgresCluster template/CRD installed
+# on the cluster via OperatorHub. Deliver this with ArgoCD together with the
+# db-configmap.yaml ConfigMap used by the engine web UI.
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: cluster-compare-pg
+  namespace: cluster-compare
+  labels:
+    app.kubernetes.io/name: cluster-compare-pg
+    app.kubernetes.io/part-of: cluster-compare
+    app.kubernetes.io/component: database
+spec:
+  postgresVersion: 16
+  instances:
+    - name: instance1
+      replicas: 1
+      dataVolumeClaimSpec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+  users:
+    - name: clustercompare
+      databases:
+        - clustercompare
+      options: "SUPERUSER"
+  service:
+    type: ClusterIP
+  backups:
+    pgbackrest:
+      repos:
+        - name: repo1
+          volume:
+            volumeClaimSpec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 5Gi

@@ -9,10 +9,13 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	configclient "github.com/openshift/client-go/config/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 
 	ocmv1alpha1 "open-cluster-management.io/addon-contrib/cluster-compare-collector-addon/api/v1alpha1"
 )
@@ -25,22 +28,29 @@ var csvGVR = schema.GroupVersionResource{
 	Resource: "clusterserviceversions",
 }
 
-// Collector gathers OpenShift cluster version and operator snapshots from a spoke cluster.
+// Collector gathers OpenShift cluster version, operator, and node snapshots from a spoke cluster.
 type Collector struct {
 	configClient  configclient.Interface
 	dynamicClient dynamic.Interface
+	kubeClient    kubernetes.Interface
 	clusterName   string
 }
 
-func New(configClient configclient.Interface, dynamicClient dynamic.Interface, clusterName string) *Collector {
+func New(
+	configClient configclient.Interface,
+	dynamicClient dynamic.Interface,
+	kubeClient kubernetes.Interface,
+	clusterName string,
+) *Collector {
 	return &Collector{
 		configClient:  configClient,
 		dynamicClient: dynamicClient,
+		kubeClient:    kubeClient,
 		clusterName:   clusterName,
 	}
 }
 
-// Collect reads ClusterVersion, ClusterOperators, and ClusterServiceVersions from the
+// Collect reads ClusterVersion, ClusterOperators, ClusterServiceVersions, and Nodes from the
 // local OpenShift cluster and returns status in the cluster-snapshot JSON shape:
 //
 //	{
@@ -48,7 +58,8 @@ func New(configClient configclient.Interface, dynamicClient dynamic.Interface, c
 //	  "date": "...",
 //	  "clusterVersion": { "version", "status", "message" },
 //	  "clusterOperators": [ { "name", "version", "available", "progressing", "degraded", "status", "message" } ],
-//	  "installedOperators": [ { "namespaces", "name", "version", "phase", "status", "message" } ]
+//	  "installedOperators": [ { "namespaces", "name", "version", "phase", "status", "message" } ],
+//	  "nodes": [ { "name", "roles", "ready", "cpu", "memory", "gpu", "gpuResource" } ]
 //	}
 func (c *Collector) Collect(ctx context.Context) (ocmv1alpha1.ClusterCollectorStatus, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -75,6 +86,12 @@ func (c *Collector) Collect(ctx context.Context) (ocmv1alpha1.ClusterCollectorSt
 		return status, fmt.Errorf("list installed operators: %w", err)
 	}
 	status.InstalledOperators = csvs
+
+	nodes, err := c.listNodes(ctx)
+	if err != nil {
+		return status, fmt.Errorf("list nodes: %w", err)
+	}
+	status.Nodes = nodes
 
 	return status, nil
 }
@@ -272,4 +289,227 @@ func operatorPhaseRank(phase string) int {
 	default:
 		return 1
 	}
+}
+
+type nodeAllocation struct {
+	cpu    resource.Quantity
+	memory resource.Quantity
+	gpu    resource.Quantity
+}
+
+func (c *Collector) listNodes(ctx context.Context) ([]ocmv1alpha1.NodeSnapshot, error) {
+	nodes, err := c.kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	pods, err := c.kubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	gpuByNode := map[string]corev1.ResourceName{}
+	for i := range nodes.Items {
+		if gpuName := primaryGPUResource(nodes.Items[i].Status.Capacity); gpuName != "" {
+			gpuByNode[nodes.Items[i].Name] = gpuName
+		}
+	}
+
+	allocated := map[string]*nodeAllocation{}
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if !countsTowardAllocation(pod) {
+			continue
+		}
+		alloc := allocated[pod.Spec.NodeName]
+		if alloc == nil {
+			alloc = &nodeAllocation{}
+			allocated[pod.Spec.NodeName] = alloc
+		}
+		gpuName := gpuByNode[pod.Spec.NodeName]
+		addPodRequests(alloc, pod, gpuName)
+	}
+
+	snapshots := make([]ocmv1alpha1.NodeSnapshot, 0, len(nodes.Items))
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
+		gpuName := gpuByNode[node.Name]
+		var used *nodeAllocation
+		if alloc, ok := allocated[node.Name]; ok {
+			used = alloc
+		} else {
+			used = &nodeAllocation{}
+		}
+		snapshots = append(snapshots, nodeSnapshotFrom(node, used, gpuName))
+	}
+
+	sort.Slice(snapshots, func(i, j int) bool {
+		return snapshots[i].Name < snapshots[j].Name
+	})
+
+	return snapshots, nil
+}
+
+func countsTowardAllocation(pod *corev1.Pod) bool {
+	if pod.Spec.NodeName == "" {
+		return false
+	}
+	switch pod.Status.Phase {
+	case corev1.PodSucceeded, corev1.PodFailed:
+		return false
+	default:
+		return true
+	}
+}
+
+func addPodRequests(alloc *nodeAllocation, pod *corev1.Pod, gpuName corev1.ResourceName) {
+	// Match kube-scheduler effective requests:
+	// max(sum(app container requests), max(init container requests)).
+	var appCPU, appMemory, appGPU resource.Quantity
+	for _, container := range pod.Spec.Containers {
+		addRequests(&appCPU, &appMemory, &appGPU, container.Resources.Requests, gpuName)
+	}
+
+	var initCPU, initMemory, initGPU resource.Quantity
+	for _, container := range pod.Spec.InitContainers {
+		var oneCPU, oneMemory, oneGPU resource.Quantity
+		addRequests(&oneCPU, &oneMemory, &oneGPU, container.Resources.Requests, gpuName)
+		if oneCPU.Cmp(initCPU) > 0 {
+			initCPU = oneCPU
+		}
+		if oneMemory.Cmp(initMemory) > 0 {
+			initMemory = oneMemory
+		}
+		if oneGPU.Cmp(initGPU) > 0 {
+			initGPU = oneGPU
+		}
+	}
+
+	alloc.cpu.Add(maxQuantity(appCPU, initCPU))
+	alloc.memory.Add(maxQuantity(appMemory, initMemory))
+	alloc.gpu.Add(maxQuantity(appGPU, initGPU))
+}
+
+func addRequests(cpu, memory, gpu *resource.Quantity, requests corev1.ResourceList, gpuName corev1.ResourceName) {
+	if qty, ok := requests[corev1.ResourceCPU]; ok {
+		cpu.Add(qty)
+	}
+	if qty, ok := requests[corev1.ResourceMemory]; ok {
+		memory.Add(qty)
+	}
+	if gpuName != "" {
+		if qty, ok := requests[gpuName]; ok {
+			gpu.Add(qty)
+		}
+	}
+}
+
+func maxQuantity(a, b resource.Quantity) resource.Quantity {
+	if a.Cmp(b) >= 0 {
+		return a
+	}
+	return b
+}
+
+func nodeSnapshotFrom(node *corev1.Node, used *nodeAllocation, gpuName corev1.ResourceName) ocmv1alpha1.NodeSnapshot {
+	snapshot := ocmv1alpha1.NodeSnapshot{
+		Name:  node.Name,
+		Roles: nodeRoles(node),
+		Ready: nodeReadyStatus(node),
+		CPU: resourceSnapshot(
+			node.Status.Capacity.Cpu(),
+			node.Status.Allocatable.Cpu(),
+			&used.cpu,
+		),
+		Memory: resourceSnapshot(
+			node.Status.Capacity.Memory(),
+			node.Status.Allocatable.Memory(),
+			&used.memory,
+		),
+	}
+
+	if gpuName != "" {
+		capacity := node.Status.Capacity[gpuName]
+		allocatable := node.Status.Allocatable[gpuName]
+		snapshot.GPUResource = string(gpuName)
+		snapshot.GPU = resourceSnapshot(&capacity, &allocatable, &used.gpu)
+	}
+
+	return snapshot
+}
+
+func resourceSnapshot(capacity, allocatable, allocated *resource.Quantity) ocmv1alpha1.NodeResourceSnapshot {
+	capCopy := quantityOrZero(capacity)
+	allocCopy := quantityOrZero(allocatable)
+	usedCopy := quantityOrZero(allocated)
+
+	available := allocCopy.DeepCopy()
+	available.Sub(usedCopy)
+
+	return ocmv1alpha1.NodeResourceSnapshot{
+		Capacity:    capCopy.String(),
+		Allocatable: allocCopy.String(),
+		Allocated:   usedCopy.String(),
+		Available:   available.String(),
+	}
+}
+
+func quantityOrZero(q *resource.Quantity) resource.Quantity {
+	if q == nil {
+		return resource.Quantity{}
+	}
+	return q.DeepCopy()
+}
+
+func nodeReadyStatus(node *corev1.Node) string {
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == corev1.NodeReady {
+			return string(condition.Status)
+		}
+	}
+	return ""
+}
+
+func nodeRoles(node *corev1.Node) []string {
+	roles := make([]string, 0)
+	for label := range node.Labels {
+		if strings.HasPrefix(label, "node-role.kubernetes.io/") {
+			role := strings.TrimPrefix(label, "node-role.kubernetes.io/")
+			if role != "" {
+				roles = append(roles, role)
+			}
+		}
+	}
+	sort.Strings(roles)
+	return roles
+}
+
+// primaryGPUResource picks the best-known GPU resource name from node capacity.
+func primaryGPUResource(capacity corev1.ResourceList) corev1.ResourceName {
+	preferred := []corev1.ResourceName{
+		"nvidia.com/gpu",
+		"amd.com/gpu",
+		"gpu.intel.com/i915",
+		"habana.ai/gaudi",
+	}
+	for _, name := range preferred {
+		if qty, ok := capacity[name]; ok && !qty.IsZero() {
+			return name
+		}
+	}
+	candidates := make([]string, 0)
+	for name, qty := range capacity {
+		if qty.IsZero() {
+			continue
+		}
+		lower := strings.ToLower(string(name))
+		if strings.Contains(lower, "gpu") {
+			candidates = append(candidates, string(name))
+		}
+	}
+	sort.Strings(candidates)
+	if len(candidates) == 0 {
+		return ""
+	}
+	return corev1.ResourceName(candidates[0])
 }
