@@ -40,10 +40,12 @@ func (c *ClusterCollectorController) SetupWithManager(mgr ctrl.Manager) error {
 		return obj.GetNamespace() == constants.AgentInstallationNamespace &&
 			obj.GetName() == spokeCollectorName
 	})
-
+	// Ignore status-only updates so writing ClusterCollector.status does not
+	// immediately re-queue reconcile. Periodic collect+hub sync is driven by
+	// RequeueAfter using --resync-interval.
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ocmv1alpha1.ClusterCollector{}).
-		WithEventFilter(nsPredicate).
+		WithEventFilter(predicate.And(nsPredicate, predicate.GenerationChangedPredicate{})).
 		Complete(c)
 }
 
@@ -89,7 +91,8 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 	collectedStatus, err := c.collector.Collect(ctx)
 	if err != nil {
 		c.log.Error(err, "failed to collect cluster snapshot")
-		return ctrl.Result{}, err
+		// Keep the resync cadence even on failure; avoid rapid error backoff loops.
+		return ctrl.Result{RequeueAfter: c.resyncAfter}, nil
 	}
 
 	c.vInfo("collected cluster snapshot",
@@ -128,19 +131,20 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 	spoke, err := c.updateSpokeStatus(ctx, req.NamespacedName, collectedStatus)
 	if err != nil {
 		c.log.Error(err, "unable to update spoke ClusterCollector status")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: c.resyncAfter}, nil
 	}
 	c.vInfo("updated spoke ClusterCollector status")
 
 	if err = c.syncToHub(ctx, spoke); err != nil {
 		c.log.Error(err, "unable to sync ClusterCollector to hub")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: c.resyncAfter}, nil
 	}
 	c.vInfo("synced ClusterCollector status to hub",
 		"hubNamespace", c.clusterName,
 		"name", spoke.Name,
 	)
 
+	// Next collect+hub sync happens together after --resync-interval.
 	return ctrl.Result{RequeueAfter: c.resyncAfter}, nil
 }
 

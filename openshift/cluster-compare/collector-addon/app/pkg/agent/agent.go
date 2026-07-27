@@ -90,6 +90,7 @@ func (o *AgentOptions) runControllerManager(ctx context.Context) error {
 	ctrl.SetLogger(o.Log)
 
 	flag.Parse()
+	o.logStartupOptions(log)
 
 	spokeConfig := ctrl.GetConfigOrDie()
 	mgr, err := ctrl.NewManager(spokeConfig, ctrl.Options{
@@ -180,4 +181,37 @@ type managerRunnable func(context.Context) error
 
 func (r managerRunnable) Start(ctx context.Context) error {
 	return r(ctx)
+}
+
+// logStartupOptions prints the agent command-line options and their current values.
+func (o *AgentOptions) logStartupOptions(log logr.Logger) {
+	log.Info("agent command-line options",
+		"hub-kubeconfig", describeOption(
+			o.HubKubeconfigFile,
+			"Location of kubeconfig file to connect to hub cluster.",
+		),
+		"cluster-name", describeOption(
+			o.SpokeClusterName,
+			"Name of spoke cluster.",
+		),
+		"resync-interval", describeOption(
+			fmt.Sprintf("%d minutes", o.ResyncInterval),
+			"How often to collect a cluster snapshot and sync it to the hub (minutes).",
+		),
+		"verbose", describeOption(
+			fmt.Sprintf("%t", o.Verbose),
+			"Log detailed reconciliation, collection, and hub sync progress (excludes snapshot JSON).",
+		),
+		"json", describeOption(
+			fmt.Sprintf("%t", o.ReportJSON),
+			"Print the full cluster snapshot JSON that will be sent to the hub cluster.",
+		),
+	)
+}
+
+func describeOption(value, description string) string {
+	if value == "" {
+		value = "<empty>"
+	}
+	return fmt.Sprintf("%s (%s)", value, description)
 }
