@@ -92,8 +92,23 @@ function formatResource(kind, milliOrBytes) {
 }
 
 function nodeTypeKey(node) {
-  const roles = [...(node.roles || [])].filter(Boolean).sort();
+  const roles = normalizeNodeRoles([...(node.roles || [])]);
   return roles.length ? roles.join(",") : "unknown";
+}
+
+/**
+ * Normalize node roles: drop legacy "master" when "control-plane" is present,
+ * and replace a sole "master" role with "control-plane".
+ */
+function normalizeNodeRoles(roles) {
+  const list = (roles || []).filter(Boolean);
+  const hasControlPlane = list.includes("control-plane");
+  const hasMaster = list.includes("master");
+  const normalized = list.filter((role) => role !== "master" && role !== "control-plane");
+  if (hasControlPlane || hasMaster) {
+    normalized.push("control-plane");
+  }
+  return [...new Set(normalized)].sort();
 }
 
 function nodeTypeLabel(typeKey) {

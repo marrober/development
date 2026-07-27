@@ -488,8 +488,30 @@ func nodeRoles(node *corev1.Node) []string {
 			}
 		}
 	}
-	sort.Strings(roles)
-	return roles
+	return normalizeNodeRoles(roles)
+}
+
+// normalizeNodeRoles maps legacy "master" to "control-plane".
+// If both are present, only "control-plane" is kept.
+func normalizeNodeRoles(roles []string) []string {
+	hasControlPlane := false
+	hasMaster := false
+	normalized := make([]string, 0, len(roles))
+	for _, role := range roles {
+		switch role {
+		case "control-plane":
+			hasControlPlane = true
+		case "master":
+			hasMaster = true
+		default:
+			normalized = append(normalized, role)
+		}
+	}
+	if hasControlPlane || hasMaster {
+		normalized = append(normalized, "control-plane")
+	}
+	sort.Strings(normalized)
+	return normalized
 }
 
 // primaryGPUResource picks the best-known GPU resource name from node capacity.

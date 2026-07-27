@@ -36,7 +36,7 @@ function normalizeClusterSnapshot(input) {
       clusterVersion: status.clusterVersion || {},
       clusterOperators: status.clusterOperators || [],
       installedOperators: status.installedOperators || [],
-      nodes: status.nodes || [],
+      nodes: normalizeNodes(status.nodes),
       network: status.network || {},
     };
   }
@@ -48,13 +48,37 @@ function normalizeClusterSnapshot(input) {
     clusterVersion: input.clusterVersion || {},
     clusterOperators: input.clusterOperators || [],
     installedOperators: input.installedOperators || [],
-    nodes: input.nodes || [],
+    nodes: normalizeNodes(input.nodes),
     network: input.network || {},
   };
 }
 
+/**
+ * Normalize node roles: drop legacy "master" when "control-plane" is present,
+ * and replace a sole "master" role with "control-plane".
+ */
+function normalizeNodeRoles(roles) {
+  const list = Array.isArray(roles) ? roles.filter(Boolean) : [];
+  const hasControlPlane = list.includes("control-plane");
+  const hasMaster = list.includes("master");
+  const normalized = list.filter((role) => role !== "master" && role !== "control-plane");
+  if (hasControlPlane || hasMaster) {
+    normalized.push("control-plane");
+  }
+  return [...new Set(normalized)].sort();
+}
+
+function normalizeNodes(nodes) {
+  if (!Array.isArray(nodes)) return [];
+  return nodes.map((node) => ({
+    ...node,
+    roles: normalizeNodeRoles(node?.roles),
+  }));
+}
+
 module.exports = {
   normalizeClusterSnapshot,
+  normalizeNodeRoles,
   clusterNameFromCr,
   snapshotDateFrom,
 };
