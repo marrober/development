@@ -31,6 +31,7 @@ const diffOnlyCheckbox = document.getElementById("diffOnlyCheckbox");
 const namespacesDialog = document.getElementById("namespacesDialog");
 const namespacesDialogTitle = document.getElementById("namespacesDialogTitle");
 const namespacesDialogSubtitle = document.getElementById("namespacesDialogSubtitle");
+const namespacesDialogCluster = document.getElementById("namespacesDialogCluster");
 const namespacesDialogCount = document.getElementById("namespacesDialogCount");
 const namespacesDialogList = document.getElementById("namespacesDialogList");
 const namespacesCompareSelect = document.getElementById("namespacesCompareSelect");
@@ -139,10 +140,14 @@ function renderNamespacesDialogContent() {
   fillNamespaceList(nsDiffOnlyB, onlyRight, "None");
 }
 
-function openNamespacesDialog(row, columns, primaryColumnId) {
+function openNamespacesDialog(row, columns, primaryColumnId, clusterName = "") {
   const operatorName = displayRowLabel(row);
-  namespacesDialogState = { row, columns, primaryColumnId };
+  namespacesDialogState = { row, columns, primaryColumnId, clusterName };
   namespacesDialogTitle.textContent = operatorName;
+  namespacesDialogCluster.textContent = clusterName
+    ? `Cluster : ${clusterName}`
+    : "";
+  namespacesDialogCluster.hidden = !clusterName;
 
   namespacesCompareSelect.innerHTML = '<option value="">No comparison</option>';
   for (const column of columns) {
@@ -584,7 +589,7 @@ function renderCrossCompareTable() {
             const dateId = crossCompareSelectedDates[clusterName];
             const sourceRow = (data?.rows || []).find((r) => r.rowKey === row.rowKey);
             if (sourceRow && data?.columns) {
-              openNamespacesDialog(sourceRow, data.columns, dateId);
+              openNamespacesDialog(sourceRow, data.columns, dateId, clusterName);
             }
           });
           td.appendChild(nsBtn);
@@ -841,7 +846,7 @@ function renderTable() {
           previousNsSignature = signature;
           nsBtn.addEventListener("click", (event) => {
             event.stopPropagation();
-            openNamespacesDialog(row, columns, column.id);
+            openNamespacesDialog(row, columns, column.id, selectedCluster);
           });
           td.appendChild(nsBtn);
         }

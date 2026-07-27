@@ -100,6 +100,8 @@ spec:
           value: $(params.node_js_image_name)
         - name: node_js_image_tag
           value: $(params.node_js_image_tag)
+        - name: image-short-name
+          value: $(params.image-short-name)
       taskRef:
         kind: Task
         name: build-node-js

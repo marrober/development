@@ -19,6 +19,8 @@ spec:
       type: string
     - name: node_js_image_tag
       type: string
+    - name: image-short-name
+      type: string
   stepTemplate:
     env:
       - name: "HOME"
@@ -80,7 +82,7 @@ spec:
       - ./new-dockerfile
       - --no-cache
       - -t
-      - my-container-image
+      - $(params.image-short-name)
       - .
       image: image-registry.openshift-image-registry.svc:5000/$(context.taskRun.namespace)/buildah:latest
       resources: {}
