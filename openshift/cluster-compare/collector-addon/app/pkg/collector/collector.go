@@ -21,6 +21,7 @@ import (
 )
 
 const clusterVersionName = "version"
+const clusterNetworkName = "cluster"
 
 var csvGVR = schema.GroupVersionResource{
 	Group:    "operators.coreos.com",
@@ -28,7 +29,7 @@ var csvGVR = schema.GroupVersionResource{
 	Resource: "clusterserviceversions",
 }
 
-// Collector gathers OpenShift cluster version, operator, and node snapshots from a spoke cluster.
+// Collector gathers OpenShift cluster version, operator, node, and network snapshots from a spoke cluster.
 type Collector struct {
 	configClient  configclient.Interface
 	dynamicClient dynamic.Interface
@@ -50,8 +51,8 @@ func New(
 	}
 }
 
-// Collect reads ClusterVersion, ClusterOperators, ClusterServiceVersions, and Nodes from the
-// local OpenShift cluster and returns status in the cluster-snapshot JSON shape:
+// Collect reads ClusterVersion, ClusterOperators, ClusterServiceVersions, Nodes, and Network
+// from the local OpenShift cluster and returns status in the cluster-snapshot JSON shape:
 //
 //	{
 //	  "clusterName": "...",
@@ -59,7 +60,8 @@ func New(
 //	  "clusterVersion": { "version", "status", "message" },
 //	  "clusterOperators": [ { "name", "version", "available", "progressing", "degraded", "status", "message" } ],
 //	  "installedOperators": [ { "namespaces", "name", "version", "phase", "status", "message" } ],
-//	  "nodes": [ { "name", "roles", "ready", "cpu", "memory", "gpu", "gpuResource" } ]
+//	  "nodes": [ { "name", "roles", "ready", "cpu", "memory", "gpu", "gpuResource" } ],
+//	  "network": { "networkType", "clusterNetwork": [ { "cidr", "hostPrefix" } ], "serviceNetwork": [ "..." ] }
 //	}
 func (c *Collector) Collect(ctx context.Context) (ocmv1alpha1.ClusterCollectorStatus, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -92,6 +94,12 @@ func (c *Collector) Collect(ctx context.Context) (ocmv1alpha1.ClusterCollectorSt
 		return status, fmt.Errorf("list nodes: %w", err)
 	}
 	status.Nodes = nodes
+
+	network, err := c.getNetwork(ctx)
+	if err != nil {
+		return status, fmt.Errorf("get network: %w", err)
+	}
+	status.Network = network
 
 	return status, nil
 }
@@ -512,4 +520,29 @@ func primaryGPUResource(capacity corev1.ResourceList) corev1.ResourceName {
 		return ""
 	}
 	return corev1.ResourceName(candidates[0])
+}
+
+func (c *Collector) getNetwork(ctx context.Context) (ocmv1alpha1.NetworkSnapshot, error) {
+	network, err := c.configClient.ConfigV1().Networks().Get(ctx, clusterNetworkName, metav1.GetOptions{})
+	if err != nil {
+		return ocmv1alpha1.NetworkSnapshot{}, err
+	}
+	return networkSnapshotFrom(network), nil
+}
+
+func networkSnapshotFrom(network *configv1.Network) ocmv1alpha1.NetworkSnapshot {
+	snapshot := ocmv1alpha1.NetworkSnapshot{
+		NetworkType:    network.Spec.NetworkType,
+		ServiceNetwork: append([]string(nil), network.Spec.ServiceNetwork...),
+	}
+	if len(network.Spec.ClusterNetwork) > 0 {
+		snapshot.ClusterNetwork = make([]ocmv1alpha1.ClusterNetworkEntrySnapshot, 0, len(network.Spec.ClusterNetwork))
+		for _, entry := range network.Spec.ClusterNetwork {
+			snapshot.ClusterNetwork = append(snapshot.ClusterNetwork, ocmv1alpha1.ClusterNetworkEntrySnapshot{
+				CIDR:       entry.CIDR,
+				HostPrefix: entry.HostPrefix,
+			})
+		}
+	}
+	return snapshot
 }

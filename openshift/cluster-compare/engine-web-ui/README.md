@@ -30,7 +30,12 @@ Polling runs automatically in-cluster every 60s (`POLL_INTERVAL_MS`). Locally it
       "gpu": { "capacity": "2", "allocatable": "2", "allocated": "1", "available": "1" },
       "gpuResource": "nvidia.com/gpu"
     }
-  ]
+  ],
+  "network": {
+    "networkType": "OVNKubernetes",
+    "clusterNetwork": [{ "cidr": "10.128.0.0/14", "hostPrefix": 23 }],
+    "serviceNetwork": ["172.30.0.0/16"]
+  }
 }
 ```
 

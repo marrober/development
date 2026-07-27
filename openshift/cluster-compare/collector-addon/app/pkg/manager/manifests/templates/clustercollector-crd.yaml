@@ -140,6 +140,26 @@ spec:
                       type: object
                   type: object
                 type: array
+              network:
+                description: OpenShift cluster and service network configuration
+                properties:
+                  networkType:
+                    type: string
+                  clusterNetwork:
+                    items:
+                      properties:
+                        cidr:
+                          type: string
+                        hostPrefix:
+                          type: integer
+                          format: int32
+                      type: object
+                    type: array
+                  serviceNetwork:
+                    items:
+                      type: string
+                    type: array
+                type: object
             type: object
         type: object
     served: true

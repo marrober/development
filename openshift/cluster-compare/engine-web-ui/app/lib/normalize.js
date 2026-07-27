@@ -20,7 +20,7 @@ function snapshotDateFrom(input) {
 
 /**
  * Normalize ClusterCollector CRs and flat JSON payloads into a single snapshot shape:
- * { clusterName, date, spokeURL, clusterVersion, clusterOperators, installedOperators, nodes }
+ * { clusterName, date, spokeURL, clusterVersion, clusterOperators, installedOperators, nodes, network }
  */
 function normalizeClusterSnapshot(input) {
   if (!input || typeof input !== "object") {
@@ -37,6 +37,7 @@ function normalizeClusterSnapshot(input) {
       clusterOperators: status.clusterOperators || [],
       installedOperators: status.installedOperators || [],
       nodes: status.nodes || [],
+      network: status.network || {},
     };
   }
 
@@ -48,6 +49,7 @@ function normalizeClusterSnapshot(input) {
     clusterOperators: input.clusterOperators || [],
     installedOperators: input.installedOperators || [],
     nodes: input.nodes || [],
+    network: input.network || {},
   };
 }
 

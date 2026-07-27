@@ -73,9 +73,22 @@ type NodeSnapshot struct {
 	GPUResource string               `json:"gpuResource,omitempty"`
 }
 
+// ClusterNetworkEntrySnapshot holds a pod network CIDR and host prefix.
+type ClusterNetworkEntrySnapshot struct {
+	CIDR       string `json:"cidr,omitempty"`
+	HostPrefix uint32 `json:"hostPrefix,omitempty"`
+}
+
+// NetworkSnapshot holds OpenShift cluster and service network configuration.
+type NetworkSnapshot struct {
+	NetworkType    string                        `json:"networkType,omitempty"`
+	ClusterNetwork []ClusterNetworkEntrySnapshot `json:"clusterNetwork,omitempty"`
+	ServiceNetwork []string                      `json:"serviceNetwork,omitempty"`
+}
+
 // ClusterCollectorStatus defines the observed state of ClusterCollector.
 // Fields match the cluster snapshot JSON shape used by the engine web UI:
-// clusterName, date, clusterVersion, clusterOperators, installedOperators, nodes.
+// clusterName, date, clusterVersion, clusterOperators, installedOperators, nodes, network.
 type ClusterCollectorStatus struct {
 	// ClusterName is the managed cluster name (also used as hub namespace).
 	ClusterName string `json:"clusterName,omitempty"`
@@ -93,6 +106,7 @@ type ClusterCollectorStatus struct {
 	ClusterOperators   []ClusterOperatorSnapshot   `json:"clusterOperators,omitempty"`
 	InstalledOperators []InstalledOperatorSnapshot `json:"installedOperators,omitempty"`
 	Nodes              []NodeSnapshot              `json:"nodes,omitempty"`
+	Network            NetworkSnapshot             `json:"network,omitempty"`
 }
 
 //+kubebuilder:object:root=true

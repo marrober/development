@@ -79,6 +79,7 @@ Each synced `ClusterCollector` status matches the snapshot shape consumed by the
 - `clusterOperators` — core OpenShift operators and versions
 - `installedOperators` — OLM-installed operators (CSV)
 - `nodes` — per-node CPU, memory, and GPU capacity / allocatable / allocated / available
+- `network` — cluster network CIDRs, service network CIDRs, and network type
 - `date` / `lastSync` — snapshot timestamp used as the comparison column identifier
 
 See [engine-web-ui/examples/cluster1-snapshot.json](../engine-web-ui/examples/cluster1-snapshot.json) for a full example.

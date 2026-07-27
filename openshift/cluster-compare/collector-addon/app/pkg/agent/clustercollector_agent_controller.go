@@ -103,6 +103,9 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 		"clusterOperators", len(collectedStatus.ClusterOperators),
 		"installedOperators", len(collectedStatus.InstalledOperators),
 		"nodes", len(collectedStatus.Nodes),
+		"networkType", collectedStatus.Network.NetworkType,
+		"clusterNetwork", len(collectedStatus.Network.ClusterNetwork),
+		"serviceNetwork", len(collectedStatus.Network.ServiceNetwork),
 	)
 	if c.verbose {
 		for _, operator := range collectedStatus.ClusterOperators {
@@ -141,6 +144,11 @@ func (c *ClusterCollectorController) Reconcile(ctx context.Context, req ctrl.Req
 				"gpuAvailable", node.GPU.Available,
 			)
 		}
+		c.log.Info("network",
+			"networkType", collectedStatus.Network.NetworkType,
+			"clusterNetwork", collectedStatus.Network.ClusterNetwork,
+			"serviceNetwork", collectedStatus.Network.ServiceNetwork,
+		)
 	}
 	if c.reportJSON {
 		c.reportSnapshot("collected snapshot (pre-hub-sync)", collectedStatus)
@@ -260,6 +268,9 @@ func (c *ClusterCollectorController) reportHubSyncSummary(hubKey types.Namespace
 		"clusterOperators", len(status.ClusterOperators),
 		"installedOperators", len(status.InstalledOperators),
 		"nodes", len(status.Nodes),
+		"networkType", status.Network.NetworkType,
+		"clusterNetwork", status.Network.ClusterNetwork,
+		"serviceNetwork", status.Network.ServiceNetwork,
 	)
 	for _, operator := range status.ClusterOperators {
 		c.log.Info("hub sync cluster operator",

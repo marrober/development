@@ -131,6 +131,25 @@ spec:
                           type: string
                         available:
                           type: string
+              network:
+                type: object
+                properties:
+                  networkType:
+                    type: string
+                  clusterNetwork:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cidr:
+                          type: string
+                        hostPrefix:
+                          type: integer
+                          format: int32
+                  serviceNetwork:
+                    type: array
+                    items:
+                      type: string
               lastSync:
                 type: string
               spokeURL:

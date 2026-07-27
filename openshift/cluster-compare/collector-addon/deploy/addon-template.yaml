@@ -146,6 +146,25 @@ spec:
                                       type: string
                                     available:
                                       type: string
+                          network:
+                            type: object
+                            properties:
+                              networkType:
+                                type: string
+                              clusterNetwork:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    cidr:
+                                      type: string
+                                    hostPrefix:
+                                      type: integer
+                                      format: int32
+                              serviceNetwork:
+                                type: array
+                                items:
+                                  type: string
         - kind: ClusterRole
           apiVersion: rbac.authorization.k8s.io/v1
           metadata:
@@ -164,7 +183,7 @@ spec:
               resources: ["clustercollectors/status"]
               verbs: ["get", "update", "patch"]
             - apiGroups: ["config.openshift.io"]
-              resources: ["clusterversions", "clusteroperators"]
+              resources: ["clusterversions", "clusteroperators", "networks"]
               verbs: ["get", "list", "watch"]
             - apiGroups: ["operators.coreos.com"]
               resources: ["clusterserviceversions"]
