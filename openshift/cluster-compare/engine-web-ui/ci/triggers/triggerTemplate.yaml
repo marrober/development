@@ -28,9 +28,9 @@ spec:
         - name: dockerfile
           value: Dockerfile
         - name: image-short-name
-          value: cluster-collector
+          value: cluster-compare-engine
         - name: imagestream-url
-          value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/cluster-collector
+          value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/cluster-compare-engine
           ## Update Kustomize file for the deployment of the application to development      
         - name: repo_type
           value: github.com

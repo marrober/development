@@ -196,6 +196,12 @@ button:disabled {
   user-select: none;
 }
 
+.diff-only-wrap[hidden],
+#closeCompareBtn[hidden],
+#compareColumnsBtn[hidden] {
+  display: none !important;
+}
+
 .diff-only-wrap input {
   accent-color: var(--accent);
 }

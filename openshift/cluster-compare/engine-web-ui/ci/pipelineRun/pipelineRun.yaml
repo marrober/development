@@ -23,7 +23,7 @@ spec:
     - name: node_js_image_tag
       value: latest
     - name: image-short-name
-      value: cluster-collector
+      value: cluster-compare-engine
     - name: imagestream-url
       value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/cluster-compare-engine
       ## Update Kustomize file for the deployment of the application to development      

@@ -567,7 +567,9 @@ compareColumnsBtn.addEventListener("click", () => {
     .filter((column) => selectedColumnIds.has(column.id))
     .map((column) => column.id);
   compareMode = true;
+  diffOnlyCheckbox.checked = false;
   setStatus(`Comparing ${compareColumnIds.length} selected imports.`, "success");
+  updateCompareControls();
   renderTable();
 });
 
@@ -576,6 +578,7 @@ closeCompareBtn.addEventListener("click", () => {
   compareColumnIds = [];
   diffOnlyCheckbox.checked = false;
   setStatus("");
+  updateCompareControls();
   renderTable();
 });
 
