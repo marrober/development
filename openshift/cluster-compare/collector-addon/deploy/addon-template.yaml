@@ -181,7 +181,7 @@ spec:
                       - "agent"
                       - "--hub-kubeconfig={{HUB_KUBECONFIG}}"
                       - "--cluster-name={{CLUSTER_NAME}}"
-                      - "--resync-interval=6000"
+                      - "--resync-interval=60"
                       - "--verbose"
   registration:
     - type: KubeClient
