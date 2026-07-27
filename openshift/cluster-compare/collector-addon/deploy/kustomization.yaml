@@ -11,7 +11,7 @@ resources:
 
 images:
 - name: quay.io/marrober/cluster-compare-collector
-  newTag: m7c4h
+  newTag: gpb7t
 
 commonAnnotations:
   addon.open-cluster-management.io/image-version: quay.io/marrober/cluster-compare-collector:88f6q
@@ -21,7 +21,7 @@ patches:
     - op: add
       path: /spec/agentSpec/workload/manifests/4/metadata/annotations
       value:
-        cluster-collector.addon/image-image: quay.io/marrober/cluster-compare-collector:m7c4h
+        cluster-collector.addon/image-image: quay.io/marrober/cluster-compare-collector:gpb7t
   target:
     kind: AddOnTemplate
     name: clustercollector
