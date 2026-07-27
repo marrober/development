@@ -2,7 +2,7 @@ kind: ImageStream
 apiVersion: image.openshift.io/v1
 metadata:
   name: ose-cli
-  namespace: pacman-ci
+  namespace: cluster-compare
 spec:
   lookupPolicy:
     local: false
