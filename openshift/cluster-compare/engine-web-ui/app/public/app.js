@@ -11,6 +11,12 @@ const detailEmpty = document.getElementById("detailEmpty");
 const tableWrap = document.getElementById("tableWrap");
 const tableHeadRow = document.getElementById("tableHeadRow");
 const tableBody = document.getElementById("tableBody");
+const prevClusterBtn = document.getElementById("prevClusterBtn");
+const nextClusterBtn = document.getElementById("nextClusterBtn");
+const compareColumnsBtn = document.getElementById("compareColumnsBtn");
+const closeCompareBtn = document.getElementById("closeCompareBtn");
+const diffOnlyWrap = document.getElementById("diffOnlyWrap");
+const diffOnlyCheckbox = document.getElementById("diffOnlyCheckbox");
 const namespacesDialog = document.getElementById("namespacesDialog");
 const namespacesDialogTitle = document.getElementById("namespacesDialogTitle");
 const namespacesDialogSubtitle = document.getElementById("namespacesDialogSubtitle");
@@ -24,16 +30,23 @@ const nsDiffBoth = document.getElementById("nsDiffBoth");
 const nsDiffOnlyB = document.getElementById("nsDiffOnlyB");
 const nsDiffOnlyATitle = document.getElementById("nsDiffOnlyATitle");
 const nsDiffOnlyBTitle = document.getElementById("nsDiffOnlyBTitle");
+const nsDiffOnlyAWhen = document.getElementById("nsDiffOnlyAWhen");
+const nsDiffOnlyBWhen = document.getElementById("nsDiffOnlyBWhen");
+
+const MAX_COMPARE_COLUMNS = 3;
 
 let clustersCache = [];
 let selectedCluster = null;
 let namespacesDialogState = null;
+let comparisonData = null;
+let selectedColumnIds = new Set();
+let compareMode = false;
+let compareColumnIds = [];
 
 function displayRowLabel(row) {
   if (row.rowKey?.startsWith("installed-operator:")) {
     return row.rowKey.slice("installed-operator:".length);
   }
-  // Strip legacy "name [ns1, ns2, …]" labels from older snapshots.
   return String(row.label || "").replace(/\s\[[^\]]*\]$/, "");
 }
 
@@ -41,6 +54,10 @@ function namespacesForCell(row, columnId) {
   const namespaces = row.cells[columnId]?.details?.namespaces;
   if (!Array.isArray(namespaces)) return [];
   return [...new Set(namespaces.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function namespacesSignature(namespaces) {
+  return namespaces.join("\0");
 }
 
 function fillNamespaceList(listEl, namespaces, emptyText) {
@@ -97,8 +114,10 @@ function renderNamespacesDialogContent() {
 
   namespacesSingleView.hidden = true;
   namespacesCompareView.hidden = false;
-  nsDiffOnlyATitle.textContent = `Only in ${primaryColumn?.label || "this import"}`;
-  nsDiffOnlyBTitle.textContent = `Only in ${compareColumn?.label || "compared import"}`;
+  nsDiffOnlyATitle.textContent = "Only in current";
+  nsDiffOnlyBTitle.textContent = "Only in prior";
+  nsDiffOnlyAWhen.textContent = primaryColumn?.label || "";
+  nsDiffOnlyBWhen.textContent = compareColumn?.label || "";
   fillNamespaceList(nsDiffOnlyA, onlyLeft, "None");
   fillNamespaceList(nsDiffBoth, both, "None");
   fillNamespaceList(nsDiffOnlyB, onlyRight, "None");
@@ -159,8 +178,40 @@ function formatSync(value) {
 }
 
 function cellTitle(cell) {
-  if (!cell?.details?.message) return "";
-  return cell.details.message;
+  if (!cell?.details) return "";
+  const details = cell.details;
+  if (details.kind === "node-resource") {
+    const parts = [
+      `allocatable ${details.allocatable || "—"}`,
+      `allocated ${details.allocated || "—"}`,
+      `capacity ${details.capacity || "—"}`,
+      `available ${details.available || "—"}`,
+    ];
+    if (details.gpuResource) parts.push(details.gpuResource);
+    return parts.join(" · ");
+  }
+  if (details.kind === "node-type-count") {
+    return `${details.nodeCount} node(s)`;
+  }
+  if (details.message) return details.message;
+  return "";
+}
+
+function cellFingerprint(cell) {
+  if (!cell) return "";
+  return JSON.stringify({
+    version: cell.version || "",
+    status: cell.status || "",
+    namespaces: Array.isArray(cell.details?.namespaces)
+      ? [...cell.details.namespaces].sort()
+      : [],
+  });
+}
+
+function rowDiffersAcrossColumns(row, columns) {
+  if (columns.length < 2) return true;
+  const first = cellFingerprint(row.cells[columns[0].id]);
+  return columns.some((column) => cellFingerprint(row.cells[column.id]) !== first);
 }
 
 async function fetchJson(url, options) {
@@ -172,22 +223,61 @@ async function fetchJson(url, options) {
   return data;
 }
 
+function clustersInChronologicalOrder() {
+  return [...clustersCache].sort((a, b) => {
+    const aTime = a.latestSync ? Date.parse(a.latestSync) : 0;
+    const bTime = b.latestSync ? Date.parse(b.latestSync) : 0;
+    if (aTime !== bTime) return aTime - bTime;
+    return a.clusterName.localeCompare(b.clusterName);
+  });
+}
+
+function updateClusterNavButtons() {
+  const ordered = clustersInChronologicalOrder();
+  const index = ordered.findIndex((c) => c.clusterName === selectedCluster);
+  prevClusterBtn.disabled = index <= 0;
+  nextClusterBtn.disabled = index < 0 || index >= ordered.length - 1;
+}
+
+function updateCompareControls() {
+  const selectedCount = selectedColumnIds.size;
+  compareColumnsBtn.disabled = compareMode || selectedCount < 2 || selectedCount > MAX_COMPARE_COLUMNS;
+  compareColumnsBtn.textContent =
+    selectedCount > 0 ? `Compare (${selectedCount})` : "Compare";
+
+  diffOnlyWrap.hidden = !compareMode;
+  closeCompareBtn.hidden = !compareMode;
+  compareColumnsBtn.hidden = compareMode;
+}
+
 function showTiles() {
   selectedCluster = null;
+  comparisonData = null;
+  selectedColumnIds = new Set();
+  compareMode = false;
+  compareColumnIds = [];
+  diffOnlyCheckbox.checked = false;
   tileView.hidden = false;
   detailView.hidden = true;
+  updateCompareControls();
   renderTiles(clustersCache);
 }
 
 function showDetail(clusterName) {
   selectedCluster = clusterName;
+  selectedColumnIds = new Set();
+  compareMode = false;
+  compareColumnIds = [];
+  diffOnlyCheckbox.checked = false;
   tileView.hidden = true;
   detailView.hidden = false;
   detailTitle.textContent = clusterName;
   const meta = clustersCache.find((c) => c.clusterName === clusterName);
   detailMeta.textContent = meta
-    ? `${meta.snapshotCount} snapshot(s) · latest ${formatSync(meta.latestSync)} · available ${meta.available}`
+    ? `${meta.snapshotCount} snapshot(s) · latest ${formatSync(meta.latestSync)}`
     : "";
+  updateClusterNavButtons();
+  updateCompareControls();
   loadComparison(clusterName).catch((err) => setStatus(err.message, "error"));
 }
 
@@ -230,10 +320,47 @@ function renderTiles(clusters) {
   }
 }
 
-function renderTable(data) {
-  const { columns, rows } = data;
-  if (!columns.length || !rows.length) {
+function visibleColumns() {
+  if (!comparisonData) return [];
+  if (compareMode) {
+    return comparisonData.columns.filter((column) => compareColumnIds.includes(column.id));
+  }
+  return comparisonData.columns;
+}
+
+function onColumnCheckboxChange(columnId, checked, checkbox) {
+  if (compareMode) return;
+
+  if (checked) {
+    if (selectedColumnIds.size >= MAX_COMPARE_COLUMNS) {
+      checkbox.checked = false;
+      setStatus(`Select at most ${MAX_COMPARE_COLUMNS} columns to compare.`, "error");
+      return;
+    }
+    selectedColumnIds.add(columnId);
+    setStatus("");
+  } else {
+    selectedColumnIds.delete(columnId);
+  }
+  updateCompareControls();
+}
+
+function renderTable() {
+  if (!comparisonData) return;
+
+  const columns = visibleColumns();
+  const rows = comparisonData.rows;
+  const showDiffOnly = compareMode && diffOnlyCheckbox.checked;
+
+  if (!comparisonData.columns.length || !rows.length) {
     detailEmpty.hidden = false;
+    tableWrap.hidden = true;
+    return;
+  }
+
+  if (!columns.length) {
+    detailEmpty.hidden = false;
+    detailEmpty.innerHTML = "<p>Select columns and click Compare to view a comparison.</p>";
     tableWrap.hidden = true;
     return;
   }
@@ -244,26 +371,63 @@ function renderTable(data) {
   tableHeadRow.innerHTML = '<th class="sticky-col">Component</th>';
   for (const column of columns) {
     const th = document.createElement("th");
-    th.textContent = column.label;
-    th.title = column.date;
+    const head = document.createElement("div");
+    head.className = "column-head";
+
+    if (!compareMode) {
+      const label = document.createElement("label");
+      label.className = "column-select";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = selectedColumnIds.has(column.id);
+      checkbox.addEventListener("change", (event) => {
+        onColumnCheckboxChange(column.id, event.target.checked, event.target);
+      });
+      const text = document.createElement("span");
+      text.textContent = column.label;
+      text.title = column.date;
+      label.append(checkbox, text);
+      head.appendChild(label);
+    } else {
+      const text = document.createElement("span");
+      text.className = "column-label";
+      text.textContent = column.label;
+      text.title = column.date;
+      head.appendChild(text);
+    }
+
+    th.appendChild(head);
     tableHeadRow.appendChild(th);
   }
 
   tableBody.innerHTML = "";
   let lastSortOrder = null;
+  let renderedRows = 0;
 
   for (const row of rows) {
+    if (showDiffOnly && !rowDiffersAcrossColumns(row, columns)) {
+      continue;
+    }
+
     if (lastSortOrder !== null && Math.floor(row.sortOrder / 100) !== Math.floor(lastSortOrder / 100)) {
       const divider = document.createElement("tr");
       divider.className = "section-divider";
       const td = document.createElement("td");
       td.colSpan = columns.length + 1;
-      td.textContent =
-        row.sortOrder >= 200 ? "Installed Operators (OLM)" : "Cluster Operators";
+      if (row.sortOrder >= 400) {
+        td.textContent = "Network";
+      } else if (row.sortOrder >= 300) {
+        td.textContent = "Nodes";
+      } else if (row.sortOrder >= 200) {
+        td.textContent = "Installed Operators (OLM)";
+      } else {
+        td.textContent = "Cluster Operators";
+      }
       divider.appendChild(td);
       tableBody.appendChild(divider);
     }
     lastSortOrder = row.sortOrder;
+    renderedRows += 1;
 
     const tr = document.createElement("tr");
     if (row.sortOrder === 0) {
@@ -276,19 +440,24 @@ function renderTable(data) {
     tr.appendChild(labelTd);
 
     let previousVersion = null;
+    let previousNsSignature = null;
+
     for (const column of columns) {
       const td = document.createElement("td");
       const cell = row.cells[column.id];
-      const isInstalledOperator = row.sortOrder >= 200;
+      const isInstalledOperator = row.sortOrder >= 200 && row.sortOrder < 300;
+      const isNodeOrNetwork = row.sortOrder >= 300;
 
-      if (!cell || (!cell.version && !cell.status && !isInstalledOperator)) {
+      if (!cell || (!cell.version && !cell.status && !isInstalledOperator && !isNodeOrNetwork)) {
         td.className = "cell-empty";
         td.textContent = "—";
+        previousVersion = previousVersion;
+        previousNsSignature = previousNsSignature;
       } else {
         const title = cellTitle(cell);
         if (title) td.title = title;
 
-        if (cell && (cell.version || cell.status)) {
+        if (cell && (cell.version || cell.status || isNodeOrNetwork)) {
           const versionSpan = document.createElement("span");
           versionSpan.className = "version";
           versionSpan.textContent = cell.version || "—";
@@ -314,12 +483,17 @@ function renderTable(data) {
 
         if (isInstalledOperator && cell) {
           const namespaces = namespacesForCell(row, column.id);
+          const signature = namespacesSignature(namespaces);
           const nsBtn = document.createElement("button");
           nsBtn.type = "button";
           nsBtn.className = "ns-btn secondary";
           nsBtn.textContent = namespaces.length
             ? `Namespaces (${namespaces.length})`
             : "Namespaces";
+          if (previousNsSignature !== null && signature !== previousNsSignature) {
+            nsBtn.classList.add("ns-btn-changed");
+          }
+          previousNsSignature = signature;
           nsBtn.addEventListener("click", (event) => {
             event.stopPropagation();
             openNamespacesDialog(row, columns, column.id);
@@ -333,6 +507,18 @@ function renderTable(data) {
 
     tableBody.appendChild(tr);
   }
+
+  if (showDiffOnly && renderedRows === 0) {
+    const empty = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = columns.length + 1;
+    td.className = "cell-empty";
+    td.textContent = "No differences across the selected imports.";
+    empty.appendChild(td);
+    tableBody.appendChild(empty);
+  }
+
+  updateCompareControls();
 }
 
 async function loadClusters() {
@@ -346,9 +532,58 @@ async function loadClusters() {
 }
 
 async function loadComparison(clusterName) {
-  const data = await fetchJson(`/api/compare/${encodeURIComponent(clusterName)}`);
-  renderTable(data);
+  comparisonData = await fetchJson(`/api/compare/${encodeURIComponent(clusterName)}`);
+  selectedColumnIds = new Set();
+  compareMode = false;
+  compareColumnIds = [];
+  diffOnlyCheckbox.checked = false;
+  renderTable();
 }
+
+prevClusterBtn.addEventListener("click", () => {
+  const ordered = clustersInChronologicalOrder();
+  const index = ordered.findIndex((c) => c.clusterName === selectedCluster);
+  if (index > 0) {
+    showDetail(ordered[index - 1].clusterName);
+  }
+});
+
+nextClusterBtn.addEventListener("click", () => {
+  const ordered = clustersInChronologicalOrder();
+  const index = ordered.findIndex((c) => c.clusterName === selectedCluster);
+  if (index >= 0 && index < ordered.length - 1) {
+    showDetail(ordered[index + 1].clusterName);
+  }
+});
+
+compareColumnsBtn.addEventListener("click", () => {
+  if (selectedColumnIds.size < 2 || selectedColumnIds.size > MAX_COMPARE_COLUMNS) {
+    setStatus(`Select 2 or ${MAX_COMPARE_COLUMNS} date columns to compare.`, "error");
+    return;
+  }
+  if (!comparisonData) return;
+
+  compareColumnIds = comparisonData.columns
+    .filter((column) => selectedColumnIds.has(column.id))
+    .map((column) => column.id);
+  compareMode = true;
+  setStatus(`Comparing ${compareColumnIds.length} selected imports.`, "success");
+  renderTable();
+});
+
+closeCompareBtn.addEventListener("click", () => {
+  compareMode = false;
+  compareColumnIds = [];
+  diffOnlyCheckbox.checked = false;
+  setStatus("");
+  renderTable();
+});
+
+diffOnlyCheckbox.addEventListener("change", () => {
+  if (compareMode) {
+    renderTable();
+  }
+});
 
 backBtn.addEventListener("click", () => {
   showTiles();
@@ -360,9 +595,10 @@ syncBtn.addEventListener("click", async () => {
   try {
     const result = await fetchJson("/api/sync", { method: "POST" });
     const stored = result.results.filter((item) => item.stored).length;
+    const refreshed = result.results.filter((item) => item.refreshed).length;
     await loadClusters();
     setStatus(
-      `Sync complete. Scanned ${result.scanned} managed cluster(s), stored ${stored} new snapshot(s).`,
+      `Sync complete. Scanned ${result.scanned} managed cluster(s), stored ${stored}, refreshed ${refreshed}.`,
       "success"
     );
   } catch (err) {
@@ -372,4 +608,5 @@ syncBtn.addEventListener("click", async () => {
   }
 });
 
+updateCompareControls();
 loadClusters().catch((err) => setStatus(err.message, "error"));

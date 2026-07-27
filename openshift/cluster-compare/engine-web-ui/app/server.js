@@ -78,9 +78,9 @@ function startPolling() {
     try {
       const result = await syncFromCluster();
       const stored = result.results.filter((r) => r.stored).length;
-      const unchanged = result.results.filter((r) => r.reason === "unchanged").length;
+      const refreshed = result.results.filter((r) => r.refreshed).length;
       console.log(
-        `[poll] managedClusters=${result.scanned} stored=${stored} unchanged=${unchanged}`
+        `[poll] managedClusters=${result.scanned} stored=${stored} refreshed=${refreshed}`
       );
     } catch (err) {
       console.error("[poll] sync failed:", err.message || err);

@@ -1,4 +1,4 @@
-const { saveSnapshot, hasSnapshot, listClusters } = require("./db");
+const { saveSnapshot, listClusters } = require("./db");
 const {
   listManagedClusters,
   getClusterCollector,
@@ -67,21 +67,8 @@ async function syncFromCluster() {
       continue;
     }
 
-    if (await hasSnapshot(clusterName, lastSync)) {
-      results.push({
-        clusterName,
-        crName: normalized.crName,
-        namespace: normalized.namespace,
-        lastSync,
-        stored: false,
-        reason: "unchanged",
-        available: available?.status,
-        hubAccepted: hubAccepted?.status,
-      });
-      continue;
-    }
-
-    // Ensure snapshot is indexed by managed cluster name and lastSync timestamp.
+    // Index by managed cluster name + lastSync; refresh entries when the CR
+    // payload gains fields (nodes/network) even if lastSync is unchanged.
     const snapshot = {
       ...normalized.snapshot,
       clusterName,

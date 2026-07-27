@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { normalizeClusterSnapshot } = require("./normalize");
+const { buildNodeEntries, buildNetworkEntries } = require("./resources");
 
 const DATABASE_TYPE = (process.env.DATABASE_TYPE || process.env.DB_TYPE || "").toLowerCase();
 const usePostgres =
@@ -66,6 +67,9 @@ function buildEntries(snapshot) {
       }),
     });
   }
+
+  entries.push(...buildNodeEntries(snapshot.nodes));
+  entries.push(...buildNetworkEntries(snapshot.network));
 
   return entries;
 }
@@ -178,16 +182,14 @@ function createSqliteBackend() {
         return { stored: false, reason: "missing clusterName or date" };
       }
 
-      const existing = hasSnapshotStmt.get({ clusterName, lastSync: date });
-      if (existing) {
-        return { stored: false, reason: "unchanged", snapshotId: selectSnapshotId.get({ clusterName, lastSync: date })?.id };
+      const existing = selectSnapshotId.get({ clusterName, lastSync: date });
+      if (!existing) {
+        insertSnapshot.run({
+          clusterName,
+          lastSync: date,
+          spokeUrl: normalized.spokeURL || null,
+        });
       }
-
-      insertSnapshot.run({
-        clusterName,
-        lastSync: date,
-        spokeUrl: normalized.spokeURL || null,
-      });
 
       const row = selectSnapshotId.get({ clusterName, lastSync: date });
       if (!row) {
@@ -196,6 +198,7 @@ function createSqliteBackend() {
 
       const entries = buildEntries(normalized);
       const tx = db.transaction((items) => {
+        db.prepare(`DELETE FROM version_entries WHERE snapshot_id = ?`).run(row.id);
         for (const entry of items) {
           insertEntry.run({
             snapshotId: row.id,
@@ -205,7 +208,13 @@ function createSqliteBackend() {
       });
       tx(entries);
 
-      return { stored: true, snapshotId: row.id, entryCount: entries.length };
+      return {
+        stored: !existing,
+        refreshed: Boolean(existing),
+        reason: existing ? "refreshed" : undefined,
+        snapshotId: row.id,
+        entryCount: entries.length,
+      };
     },
     async listClusters() {
       return listClustersStmt.all();
@@ -287,52 +296,45 @@ function createPostgresBackend() {
         return { stored: false, reason: "missing clusterName or date" };
       }
 
-      if (await this.hasSnapshot(clusterName, date)) {
-        const existing = await pool.query(
-          `SELECT id FROM snapshots WHERE cluster_name = $1 AND last_sync = $2`,
-          [clusterName, date]
-        );
-        return {
-          stored: false,
-          reason: "unchanged",
-          snapshotId: existing.rows[0]?.id,
-        };
-      }
-
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
-        const insert = await client.query(
-          `INSERT INTO snapshots (cluster_name, last_sync, spoke_url)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (cluster_name, last_sync) DO NOTHING
-           RETURNING id`,
-          [clusterName, date, normalized.spokeURL || null]
+        const existing = await client.query(
+          `SELECT id FROM snapshots WHERE cluster_name = $1 AND last_sync = $2`,
+          [clusterName, date]
         );
+        let snapshotId = existing.rows[0]?.id;
+        const wasExisting = Boolean(snapshotId);
 
-        let snapshotId = insert.rows[0]?.id;
         if (!snapshotId) {
-          const existing = await client.query(
-            `SELECT id FROM snapshots WHERE cluster_name = $1 AND last_sync = $2`,
-            [clusterName, date]
+          const insert = await client.query(
+            `INSERT INTO snapshots (cluster_name, last_sync, spoke_url)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (cluster_name, last_sync) DO UPDATE SET
+               spoke_url = COALESCE(EXCLUDED.spoke_url, snapshots.spoke_url)
+             RETURNING id`,
+            [clusterName, date, normalized.spokeURL || null]
           );
-          snapshotId = existing.rows[0]?.id;
-          await client.query("COMMIT");
-          return { stored: false, reason: "unchanged", snapshotId };
+          snapshotId = insert.rows[0]?.id;
+        } else if (normalized.spokeURL) {
+          await client.query(
+            `UPDATE snapshots SET spoke_url = $1 WHERE id = $2`,
+            [normalized.spokeURL, snapshotId]
+          );
+        }
+
+        if (!snapshotId) {
+          await client.query("ROLLBACK");
+          return { stored: false, reason: "failed to resolve snapshot id" };
         }
 
         const entries = buildEntries(normalized);
+        await client.query(`DELETE FROM version_entries WHERE snapshot_id = $1`, [snapshotId]);
         for (const entry of entries) {
           await client.query(
             `INSERT INTO version_entries
                (snapshot_id, row_key, row_label, sort_order, version, status, details)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (snapshot_id, row_key) DO UPDATE SET
-               row_label = EXCLUDED.row_label,
-               sort_order = EXCLUDED.sort_order,
-               version = EXCLUDED.version,
-               status = EXCLUDED.status,
-               details = EXCLUDED.details`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [
               snapshotId,
               entry.rowKey,
@@ -346,7 +348,13 @@ function createPostgresBackend() {
         }
 
         await client.query("COMMIT");
-        return { stored: true, snapshotId, entryCount: entries.length };
+        return {
+          stored: !wasExisting,
+          refreshed: wasExisting,
+          reason: wasExisting ? "refreshed" : undefined,
+          snapshotId,
+          entryCount: entries.length,
+        };
       } catch (err) {
         await client.query("ROLLBACK");
         throw err;

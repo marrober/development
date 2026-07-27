@@ -30,9 +30,21 @@
     <section id="detailView" hidden>
       <div class="detail-toolbar">
         <button id="backBtn" type="button" class="secondary">← All clusters</button>
-        <div>
-          <h2 id="detailTitle"></h2>
+        <div class="detail-title-block">
+          <div class="detail-title-row">
+            <button id="prevClusterBtn" type="button" class="nav-btn secondary" title="Older cluster" aria-label="Previous cluster">&lt;&lt;</button>
+            <h2 id="detailTitle"></h2>
+            <button id="nextClusterBtn" type="button" class="nav-btn secondary" title="Newer cluster" aria-label="Next cluster">&gt;&gt;</button>
+            <label id="diffOnlyWrap" class="diff-only-wrap" hidden>
+              <input id="diffOnlyCheckbox" type="checkbox" />
+              Diff only
+            </label>
+            <button id="closeCompareBtn" type="button" class="secondary" hidden>Close</button>
+          </div>
           <p id="detailMeta" class="detail-meta"></p>
+        </div>
+        <div class="detail-actions">
+          <button id="compareColumnsBtn" type="button" disabled>Compare</button>
         </div>
       </div>
       <div id="detailEmpty" class="empty-state" hidden>
@@ -76,17 +88,29 @@
       </div>
 
       <div id="namespacesCompareView" class="namespaces-compare-view" hidden>
-        <div class="ns-diff-column ns-diff-removed">
-          <h4 id="nsDiffOnlyATitle">Only in this import</h4>
-          <ul id="nsDiffOnlyA"></ul>
+        <div class="ns-diff-pane">
+          <div class="ns-diff-banner ns-diff-banner-current">CURRENT</div>
+          <div class="ns-diff-column ns-diff-removed">
+            <h4 id="nsDiffOnlyATitle">Only in this import</h4>
+            <p id="nsDiffOnlyAWhen" class="ns-diff-when"></p>
+            <ul id="nsDiffOnlyA"></ul>
+          </div>
         </div>
-        <div class="ns-diff-column ns-diff-shared">
-          <h4>In both</h4>
-          <ul id="nsDiffBoth"></ul>
+        <div class="ns-diff-pane">
+          <div class="ns-diff-banner ns-diff-banner-spacer" aria-hidden="true"></div>
+          <div class="ns-diff-column ns-diff-shared">
+            <h4>In both</h4>
+            <p class="ns-diff-when ns-diff-when-spacer" aria-hidden="true">&nbsp;</p>
+            <ul id="nsDiffBoth"></ul>
+          </div>
         </div>
-        <div class="ns-diff-column ns-diff-added">
-          <h4 id="nsDiffOnlyBTitle">Only in compared import</h4>
-          <ul id="nsDiffOnlyB"></ul>
+        <div class="ns-diff-pane">
+          <div class="ns-diff-banner ns-diff-banner-prior">PRIOR</div>
+          <div class="ns-diff-column ns-diff-added">
+            <h4 id="nsDiffOnlyBTitle">Only in compared import</h4>
+            <p id="nsDiffOnlyBWhen" class="ns-diff-when"></p>
+            <ul id="nsDiffOnlyB"></ul>
+          </div>
         </div>
       </div>
     </form>

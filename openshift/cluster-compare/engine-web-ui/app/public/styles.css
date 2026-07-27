@@ -145,6 +145,19 @@ button:disabled {
   align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.detail-title-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
 }
 
 .detail-toolbar h2 {
@@ -156,6 +169,70 @@ button:disabled {
   margin: 0.3rem 0 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.nav-btn {
+  padding: 0.35rem 0.65rem;
+  min-width: 2.5rem;
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.diff-only-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.diff-only-wrap input {
+  accent-color: var(--accent);
+}
+
+.column-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.column-select {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.column-select input {
+  margin-top: 0.15rem;
+  accent-color: var(--accent);
+}
+
+.column-label {
+  white-space: nowrap;
+}
+
+.ns-btn-changed {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  background: rgba(77, 163, 255, 0.12);
+  font-weight: 700;
 }
 
 .status-bar {
@@ -257,7 +334,7 @@ td.label-cell {
   padding: 0;
   background: var(--panel);
   color: var(--text);
-  max-width: min(720px, calc(100vw - 2rem));
+  max-width: min(1100px, calc(100vw - 2rem));
   width: 100%;
 }
 
@@ -274,25 +351,27 @@ td.label-cell {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
-  padding: 0.9rem 1rem;
+  padding: 0.9rem 1.25rem;
   border-bottom: 1px solid var(--panel-border);
 }
 
 .namespaces-dialog-header h3 {
   margin: 0;
-  font-size: 1rem;
-  word-break: break-word;
+  font-size: 1.2rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .namespaces-dialog-subtitle {
   margin: 0.35rem 0 0;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-family: var(--mono);
+  white-space: nowrap;
 }
 
 .namespaces-compare-controls {
-  padding: 0.85rem 1rem 0;
+  padding: 0.85rem 1.25rem 0;
 }
 
 .namespaces-compare-label {
@@ -305,22 +384,25 @@ td.label-cell {
 
 .namespaces-compare-label select {
   font: inherit;
+  font-family: var(--mono);
   padding: 0.5rem 0.65rem;
   border-radius: 8px;
   border: 1px solid var(--panel-border);
   background: var(--bg);
   color: var(--text);
+  min-width: min(100%, 28rem);
+  white-space: nowrap;
 }
 
 .namespaces-dialog-count {
-  margin: 0.75rem 1rem 0.35rem;
+  margin: 0.75rem 1.25rem 0.35rem;
   color: var(--muted);
   font-size: 0.85rem;
 }
 
 .namespaces-dialog-list {
   margin: 0;
-  padding: 0.35rem 1rem 1rem 1.75rem;
+  padding: 0.35rem 1.25rem 1rem 1.75rem;
   max-height: min(50vh, 360px);
   overflow: auto;
   font-family: var(--mono);
@@ -335,26 +417,83 @@ td.label-cell {
 .namespaces-compare-view {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-  padding: 0.85rem 1rem 1rem;
+  gap: 1rem;
+  padding: 1rem 1.25rem 1.25rem;
+  align-items: stretch;
+}
+
+.namespaces-compare-view[hidden],
+.namespaces-single-view[hidden] {
+  display: none !important;
+}
+
+.ns-diff-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ns-diff-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  margin-bottom: 0.55rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ns-diff-banner-current {
+  background: rgba(255, 107, 107, 0.18);
+  color: #ffb4b4;
+  border: 1px solid rgba(255, 107, 107, 0.45);
+}
+
+.ns-diff-banner-prior {
+  background: rgba(62, 207, 142, 0.16);
+  color: #9aecc4;
+  border: 1px solid rgba(62, 207, 142, 0.4);
+}
+
+.ns-diff-banner-spacer {
+  visibility: hidden;
+  border: 1px solid transparent;
 }
 
 .ns-diff-column {
+  flex: 1;
   border: 1px solid var(--panel-border);
   border-radius: 8px;
-  padding: 0.65rem 0.75rem;
-  min-height: 8rem;
-  max-height: min(45vh, 320px);
+  padding: 0.75rem 0.85rem;
+  min-height: 12rem;
+  max-height: min(55vh, 420px);
   overflow: auto;
   background: rgba(15, 20, 25, 0.45);
 }
 
 .ns-diff-column h4 {
-  margin: 0 0 0.5rem;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.ns-diff-when {
+  margin: 0.35rem 0 0.65rem;
   color: var(--muted);
+  font-size: 0.8rem;
+  font-family: var(--mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ns-diff-when-spacer {
+  visibility: hidden;
 }
 
 .ns-diff-column ul {
@@ -382,9 +521,20 @@ td.label-cell {
   margin-left: -1.1rem;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .namespaces-compare-view {
     grid-template-columns: 1fr;
+  }
+
+  .ns-diff-banner-spacer,
+  .ns-diff-when-spacer {
+    display: none;
+  }
+
+  .namespaces-dialog-header h3,
+  .namespaces-dialog-subtitle,
+  .ns-diff-when {
+    white-space: normal;
   }
 }
 
