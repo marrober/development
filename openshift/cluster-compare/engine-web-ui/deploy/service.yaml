@@ -11,8 +11,6 @@ spec:
       protocol: TCP
       port: 443
       targetPort: 8443
-  tls:
-    termination: edge
   type: ClusterIP
   selector:
     app.kubernetes.io/name: cluster-compare-engine
