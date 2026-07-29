@@ -1,13 +1,13 @@
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
-  name: pacman-route
-  namespace: pacman-development
+  name: cluster-compare-engine
+  namespace: cluster-compare
 spec:
   path: /
   to:
     kind: Service
-    name: pacman
+    name: cluster-compare-engine
     weight: 100
   port:
     targetPort: 8080-tcp

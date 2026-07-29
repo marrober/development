@@ -10,6 +10,8 @@ resources:
 - deployment.yaml
 - role-bindings/engine-role.yaml
 - role-bindings/engine-role-bindings.yaml
+- service.yaml
+- route.yaml
 images:
 - name: quay.io/marrober/cluster-compare-engine
   newTag: d8d4r
