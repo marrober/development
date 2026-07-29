@@ -7,10 +7,12 @@ metadata:
     app.kubernetes.io/name: cluster-compare-engine
 spec:
   ports:
-    - name: 8080-tcp
+    - name: 8443-tcp
       protocol: TCP
-      port: 8080
-      targetPort: 8080
+      port: 443
+      targetPort: 8443
+  tls:
+    termination: edge
   type: ClusterIP
   selector:
     app.kubernetes.io/name: cluster-compare-engine

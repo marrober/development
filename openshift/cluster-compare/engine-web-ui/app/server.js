@@ -6,7 +6,7 @@ const k8sConfig = require("./lib/k8s").config;
 const { isInCluster } = require("./lib/k8s");
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3950;
+const PORT = Number(process.env.PORT) || 8443;
 // Poll interval is configured in seconds; convert to ms for timers.
 // Default to 60s in-cluster; disable locally unless set.
 const defaultPollSeconds = isInCluster() ? 60 : 0;

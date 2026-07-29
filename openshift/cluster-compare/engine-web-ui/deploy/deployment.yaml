@@ -24,6 +24,8 @@ spec:
             - configMapRef:
                 name: cluster-compare-db-config
           env:
+            - name: POLL_INTERVAL_SECONDS
+              value: 300
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:

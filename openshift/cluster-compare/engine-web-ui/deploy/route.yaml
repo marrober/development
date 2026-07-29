@@ -10,7 +10,7 @@ spec:
     name: cluster-compare-engine
     weight: 100
   port:
-    targetPort: 8080-tcp
+    targetPort: 8443-tcp
   tls:
     termination: edge
   wildcardPolicy: None
