@@ -44,13 +44,15 @@ type ClusterOperatorSnapshot struct {
 
 // InstalledOperatorSnapshot holds OLM ClusterServiceVersion information.
 // Operators installed in multiple namespaces are reported once with Namespaces listed.
+// Name is the package identity without the CSV version suffix so compares align across versions.
 type InstalledOperatorSnapshot struct {
-	Namespaces []string `json:"namespaces,omitempty"`
-	Name       string   `json:"name,omitempty"`
-	Version    string   `json:"version,omitempty"`
-	Phase      string   `json:"phase,omitempty"`
-	Status     string   `json:"status,omitempty"`
-	Message    string   `json:"message,omitempty"`
+	Namespaces  []string `json:"namespaces,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	DisplayName string   `json:"displayName,omitempty"`
+	Version     string   `json:"version,omitempty"`
+	Phase       string   `json:"phase,omitempty"`
+	Status      string   `json:"status,omitempty"`
+	Message     string   `json:"message,omitempty"`
 }
 
 // NodeResourceSnapshot holds capacity, allocatable, allocated (pod requests),

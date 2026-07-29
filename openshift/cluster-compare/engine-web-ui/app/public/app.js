@@ -62,9 +62,26 @@ let inCrossCompare = false;
 
 function displayRowLabel(row) {
   if (row.rowKey?.startsWith("installed-operator:")) {
-    return row.rowKey.slice("installed-operator:".length);
+    const label = String(row.label || "").trim();
+    if (label && !/\.v\d+/i.test(label)) {
+      return label;
+    }
+    const pkg = row.rowKey
+      .slice("installed-operator:".length)
+      .replace(/\.v\d+(?:[.\-][\w+]+)*$/i, "");
+    return pkg
+      .split(/[-_.]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ") || pkg || label || "unknown";
   }
   return String(row.label || "").replace(/\s\[[^\]]*\]$/, "");
+}
+
+function shouldShowStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+  if (!value) return false;
+  return value !== "succeeded" && value !== "available";
 }
 
 function namespacesForCell(row, columnId) {
@@ -385,7 +402,16 @@ function renderTiles(clusters) {
 
     const sync = document.createElement("div");
     sync.className = "tile-sync";
-    sync.textContent = formatSync(cluster.latestSync);
+    sync.textContent = `Last sync: ${formatSync(cluster.latestSync)}`;
+
+    const nextSync = document.createElement("div");
+    nextSync.className = "tile-next-sync";
+    nextSync.textContent = cluster.nextSync
+      ? `Next sync: ${formatSync(cluster.nextSync)}`
+      : "Next sync: unknown";
+    if (cluster.resyncIntervalMinutes) {
+      nextSync.title = `Based on lastSync + ${cluster.resyncIntervalMinutes} minute resync interval`;
+    }
 
     const footer = document.createElement("div");
     footer.className = "tile-footer";
@@ -398,7 +424,7 @@ function renderTiles(clusters) {
     pill.textContent = cluster.available === "True" ? "Available" : cluster.available || "Unknown";
 
     footer.append(count, pill);
-    openBtn.append(name, sync, footer);
+    openBtn.append(name, sync, nextSync, footer);
     openBtn.addEventListener("click", () => showDetail(cluster.clusterName));
     top.append(selectLabel, openBtn);
     tile.appendChild(top);
@@ -568,7 +594,7 @@ function renderCrossCompareTable() {
         versionSpan.textContent = cell.version || "—";
         td.appendChild(versionSpan);
 
-        if (cell.status) {
+        if (shouldShowStatus(cell.status)) {
           const pill = document.createElement("span");
           pill.className = `status-pill ${statusClass(cell.status)}`;
           pill.textContent = cell.status;
@@ -813,7 +839,7 @@ function renderTable() {
           versionSpan.textContent = cell.version || "—";
           td.appendChild(versionSpan);
 
-          if (cell.status) {
+          if (shouldShowStatus(cell.status)) {
             const pill = document.createElement("span");
             pill.className = `status-pill ${statusClass(cell.status)}`;
             pill.textContent = cell.status;

@@ -90,6 +90,8 @@ spec:
                                     type: string
                                 name:
                                   type: string
+                                displayName:
+                                  type: string
                                 version:
                                   type: string
                                 phase:

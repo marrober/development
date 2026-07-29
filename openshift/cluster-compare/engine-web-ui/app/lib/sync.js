@@ -6,6 +6,28 @@ const {
   config: k8sConfig,
 } = require("./k8s");
 
+// Matches collector-addon deploy template: --resync-interval=60 (minutes).
+const RESYNC_INTERVAL_MINUTES = Number(process.env.RESYNC_INTERVAL_MINUTES || 60);
+
+function computeNextSync(lastSync, intervalMinutes = RESYNC_INTERVAL_MINUTES) {
+  if (!lastSync) return null;
+  const parsed = Date.parse(lastSync);
+  if (Number.isNaN(parsed)) return null;
+  const minutes = Number(intervalMinutes);
+  const safeMinutes = Number.isFinite(minutes) && minutes > 0 ? minutes : 60;
+  return new Date(parsed + safeMinutes * 60 * 1000).toISOString();
+}
+
+async function lastSyncForCluster(clusterName, fallback = null) {
+  try {
+    const cr = await getClusterCollector(clusterName, k8sConfig.collectorName);
+    if (!cr) return fallback;
+    return cr.status?.lastSync || cr.status?.date || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * Discover ManagedClusters, then for each cluster namespace read the
  * ClusterCollector CR and import a snapshot when lastSync is new.
@@ -80,6 +102,7 @@ async function syncFromCluster() {
       crName: normalized.crName,
       namespace: normalized.namespace,
       lastSync,
+      nextSync: computeNextSync(lastSync),
       available: available?.status,
       hubAccepted: hubAccepted?.status,
       ...outcome,
@@ -88,6 +111,7 @@ async function syncFromCluster() {
 
   return {
     scanned: managedClusters.length,
+    resyncIntervalMinutes: RESYNC_INTERVAL_MINUTES,
     results,
   };
 }
@@ -104,50 +128,59 @@ async function listClusterTiles() {
 
   try {
     const managedClusters = await listManagedClusters();
-    const tiles = [];
+    const tiles = await Promise.all(
+      managedClusters.map(async (mc) => {
+        const clusterName = mc.metadata?.name;
+        if (!clusterName) return null;
 
-    for (const mc of managedClusters) {
-      const clusterName = mc.metadata?.name;
-      if (!clusterName) continue;
+        const stored = byName.get(clusterName) || {};
+        byName.delete(clusterName);
+        const available = mc.status?.conditions?.find(
+          (c) => c.type === "ManagedClusterConditionAvailable"
+        );
+        const hubAccepted = mc.status?.conditions?.find(
+          (c) => c.type === "HubAcceptedManagedCluster"
+        );
+        const latestSync = await lastSyncForCluster(clusterName, stored.latestSync || null);
 
-      const stored = byName.get(clusterName) || {};
-      const available = mc.status?.conditions?.find(
-        (c) => c.type === "ManagedClusterConditionAvailable"
-      );
-      const hubAccepted = mc.status?.conditions?.find(
-        (c) => c.type === "HubAcceptedManagedCluster"
-      );
+        return {
+          clusterName,
+          snapshotCount: stored.snapshotCount || 0,
+          latestSync,
+          nextSync: computeNextSync(latestSync),
+          resyncIntervalMinutes: RESYNC_INTERVAL_MINUTES,
+          available: available?.status || "Unknown",
+          hubAccepted: hubAccepted?.status || "Unknown",
+          source: "managedcluster",
+        };
+      })
+    );
 
-      tiles.push({
-        clusterName,
-        snapshotCount: stored.snapshotCount || 0,
-        latestSync: stored.latestSync || null,
-        available: available?.status || "Unknown",
-        hubAccepted: hubAccepted?.status || "Unknown",
-        source: "managedcluster",
-      });
-      byName.delete(clusterName);
-    }
+    const result = tiles.filter(Boolean);
 
     // Include any DB-only clusters not present as ManagedClusters.
     for (const leftover of byName.values()) {
-      tiles.push({
+      result.push({
         clusterName: leftover.clusterName,
         snapshotCount: leftover.snapshotCount,
         latestSync: leftover.latestSync,
+        nextSync: computeNextSync(leftover.latestSync),
+        resyncIntervalMinutes: RESYNC_INTERVAL_MINUTES,
         available: "Unknown",
         hubAccepted: "Unknown",
         source: "database",
       });
     }
 
-    tiles.sort((a, b) => a.clusterName.localeCompare(b.clusterName));
-    return tiles;
+    result.sort((a, b) => a.clusterName.localeCompare(b.clusterName));
+    return result;
   } catch (err) {
     return dbClusters.map((c) => ({
       clusterName: c.clusterName,
       snapshotCount: c.snapshotCount,
       latestSync: c.latestSync,
+      nextSync: computeNextSync(c.latestSync),
+      resyncIntervalMinutes: RESYNC_INTERVAL_MINUTES,
       available: "Unknown",
       hubAccepted: "Unknown",
       source: "database",
@@ -159,4 +192,6 @@ async function listClusterTiles() {
 module.exports = {
   syncFromCluster,
   listClusterTiles,
+  computeNextSync,
+  RESYNC_INTERVAL_MINUTES,
 };

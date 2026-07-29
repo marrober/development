@@ -2,6 +2,46 @@ const fs = require("fs");
 const path = require("path");
 const { normalizeClusterSnapshot } = require("./normalize");
 const { buildNodeEntries, buildNetworkEntries } = require("./resources");
+const { operatorDisplayName, operatorRowKey, operatorPackageName, shouldShowStatus } = require("./operators");
+
+function normalizeEntryIdentity(entry) {
+  const rowKey = String(entry.rowKey || "");
+  if (!rowKey.startsWith("installed-operator:")) {
+    return {
+      rowKey,
+      label: entry.rowLabel,
+      status: shouldShowStatus(entry.status) ? entry.status : "",
+    };
+  }
+
+  let details = {};
+  try {
+    details =
+      typeof entry.details === "string"
+        ? JSON.parse(entry.details || "{}")
+        : entry.details || {};
+  } catch {
+    details = {};
+  }
+
+  const packageName =
+    details.packageName ||
+    operatorPackageName(rowKey.slice("installed-operator:".length)) ||
+    operatorPackageName(entry.rowLabel || "");
+  const label =
+    details.displayName ||
+    operatorDisplayName({
+      name: packageName,
+      displayName: details.displayName || "",
+    });
+
+  const rawStatus = entry.status || details.phase || "";
+  return {
+    rowKey: `installed-operator:${packageName || "unknown"}`,
+    label,
+    status: shouldShowStatus(rawStatus) ? rawStatus : "",
+  };
+}
 
 const DATABASE_TYPE = (process.env.DATABASE_TYPE || process.env.DB_TYPE || "").toLowerCase();
 const usePostgres =
@@ -20,7 +60,7 @@ function buildEntries(snapshot) {
     rowLabel: "Cluster Version",
     sortOrder: 0,
     version: clusterVersion.version || "",
-    status: clusterVersion.status || "",
+    status: shouldShowStatus(clusterVersion.status) ? clusterVersion.status : "",
     details: JSON.stringify({
       message: clusterVersion.message || "",
     }),
@@ -35,7 +75,7 @@ function buildEntries(snapshot) {
       rowLabel: operator.name,
       sortOrder: 100,
       version: operator.version || "",
-      status: operator.status || "",
+      status: shouldShowStatus(operator.status) ? operator.status : "",
       details: JSON.stringify({
         available: operator.available || "",
         progressing: operator.progressing || "",
@@ -46,7 +86,7 @@ function buildEntries(snapshot) {
   }
 
   const installedOperators = [...(snapshot.installedOperators || [])].sort((a, b) =>
-    (a.name || "").localeCompare(b.name || "")
+    operatorDisplayName(a).localeCompare(operatorDisplayName(b))
   );
   for (const operator of installedOperators) {
     const namespaces = Array.isArray(operator.namespaces)
@@ -54,16 +94,24 @@ function buildEntries(snapshot) {
       : operator.namespace
         ? [operator.namespace]
         : [];
+    const status = shouldShowStatus(operator.status)
+      ? operator.status
+      : shouldShowStatus(operator.phase)
+        ? operator.phase
+        : "";
     entries.push({
-      rowKey: `installed-operator:${operator.name}`,
-      rowLabel: operator.name || "unknown",
+      rowKey: operatorRowKey(operator),
+      rowLabel: operatorDisplayName(operator),
       sortOrder: 200,
       version: operator.version || "",
-      status: operator.status || "",
+      status,
       details: JSON.stringify({
         namespaces,
         phase: operator.phase || "",
         message: operator.message || "",
+        packageName: operatorPackageName(operator.name || ""),
+        displayName: operatorDisplayName(operator),
+        csvName: operator.name || "",
       }),
     });
   }
@@ -418,13 +466,20 @@ function buildComparison(clusterName, snapshots, getEntries) {
   const rowMap = new Map();
   for (const snapshot of snapshotData) {
     for (const entry of snapshot.entries) {
-      if (!rowMap.has(entry.rowKey)) {
-        rowMap.set(entry.rowKey, {
-          rowKey: entry.rowKey,
-          label: entry.rowLabel,
+      const identity = normalizeEntryIdentity(entry);
+      if (!rowMap.has(identity.rowKey)) {
+        rowMap.set(identity.rowKey, {
+          rowKey: identity.rowKey,
+          label: identity.label,
           sortOrder: entry.sortOrder,
           cells: {},
         });
+      } else {
+        const existing = rowMap.get(identity.rowKey);
+        // Prefer a clean display name over legacy CSV names with versions/namespaces.
+        if (identity.label && (!existing.label || /\.v\d+/i.test(existing.label) || /\[/.test(existing.label))) {
+          existing.label = identity.label;
+        }
       }
     }
   }
@@ -432,15 +487,21 @@ function buildComparison(clusterName, snapshots, getEntries) {
   for (const snapshot of snapshotData) {
     const columnId = snapshot.lastSync;
     for (const entry of snapshot.entries) {
-      const row = rowMap.get(entry.rowKey);
+      const identity = normalizeEntryIdentity(entry);
+      const row = rowMap.get(identity.rowKey);
+      let details = {};
+      try {
+        details =
+          typeof entry.details === "string"
+            ? JSON.parse(entry.details || "{}")
+            : entry.details || {};
+      } catch {
+        details = {};
+      }
       row.cells[columnId] = {
         version: entry.version,
-        status: entry.status,
-        details: entry.details
-          ? typeof entry.details === "string"
-            ? JSON.parse(entry.details)
-            : entry.details
-          : {},
+        status: identity.status,
+        details,
       };
     }
   }

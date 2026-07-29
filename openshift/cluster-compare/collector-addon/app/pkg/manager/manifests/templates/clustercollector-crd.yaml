@@ -81,6 +81,8 @@ spec:
                       type: array
                     name:
                       type: string
+                    displayName:
+                      type: string
                     version:
                       type: string
                     phase:

@@ -1,0 +1,110 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: postgresql-native-persistent
+  annotations:
+    description: "PostgreSQL database service using a standard Kubernetes Deployment and persistent storage."
+    tags: "database,postgresql"
+objects:
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: ${DATABASE_SERVICE_NAME}-secret
+  stringData:
+    database-user: ${POSTGRESQL_USER}
+    database-password: ${POSTGRESQL_PASSWORD}
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: ${DATABASE_SERVICE_NAME}-pvc
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: ${VOLUME_CAPACITY}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${DATABASE_SERVICE_NAME}
+  spec:
+    ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+    selector:
+      name: ${DATABASE_SERVICE_NAME}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: ${DATABASE_SERVICE_NAME}
+    labels:
+      name: ${DATABASE_SERVICE_NAME}
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        name: ${DATABASE_SERVICE_NAME}
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: ${DATABASE_SERVICE_NAME}
+      spec:
+        containers:
+        - name: postgresql
+          image: 'default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/openshift/postgresql:${POSTGRESQL_VERSION}'
+          ports:
+          - containerPort: 5432
+            protocol: TCP
+          env:
+          - name: POSTGRESQL_USER
+            valueFrom:
+              secretKeyRef:
+                name: ${DATABASE_SERVICE_NAME}-secret
+                key: database-user
+          - name: POSTGRESQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ${DATABASE_SERVICE_NAME}-secret
+                key: database-password
+          - name: POSTGRESQL_DATABASE
+            value: ${POSTGRESQL_DATABASE}
+          volumeMounts:
+          - name: postgresql-data
+            mountPath: /var/lib/pgsql/data
+          readinessProbe:
+            timeoutSeconds: 1
+            initialDelaySeconds: 5
+            exec:
+              command: [ "/bin/sh", "-i", "-c", "psql -h 127.0.0.1 -U $POSTGRESQL_USER -q -d $POSTGRESQL_DATABASE -c 'SELECT 1'" ]
+          livenessProbe:
+            timeoutSeconds: 1
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: 5432
+        volumes:
+        - name: postgresql-data
+          persistentVolumeClaim:
+            claimName: ${DATABASE_SERVICE_NAME}-pvc
+parameters:
+- name: DATABASE_SERVICE_NAME
+  value: postgresql
+  required: true
+- name: POSTGRESQL_USER
+  value: user
+  required: true
+- name: POSTGRESQL_PASSWORD
+  generate: expression
+  from: "[a-zA-Z0-9]{16}"
+  required: true
+- name: POSTGRESQL_DATABASE
+  value: sampledb
+  required: true
+- name: POSTGRESQL_VERSION
+  value: "15-el9"
+  required: true
+- name: VOLUME_CAPACITY
+  value: 1Gi
+  required: true

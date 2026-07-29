@@ -249,6 +249,7 @@ func installedOperatorFromCSV(csv *unstructured.Unstructured) ocmv1alpha1.Instal
 	reason, _, _ := unstructured.NestedString(csv.Object, "status", "reason")
 	message, _, _ := unstructured.NestedString(csv.Object, "status", "message")
 	version, _, _ := unstructured.NestedString(csv.Object, "spec", "version")
+	displayName, _, _ := unstructured.NestedString(csv.Object, "spec", "displayName")
 
 	status := phase
 	// Append reason for non-Succeeded phases (e.g. "Failed (InstallComponentFailed)").
@@ -256,14 +257,49 @@ func installedOperatorFromCSV(csv *unstructured.Unstructured) ocmv1alpha1.Instal
 		status = fmt.Sprintf("%s (%s)", phase, reason)
 	}
 
-	return ocmv1alpha1.InstalledOperatorSnapshot{
-		Namespaces: []string{csv.GetNamespace()},
-		Name:       csv.GetName(),
-		Version:    version,
-		Phase:      phase,
-		Status:     status,
-		Message:    message,
+	packageName := csvPackageName(csv.GetName())
+	if displayName == "" {
+		displayName = humanizeOperatorName(packageName)
 	}
+
+	return ocmv1alpha1.InstalledOperatorSnapshot{
+		Namespaces:  []string{csv.GetNamespace()},
+		Name:        packageName,
+		DisplayName: displayName,
+		Version:     version,
+		Phase:       phase,
+		Status:      status,
+		Message:     message,
+	}
+}
+
+// csvPackageName strips the trailing .v<version> suffix from a CSV metadata name.
+func csvPackageName(csvName string) string {
+	idx := strings.LastIndex(csvName, ".v")
+	if idx <= 0 {
+		return csvName
+	}
+	suffix := csvName[idx+2:]
+	if suffix == "" || suffix[0] < '0' || suffix[0] > '9' {
+		return csvName
+	}
+	return csvName[:idx]
+}
+
+func humanizeOperatorName(name string) string {
+	parts := strings.FieldsFunc(name, func(r rune) bool {
+		return r == '-' || r == '_' || r == '.'
+	})
+	if len(parts) == 0 {
+		return name
+	}
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		parts[i] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, " ")
 }
 
 func mergeUniqueSorted(existing, incoming []string) []string {
