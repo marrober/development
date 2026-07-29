@@ -20,6 +20,15 @@ spec:
           ports:
             - containerPort: 8080
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: cluster-compare-db-config
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cluster-compare-pg-pguser-clustercompare
+                  key: password
           resources: {}
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
