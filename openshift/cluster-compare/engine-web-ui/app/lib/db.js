@@ -138,7 +138,15 @@ function formatColumnLabel(lastSync) {
 }
 
 function createSqliteBackend() {
-  const Database = require("better-sqlite3");
+  let Database;
+  try {
+    Database = require("better-sqlite3");
+  } catch (err) {
+    throw new Error(
+      "SQLite support requires the better-sqlite3 package. Install with `npm install` (no --omit=dev), or set DATABASE_TYPE=postgresql / PGHOST for PostgreSQL.",
+      { cause: err }
+    );
+  }
   const dataDir = path.join(__dirname, "..", "data");
   const dbPath = process.env.DATABASE_PATH || path.join(dataDir, "cluster-info.db");
 

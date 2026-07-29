@@ -33,7 +33,7 @@ spec:
       args:
       - |-
         pwd
-        npm install npm@latest --omit=dev
+        npm install --omit=dev
         ls -al
       image: $(params.node_js_image_repo)/$(params.node_js_image_name):$(params.node_js_image_tag)
       resources:
