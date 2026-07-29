@@ -10,4 +10,4 @@ resources:
 - deployment.yaml
 images:
 - name: quay.io/marrober/cluster-compare-engine
-  newTag: l7zt4
+  newTag: j2pc8
