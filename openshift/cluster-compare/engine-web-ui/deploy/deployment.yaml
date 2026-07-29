@@ -17,6 +17,10 @@ spec:
       containers:
         - name: cluster-compare-engine
           image: quay.io/marrober/cluster-compare-engine
+          command:
+            - node
+            - server.js
+            - "--verbose"
           ports:
             - containerPort: 8080
               protocol: TCP

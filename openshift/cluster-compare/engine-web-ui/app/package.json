@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "sync": "node -e \"require('./lib/db').initDb().then(() => require('./lib/sync').syncFromCluster()).then(r => { console.log(JSON.stringify(r, null, 2)); process.exit(0); }).catch(e => { console.error(e); process.exit(1); })\""
+    "sync": "node -e \"const {parseCliArgs}=require('./lib/cli');const {verbose}=parseCliArgs();require('./lib/db').initDb().then(()=>require('./lib/sync').syncFromCluster({verbose})).then(r=>{console.log(JSON.stringify(r,null,2));process.exit(0);}).catch(e=>{console.error(e);process.exit(1);})\""
   },
   "dependencies": {
     "@kubernetes/client-node": "^1.0.0",

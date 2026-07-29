@@ -10,4 +10,4 @@ RUN rm -rf node_modules \
   && chown -R 1001:0 /opt/app-root/src
 
 USER 1001
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

@@ -53,6 +53,8 @@ curl -X POST http://localhost:3950/api/snapshots \
 cd engine-web-ui/app
 npm install
 npm start
+# or with detailed sync logging:
+npm start -- --verbose
 ```
 
 Open http://localhost:3950. Without `PGHOST` / `DATABASE_TYPE=postgresql`, the app uses SQLite under `./data/`.
@@ -61,8 +63,8 @@ Open http://localhost:3950. Without `PGHOST` / `DATABASE_TYPE=postgresql`, the a
 
 ```bash
 npm run sync
+npm run sync -- --verbose
 ```
-
 ## OpenShift / ArgoCD database delivery
 
 Application code lives under [`app/`](app/). Manifests under [`deploy/`](deploy/) are intended for ArgoCD:
@@ -104,6 +106,7 @@ env:
 | `PGHOST` / `PGPORT` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` | — | PostgreSQL connection |
 | `DATABASE_URL` | — | Optional full connection string |
 | `POLL_INTERVAL_SECONDS` | `60` in-cluster, `0` local | Background sync interval (seconds) |
+| `--verbose` / `VERBOSE` | off | Log collected cluster details (version, operators, nodes, network) on each sync |
 | `COLLECTOR_NAME` | `clustercollector` | ClusterCollector CR name in each namespace |
 | `CRD_GROUP` | `open-cluster-management.io` | ClusterCollector API group |
 | `CRD_VERSION` | `v1alpha1` | ClusterCollector API version |

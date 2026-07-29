@@ -28,13 +28,90 @@ async function lastSyncForCluster(clusterName, fallback = null) {
   }
 }
 
+function reportCollectedClusterInfo(snapshot, meta = {}) {
+  const clusterVersion = snapshot.clusterVersion || {};
+  const network = snapshot.network || {};
+  const clusterOperators = snapshot.clusterOperators || [];
+  const installedOperators = snapshot.installedOperators || [];
+  const nodes = snapshot.nodes || [];
+
+  console.log("[verbose] cluster information collected", {
+    clusterName: snapshot.clusterName,
+    date: snapshot.date,
+    lastSync: meta.lastSync || snapshot.date,
+    spokeURL: snapshot.spokeURL || "",
+    available: meta.available,
+    hubAccepted: meta.hubAccepted,
+    stored: meta.stored,
+    refreshed: meta.refreshed,
+    reason: meta.reason,
+    clusterVersion: clusterVersion.version || "",
+    clusterVersionStatus: clusterVersion.status || "",
+    clusterVersionMessage: clusterVersion.message || "",
+    clusterOperators: clusterOperators.length,
+    installedOperators: installedOperators.length,
+    nodes: nodes.length,
+    networkType: network.networkType || "",
+    clusterNetwork: network.clusterNetwork || [],
+    serviceNetwork: network.serviceNetwork || [],
+  });
+
+  for (const operator of clusterOperators) {
+    console.log("[verbose] cluster operator", {
+      clusterName: snapshot.clusterName,
+      name: operator.name,
+      version: operator.version,
+      status: operator.status,
+      available: operator.available,
+      progressing: operator.progressing,
+      degraded: operator.degraded,
+      message: operator.message,
+    });
+  }
+
+  for (const operator of installedOperators) {
+    console.log("[verbose] installed operator", {
+      clusterName: snapshot.clusterName,
+      name: operator.name,
+      displayName: operator.displayName,
+      version: operator.version,
+      phase: operator.phase,
+      status: operator.status,
+      namespaces: operator.namespaces,
+      message: operator.message,
+    });
+  }
+
+  for (const node of nodes) {
+    console.log("[verbose] node", {
+      clusterName: snapshot.clusterName,
+      name: node.name,
+      roles: node.roles,
+      ready: node.ready,
+      cpu: node.cpu,
+      memory: node.memory,
+      gpu: node.gpu,
+      gpuResource: node.gpuResource,
+    });
+  }
+}
+
 /**
  * Discover ManagedClusters, then for each cluster namespace read the
  * ClusterCollector CR and import a snapshot when lastSync is new.
+ *
+ * @param {{ verbose?: boolean }} [options]
  */
-async function syncFromCluster() {
+async function syncFromCluster(options = {}) {
+  const verbose = Boolean(options.verbose);
   const managedClusters = await listManagedClusters();
   const results = [];
+
+  if (verbose) {
+    console.log(
+      `[verbose] syncing ${managedClusters.length} managed cluster(s)`
+    );
+  }
 
   for (const mc of managedClusters) {
     const clusterName = mc.metadata?.name;
@@ -53,31 +130,39 @@ async function syncFromCluster() {
     try {
       cr = await getClusterCollector(clusterName, k8sConfig.collectorName);
     } catch (err) {
-      results.push({
+      const result = {
         clusterName,
         stored: false,
         reason: `failed to read ClusterCollector: ${err.message || err}`,
         available: available?.status,
         hubAccepted: hubAccepted?.status,
-      });
+      };
+      if (verbose) {
+        console.log("[verbose] cluster sync skipped", result);
+      }
+      results.push(result);
       continue;
     }
 
     if (!cr) {
-      results.push({
+      const result = {
         clusterName,
         stored: false,
         reason: `no ClusterCollector/${k8sConfig.collectorName} in namespace ${clusterName}`,
         available: available?.status,
         hubAccepted: hubAccepted?.status,
-      });
+      };
+      if (verbose) {
+        console.log("[verbose] cluster sync skipped", result);
+      }
+      results.push(result);
       continue;
     }
 
     const normalized = normalizeClusterCollector(cr);
     const lastSync = normalized.lastSync || normalized.snapshot.date;
     if (!lastSync) {
-      results.push({
+      const result = {
         clusterName,
         crName: normalized.crName,
         namespace: normalized.namespace,
@@ -85,7 +170,11 @@ async function syncFromCluster() {
         reason: "ClusterCollector has no lastSync/date",
         available: available?.status,
         hubAccepted: hubAccepted?.status,
-      });
+      };
+      if (verbose) {
+        console.log("[verbose] cluster sync skipped", result);
+      }
+      results.push(result);
       continue;
     }
 
@@ -97,7 +186,7 @@ async function syncFromCluster() {
       date: lastSync,
     };
     const outcome = await saveSnapshot(snapshot);
-    results.push({
+    const result = {
       clusterName,
       crName: normalized.crName,
       namespace: normalized.namespace,
@@ -106,6 +195,21 @@ async function syncFromCluster() {
       available: available?.status,
       hubAccepted: hubAccepted?.status,
       ...outcome,
+    };
+    if (verbose) {
+      reportCollectedClusterInfo(snapshot, result);
+    }
+    results.push(result);
+  }
+
+  if (verbose) {
+    const stored = results.filter((r) => r.stored).length;
+    const refreshed = results.filter((r) => r.refreshed).length;
+    console.log("[verbose] sync complete", {
+      scanned: managedClusters.length,
+      stored,
+      refreshed,
+      skipped: results.length - stored - refreshed,
     });
   }
 

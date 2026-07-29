@@ -4,6 +4,9 @@ const db = require("./lib/db");
 const { syncFromCluster, listClusterTiles } = require("./lib/sync");
 const k8sConfig = require("./lib/k8s").config;
 const { isInCluster } = require("./lib/k8s");
+const { parseCliArgs } = require("./lib/cli");
+
+const { verbose: VERBOSE } = parseCliArgs();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 8443;
@@ -29,6 +32,7 @@ app.get("/api/health", (_req, res) => {
     database: { type: db.dbType, info: db.dbInfo },
     k8s: k8sConfig,
     pollIntervalSeconds: POLL_INTERVAL_SECONDS,
+    verbose: VERBOSE,
     inCluster: isInCluster(),
   });
 });
@@ -53,7 +57,7 @@ app.get("/api/compare/:clusterName", async (req, res) => {
 
 app.post("/api/sync", async (_req, res) => {
   try {
-    const result = await syncFromCluster();
+    const result = await syncFromCluster({ verbose: VERBOSE });
     res.json(result);
   } catch (err) {
     res.status(500).json({
@@ -82,7 +86,7 @@ function startPolling() {
 
   const run = async () => {
     try {
-      const result = await syncFromCluster();
+      const result = await syncFromCluster({ verbose: VERBOSE });
       const stored = result.results.filter((r) => r.stored).length;
       const refreshed = result.results.filter((r) => r.refreshed).length;
       console.log(
@@ -114,6 +118,9 @@ async function main() {
       console.log(`polling every ${POLL_INTERVAL_SECONDS}s`);
     } else {
       console.log("polling disabled (set POLL_INTERVAL_SECONDS to enable)");
+    }
+    if (VERBOSE) {
+      console.log("verbose reporting enabled; collected cluster details will be logged on sync");
     }
     startPolling();
   });
