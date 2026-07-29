@@ -19,4 +19,4 @@ data:
   PGUSER: clustercompare
   # Optional SSL mode for in-cluster traffic (operator default is typically require).
   PGSSLMODE: require
-  POLL_INTERVAL_MS: "60000"
+  POLL_INTERVAL_SECONDS: "60"

@@ -9,7 +9,7 @@ Node.js application that discovers OCM **ManagedCluster** resources on an OpenSh
 3. Compare `status.lastSync` to snapshots already stored for that cluster.
 4. When `lastSync` is new, import the CR status into the database indexed by **cluster name** and **date/time** (`lastSync`).
 
-Polling runs automatically in-cluster every 60s (`POLL_INTERVAL_MS`). Locally it is off unless you set that variable.
+Polling runs automatically in-cluster every 60s (`POLL_INTERVAL_SECONDS`). Locally it is off unless you set that variable.
 
 ## Snapshot format
 
@@ -103,7 +103,7 @@ env:
 | `DATABASE_TYPE` | _(sqlite unless PGHOST set)_ | Set to `postgresql` on OpenShift via ConfigMap |
 | `PGHOST` / `PGPORT` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` | — | PostgreSQL connection |
 | `DATABASE_URL` | — | Optional full connection string |
-| `POLL_INTERVAL_MS` | `60000` in-cluster, `0` local | Background sync interval |
+| `POLL_INTERVAL_SECONDS` | `60` in-cluster, `0` local | Background sync interval (seconds) |
 | `COLLECTOR_NAME` | `clustercollector` | ClusterCollector CR name in each namespace |
 | `CRD_GROUP` | `open-cluster-management.io` | ClusterCollector API group |
 | `CRD_VERSION` | `v1alpha1` | ClusterCollector API version |

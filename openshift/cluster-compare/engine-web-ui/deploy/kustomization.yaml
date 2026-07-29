@@ -8,6 +8,8 @@ resources:
 - postgrescluster.yaml
 - db-configmap.yaml
 - deployment.yaml
+- rolebindings/engine-role.yaml
+- rolebindings/engine-role-bindings.yaml
 images:
 - name: quay.io/marrober/cluster-compare-engine
   newTag: j2pc8

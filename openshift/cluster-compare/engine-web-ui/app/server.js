@@ -7,11 +7,17 @@ const { isInCluster } = require("./lib/k8s");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3950;
-// Default to 60s polling when running in-cluster; disable locally unless set.
-const defaultPoll = isInCluster() ? 60000 : 0;
-const POLL_INTERVAL_MS = Number(
-  process.env.POLL_INTERVAL_MS !== undefined ? process.env.POLL_INTERVAL_MS : defaultPoll
+// Poll interval is configured in seconds; convert to ms for timers.
+// Default to 60s in-cluster; disable locally unless set.
+const defaultPollSeconds = isInCluster() ? 60 : 0;
+const pollIntervalEnv =
+  process.env.POLL_INTERVAL_SECONDS !== undefined
+    ? process.env.POLL_INTERVAL_SECONDS
+    : process.env.POLL_INTERVAL;
+const POLL_INTERVAL_SECONDS = Number(
+  pollIntervalEnv !== undefined ? pollIntervalEnv : defaultPollSeconds
 );
+const POLL_INTERVAL_MS = POLL_INTERVAL_SECONDS > 0 ? POLL_INTERVAL_SECONDS * 1000 : 0;
 const publicDir = path.join(__dirname, "public");
 
 app.use(express.json({ limit: "10mb" }));
@@ -22,7 +28,7 @@ app.get("/api/health", (_req, res) => {
     ok: true,
     database: { type: db.dbType, info: db.dbInfo },
     k8s: k8sConfig,
-    pollIntervalMs: POLL_INTERVAL_MS,
+    pollIntervalSeconds: POLL_INTERVAL_SECONDS,
     inCluster: isInCluster(),
   });
 });
@@ -70,7 +76,7 @@ app.post("/api/snapshots", async (req, res) => {
 let pollTimer = null;
 
 function startPolling() {
-  if (!POLL_INTERVAL_MS || POLL_INTERVAL_MS < 1000) {
+  if (!POLL_INTERVAL_MS || POLL_INTERVAL_SECONDS < 1) {
     return;
   }
 
@@ -104,10 +110,10 @@ async function main() {
     console.log(
       `collectors: ${k8sConfig.group}/${k8sConfig.version}/${k8sConfig.plural}/${k8sConfig.collectorName} in each managed-cluster namespace`
     );
-    if (POLL_INTERVAL_MS >= 1000) {
-      console.log(`polling every ${POLL_INTERVAL_MS}ms`);
+    if (POLL_INTERVAL_SECONDS >= 1) {
+      console.log(`polling every ${POLL_INTERVAL_SECONDS}s`);
     } else {
-      console.log("polling disabled (set POLL_INTERVAL_MS to enable)");
+      console.log("polling disabled (set POLL_INTERVAL_SECONDS to enable)");
     }
     startPolling();
   });
