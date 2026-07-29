@@ -19,7 +19,7 @@ spec:
         name: cel
       params:
       - name: "filter"
-        value: 'body["ref"].contains("main") && header.match("X-GitHub-Event", "push") && extensions.changed_files.matches("compare-engine/app")'
+        value: 'body["ref"].contains("main") && header.match("X-GitHub-Event", "push") && extensions.changed_files.matches("engine-web-ui/app")'
       - name: "overlays"
         value:
         - key: branch
