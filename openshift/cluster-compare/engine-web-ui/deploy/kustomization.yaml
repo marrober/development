@@ -12,4 +12,4 @@ resources:
 - role-bindings/engine-role-bindings.yaml
 images:
 - name: quay.io/marrober/cluster-compare-engine
-  newTag: j2pc8
+  newTag: d8d4r
