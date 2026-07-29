@@ -9,4 +9,4 @@ resources:
 - db-configmap.yaml
 images:
 - name: quay.io/marrober/cluster-compare-engine
-  newTag: mgr2r
+  newTag: l7zt4
