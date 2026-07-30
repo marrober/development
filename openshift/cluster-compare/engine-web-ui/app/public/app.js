@@ -1,11 +1,21 @@
 const syncBtn = document.getElementById("syncBtn");
 const clustersCompareBtn = document.getElementById("clustersCompareBtn");
+const snapshotsBtn = document.getElementById("snapshotsBtn");
 const statusBar = document.getElementById("statusBar");
 const pageTitle = document.getElementById("pageTitle");
 const pageSubtitle = document.getElementById("pageSubtitle");
 const tileView = document.getElementById("tileView");
 const tileGrid = document.getElementById("tileGrid");
 const emptyState = document.getElementById("emptyState");
+const snapshotsView = document.getElementById("snapshotsView");
+const snapshotsBackBtn = document.getElementById("snapshotsBackBtn");
+const snapshotsMeta = document.getElementById("snapshotsMeta");
+const snapshotsSortSelect = document.getElementById("snapshotsSortSelect");
+const snapshotsDeleteBtn = document.getElementById("snapshotsDeleteBtn");
+const snapshotsEmpty = document.getElementById("snapshotsEmpty");
+const snapshotsTableWrap = document.getElementById("snapshotsTableWrap");
+const snapshotsTableBody = document.getElementById("snapshotsTableBody");
+const snapshotsSelectAll = document.getElementById("snapshotsSelectAll");
 const crossCompareView = document.getElementById("crossCompareView");
 const crossCompareBackBtn = document.getElementById("crossCompareBackBtn");
 const crossCompareMeta = document.getElementById("crossCompareMeta");
@@ -59,6 +69,10 @@ let selectedClustersForCompare = new Set();
 let crossCompareDataByCluster = {};
 let crossCompareSelectedDates = {};
 let inCrossCompare = false;
+let inSnapshotsView = false;
+let snapshotsCache = [];
+let selectedSnapshotIds = new Set();
+let snapshotsSort = "time";
 
 function displayRowLabel(row) {
   if (row.rowKey?.startsWith("installed-operator:")) {
@@ -298,16 +312,26 @@ function updateClustersCompareButton() {
   const count = selectedClustersForCompare.size;
   clustersCompareBtn.disabled = count < 2 || count > MAX_CLUSTER_COMPARE;
   clustersCompareBtn.textContent = count > 0 ? `Compare (${count})` : "Compare";
-  clustersCompareBtn.hidden = inCrossCompare || Boolean(selectedCluster);
+  clustersCompareBtn.hidden = inCrossCompare || inSnapshotsView || Boolean(selectedCluster);
+  snapshotsBtn.hidden = inCrossCompare || inSnapshotsView || Boolean(selectedCluster);
+  syncBtn.hidden = inSnapshotsView;
+}
+
+function updateSnapshotsDeleteButton() {
+  const count = selectedSnapshotIds.size;
+  snapshotsDeleteBtn.disabled = count === 0;
+  snapshotsDeleteBtn.textContent = count > 0 ? `Delete (${count})` : "Delete";
 }
 
 function showTiles() {
   selectedCluster = null;
   inCrossCompare = false;
+  inSnapshotsView = false;
   comparisonData = null;
   selectedColumnIds = new Set();
   compareMode = false;
   compareColumnIds = [];
+  selectedSnapshotIds = new Set();
   diffOnlyCheckbox.checked = false;
   crossDiffOnlyCheckbox.checked = false;
   crossCompareDataByCluster = {};
@@ -315,6 +339,7 @@ function showTiles() {
   tileView.hidden = false;
   detailView.hidden = true;
   crossCompareView.hidden = true;
+  snapshotsView.hidden = true;
   setPageHeading(
     "Managed Clusters",
     "Information on the configuration of managed clusters"
@@ -327,6 +352,7 @@ function showTiles() {
 function showDetail(clusterName) {
   selectedCluster = clusterName;
   inCrossCompare = false;
+  inSnapshotsView = false;
   selectedColumnIds = new Set();
   compareMode = false;
   compareColumnIds = [];
@@ -334,6 +360,7 @@ function showDetail(clusterName) {
   tileView.hidden = true;
   detailView.hidden = false;
   crossCompareView.hidden = true;
+  snapshotsView.hidden = true;
   setPageHeading(
     "Cluster details",
     "Detailed information on the cluster configuration over time"
@@ -679,10 +706,12 @@ async function showCrossCompare() {
     }
 
     inCrossCompare = true;
+    inSnapshotsView = false;
     selectedCluster = null;
     tileView.hidden = true;
     detailView.hidden = true;
     crossCompareView.hidden = false;
+    snapshotsView.hidden = true;
     setPageHeading(
       "Cluster compare",
       "Compare configuration across managed clusters"
@@ -905,12 +934,122 @@ async function loadClusters() {
       clusters.some((cluster) => cluster.clusterName === name)
     )
   );
-  if (inCrossCompare) {
+  if (inSnapshotsView) {
+    await loadSnapshots();
+  } else if (inCrossCompare) {
     await showCrossCompare();
   } else if (selectedCluster) {
     showDetail(selectedCluster);
   } else {
     renderTiles(clusters);
+  }
+}
+
+function renderSnapshotsTable() {
+  snapshotsTableBody.innerHTML = "";
+  selectedSnapshotIds = new Set(
+    [...selectedSnapshotIds].filter((id) =>
+      snapshotsCache.some((snapshot) => Number(snapshot.id) === Number(id))
+    )
+  );
+
+  if (!snapshotsCache.length) {
+    snapshotsEmpty.hidden = false;
+    snapshotsTableWrap.hidden = true;
+    snapshotsMeta.textContent = "0 snapshots";
+    snapshotsSelectAll.checked = false;
+    snapshotsSelectAll.indeterminate = false;
+    updateSnapshotsDeleteButton();
+    return;
+  }
+
+  snapshotsEmpty.hidden = true;
+  snapshotsTableWrap.hidden = false;
+  snapshotsMeta.textContent = `${snapshotsCache.length} snapshot${
+    snapshotsCache.length === 1 ? "" : "s"
+  } · sorted by ${snapshotsSort === "cluster" ? "cluster name" : "time"}`;
+
+  for (const snapshot of snapshotsCache) {
+    const tr = document.createElement("tr");
+    const id = Number(snapshot.id);
+
+    const checkTd = document.createElement("td");
+    checkTd.className = "snapshots-check-col";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = selectedSnapshotIds.has(id);
+    checkbox.setAttribute("aria-label", `Select snapshot ${snapshot.clusterName} ${snapshot.lastSync}`);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        selectedSnapshotIds.add(id);
+      } else {
+        selectedSnapshotIds.delete(id);
+      }
+      updateSnapshotsSelectAllState();
+      updateSnapshotsDeleteButton();
+    });
+    checkTd.appendChild(checkbox);
+
+    const clusterTd = document.createElement("td");
+    clusterTd.className = "snapshots-cluster";
+    clusterTd.textContent = snapshot.clusterName || "—";
+
+    const timeTd = document.createElement("td");
+    timeTd.className = "snapshots-time";
+    timeTd.textContent = formatSync(snapshot.lastSync);
+    timeTd.title = snapshot.lastSync || "";
+
+    const entriesTd = document.createElement("td");
+    entriesTd.textContent = String(snapshot.entryCount ?? 0);
+
+    const storedTd = document.createElement("td");
+    storedTd.className = "snapshots-time";
+    storedTd.textContent = formatSync(snapshot.createdAt);
+    storedTd.title = snapshot.createdAt || "";
+
+    tr.append(checkTd, clusterTd, timeTd, entriesTd, storedTd);
+    snapshotsTableBody.appendChild(tr);
+  }
+
+  updateSnapshotsSelectAllState();
+  updateSnapshotsDeleteButton();
+}
+
+function updateSnapshotsSelectAllState() {
+  const total = snapshotsCache.length;
+  const selected = selectedSnapshotIds.size;
+  snapshotsSelectAll.checked = total > 0 && selected === total;
+  snapshotsSelectAll.indeterminate = selected > 0 && selected < total;
+}
+
+async function loadSnapshots() {
+  const sort = snapshotsSortSelect.value === "cluster" ? "cluster" : "time";
+  snapshotsSort = sort;
+  const data = await fetchJson(`/api/snapshots?sort=${encodeURIComponent(sort)}`);
+  snapshotsCache = data.snapshots || [];
+  renderSnapshotsTable();
+}
+
+async function showSnapshots() {
+  selectedCluster = null;
+  inCrossCompare = false;
+  inSnapshotsView = true;
+  tileView.hidden = true;
+  detailView.hidden = true;
+  crossCompareView.hidden = true;
+  snapshotsView.hidden = false;
+  setPageHeading(
+    "Snapshots",
+    "Collected snapshot data stored in the database"
+  );
+  updateClustersCompareButton();
+  updateSnapshotsDeleteButton();
+  setStatus("Loading snapshots…");
+  try {
+    await loadSnapshots();
+    setStatus("");
+  } catch (err) {
+    setStatus(err.message, "error");
   }
 }
 
@@ -981,6 +1120,64 @@ crossCompareBackBtn.addEventListener("click", () => {
 
 clustersCompareBtn.addEventListener("click", () => {
   showCrossCompare().catch((err) => setStatus(err.message, "error"));
+});
+
+snapshotsBtn.addEventListener("click", () => {
+  showSnapshots().catch((err) => setStatus(err.message, "error"));
+});
+
+snapshotsBackBtn.addEventListener("click", () => {
+  showTiles();
+});
+
+snapshotsSortSelect.addEventListener("change", () => {
+  loadSnapshots().catch((err) => setStatus(err.message, "error"));
+});
+
+snapshotsSelectAll.addEventListener("change", () => {
+  selectedSnapshotIds = new Set();
+  if (snapshotsSelectAll.checked) {
+    for (const snapshot of snapshotsCache) {
+      selectedSnapshotIds.add(Number(snapshot.id));
+    }
+  }
+  renderSnapshotsTable();
+});
+
+snapshotsDeleteBtn.addEventListener("click", async () => {
+  const ids = [...selectedSnapshotIds];
+  if (!ids.length) return;
+  const label =
+    ids.length === 1 ? "this snapshot" : `these ${ids.length} snapshots`;
+  if (!window.confirm(`Delete ${label} from the database? This cannot be undone.`)) {
+    return;
+  }
+
+  snapshotsDeleteBtn.disabled = true;
+  setStatus(`Deleting ${ids.length} snapshot(s)…`);
+  try {
+    const outcome = await fetchJson("/api/snapshots", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    selectedSnapshotIds = new Set();
+    await loadSnapshots();
+    try {
+      const { clusters } = await fetchJson("/api/clusters");
+      clustersCache = clusters;
+    } catch {
+      // Tile counts refresh is best-effort after delete.
+    }
+    setStatus(
+      `Deleted ${outcome.deleted} snapshot${outcome.deleted === 1 ? "" : "s"}.`,
+      "success"
+    );
+  } catch (err) {
+    setStatus(err.message, "error");
+  } finally {
+    updateSnapshotsDeleteButton();
+  }
 });
 
 crossDiffOnlyCheckbox.addEventListener("change", () => {

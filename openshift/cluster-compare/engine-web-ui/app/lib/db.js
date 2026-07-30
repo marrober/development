@@ -224,6 +224,32 @@ function createSqliteBackend() {
     LIMIT 1
   `);
 
+  const listAllSnapshotsByTimeStmt = db.prepare(`
+    SELECT s.id,
+           s.cluster_name AS "clusterName",
+           s.last_sync AS "lastSync",
+           s.spoke_url AS "spokeUrl",
+           s.created_at AS "createdAt",
+           COUNT(e.id) AS "entryCount"
+    FROM snapshots s
+    LEFT JOIN version_entries e ON e.snapshot_id = s.id
+    GROUP BY s.id
+    ORDER BY s.last_sync ASC, s.cluster_name ASC
+  `);
+  const listAllSnapshotsByClusterStmt = db.prepare(`
+    SELECT s.id,
+           s.cluster_name AS "clusterName",
+           s.last_sync AS "lastSync",
+           s.spoke_url AS "spokeUrl",
+           s.created_at AS "createdAt",
+           COUNT(e.id) AS "entryCount"
+    FROM snapshots s
+    LEFT JOIN version_entries e ON e.snapshot_id = s.id
+    GROUP BY s.id
+    ORDER BY s.cluster_name ASC, s.last_sync DESC
+  `);
+  const deleteSnapshotByIdStmt = db.prepare(`DELETE FROM snapshots WHERE id = ?`);
+
   return {
     type: "sqlite",
     info: dbPath,
@@ -274,6 +300,38 @@ function createSqliteBackend() {
     },
     async listClusters() {
       return listClustersStmt.all();
+    },
+    async listSnapshots(sort = "time") {
+      const rows =
+        sort === "cluster"
+          ? listAllSnapshotsByClusterStmt.all()
+          : listAllSnapshotsByTimeStmt.all();
+      return rows.map((row) => ({
+        ...row,
+        entryCount: Number(row.entryCount) || 0,
+      }));
+    },
+    async deleteSnapshots(ids) {
+      const uniqueIds = [
+        ...new Set(
+          (Array.isArray(ids) ? ids : [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isInteger(id) && id > 0)
+        ),
+      ];
+      if (!uniqueIds.length) {
+        return { deleted: 0, ids: [] };
+      }
+      const tx = db.transaction((snapshotIds) => {
+        let deleted = 0;
+        for (const id of snapshotIds) {
+          const result = deleteSnapshotByIdStmt.run(id);
+          deleted += result.changes;
+        }
+        return deleted;
+      });
+      const deleted = tx(uniqueIds);
+      return { deleted, ids: uniqueIds };
     },
     async getComparison(clusterName) {
       const snapshots = listSnapshotsStmt.all({ clusterName });
@@ -429,6 +487,42 @@ function createPostgresBackend() {
       `);
       return result.rows;
     },
+    async listSnapshots(sort = "time") {
+      const orderBy =
+        sort === "cluster"
+          ? `s.cluster_name ASC, s.last_sync DESC`
+          : `s.last_sync ASC, s.cluster_name ASC`;
+      const result = await pool.query(`
+        SELECT s.id,
+               s.cluster_name AS "clusterName",
+               s.last_sync AS "lastSync",
+               s.spoke_url AS "spokeUrl",
+               s.created_at AS "createdAt",
+               COUNT(e.id)::int AS "entryCount"
+        FROM snapshots s
+        LEFT JOIN version_entries e ON e.snapshot_id = s.id
+        GROUP BY s.id, s.cluster_name, s.last_sync, s.spoke_url, s.created_at
+        ORDER BY ${orderBy}
+      `);
+      return result.rows;
+    },
+    async deleteSnapshots(ids) {
+      const uniqueIds = [
+        ...new Set(
+          (Array.isArray(ids) ? ids : [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isInteger(id) && id > 0)
+        ),
+      ];
+      if (!uniqueIds.length) {
+        return { deleted: 0, ids: [] };
+      }
+      const result = await pool.query(
+        `DELETE FROM snapshots WHERE id = ANY($1::int[])`,
+        [uniqueIds]
+      );
+      return { deleted: result.rowCount || 0, ids: uniqueIds };
+    },
     async getComparison(clusterName) {
       const snapshotsResult = await pool.query(
         `SELECT id, cluster_name AS "clusterName", last_sync AS "lastSync",
@@ -557,6 +651,14 @@ async function listClusters() {
   return getBackend().listClusters();
 }
 
+async function listSnapshots(sort = "time") {
+  return getBackend().listSnapshots(sort === "cluster" ? "cluster" : "time");
+}
+
+async function deleteSnapshots(ids) {
+  return getBackend().deleteSnapshots(ids);
+}
+
 async function getComparison(clusterName) {
   return getBackend().getComparison(clusterName);
 }
@@ -574,6 +676,8 @@ module.exports = {
   hasSnapshot,
   saveSnapshot,
   listClusters,
+  listSnapshots,
+  deleteSnapshots,
   getComparison,
   get dbType() {
     return backend?.type || (usePostgres ? "postgresql" : "sqlite");

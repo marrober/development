@@ -82,12 +82,21 @@ button.secondary {
   border: 1px solid var(--panel-border);
 }
 
+button.danger {
+  background: var(--bad);
+  color: #1a0505;
+}
+
+button.danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
 button.secondary:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent-hover);
 }
 
-button:hover:not(:disabled):not(.secondary) {
+button:hover:not(:disabled):not(.secondary):not(.tile-open):not(.danger) {
   background: var(--accent-hover);
 }
 
@@ -151,12 +160,13 @@ button:disabled {
   font: inherit;
 }
 
-.tile-open:hover {
-  background: rgba(77, 163, 255, 0.06);
+.tile-open:hover,
+.tile-open:focus-visible {
+  background: transparent;
 }
 
 .cluster-tile:hover {
-  border-color: var(--accent);
+  border-color: var(--panel-border);
 }
 
 .tile-name {
@@ -359,21 +369,25 @@ main {
 }
 
 #detailView[hidden],
-#crossCompareView[hidden] {
+#crossCompareView[hidden],
+#snapshotsView[hidden] {
   display: none !important;
 }
 
 #detailView:not([hidden]),
-#crossCompareView:not([hidden]) {
+#crossCompareView:not([hidden]),
+#snapshotsView:not([hidden]) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  gap: 1rem;
 }
 
 #detailView .detail-toolbar,
-#crossCompareView .detail-toolbar {
+#crossCompareView .detail-toolbar,
+#snapshotsView .detail-toolbar {
   flex-shrink: 0;
 }
 
@@ -401,6 +415,59 @@ main {
 
 .table-wrap[hidden] {
   display: none !important;
+}
+
+.snapshots-actions {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.snapshots-sort-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.snapshots-sort-label select {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  min-width: 10rem;
+}
+
+.snapshots-check-col {
+  width: 2.5rem;
+  text-align: center;
+}
+
+#snapshotsTable {
+  width: 100%;
+}
+
+#snapshotsTable th.snapshots-check-col,
+#snapshotsTable td.snapshots-check-col {
+  text-align: center;
+  vertical-align: middle;
+}
+
+#snapshotsTable tbody tr:hover td {
+  background: rgba(77, 163, 255, 0.04);
+}
+
+.snapshots-cluster {
+  font-weight: 600;
+}
+
+.snapshots-time {
+  font-family: var(--mono);
+  font-size: 0.9rem;
 }
 
 table {

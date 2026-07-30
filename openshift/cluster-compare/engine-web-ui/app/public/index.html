@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Managed Clusters</title>
   <link rel="stylesheet" href="/styles.css" />
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" href="/favicon.ico?v=1" sizes="any" />
+  <link rel="icon" type="image/png" href="/favicon-32.png?v=1" sizes="32x32" />
+  <link rel="shortcut icon" href="/favicon.ico?v=1" />
 </head>
 <body>
   <header class="page-header">
@@ -15,6 +17,7 @@
     </div>
     <div class="header-actions">
       <button id="clustersCompareBtn" type="button" disabled>Compare</button>
+      <button id="snapshotsBtn" type="button" class="secondary">Snapshots</button>
       <button id="syncBtn" type="button" class="secondary">Refresh sync</button>
     </div>
   </header>
@@ -26,6 +29,47 @@
       <div id="tileGrid" class="tile-grid"></div>
       <div id="emptyState" class="empty-state" hidden>
         <p>No managed clusters found yet. Sync from the hub or wait for the next poll.</p>
+      </div>
+    </section>
+
+    <section id="snapshotsView" hidden>
+      <div class="detail-toolbar">
+        <button id="snapshotsBackBtn" type="button" class="secondary">← All clusters</button>
+        <div class="detail-title-block">
+          <div class="detail-title-row">
+            <h2>Stored snapshots</h2>
+          </div>
+          <p id="snapshotsMeta" class="detail-meta"></p>
+        </div>
+        <div class="detail-actions snapshots-actions">
+          <label class="snapshots-sort-label">
+            Sort by
+            <select id="snapshotsSortSelect">
+              <option value="time">Time</option>
+              <option value="cluster">Cluster name</option>
+            </select>
+          </label>
+          <button id="snapshotsDeleteBtn" type="button" class="danger" disabled>Delete</button>
+        </div>
+      </div>
+      <div id="snapshotsEmpty" class="empty-state" hidden>
+        <p>No snapshots stored in the database yet.</p>
+      </div>
+      <div id="snapshotsTableWrap" class="table-wrap" hidden>
+        <table id="snapshotsTable">
+          <thead>
+            <tr>
+              <th class="snapshots-check-col">
+                <input id="snapshotsSelectAll" type="checkbox" title="Select all" aria-label="Select all snapshots" />
+              </th>
+              <th>Cluster</th>
+              <th>Snapshot time</th>
+              <th>Entries</th>
+              <th>Stored at</th>
+            </tr>
+          </thead>
+          <tbody id="snapshotsTableBody"></tbody>
+        </table>
       </div>
     </section>
 

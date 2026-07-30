@@ -46,6 +46,28 @@ app.get("/api/clusters", async (_req, res) => {
   }
 });
 
+app.get("/api/snapshots", async (req, res) => {
+  try {
+    const sort = String(req.query.sort || "time").toLowerCase() === "cluster"
+      ? "cluster"
+      : "time";
+    const snapshots = await db.listSnapshots(sort);
+    res.json({ sort, snapshots });
+  } catch (err) {
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+app.delete("/api/snapshots", async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    const outcome = await db.deleteSnapshots(ids);
+    res.json(outcome);
+  } catch (err) {
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
 app.get("/api/compare/:clusterName", async (req, res) => {
   try {
     const data = await db.getComparison(req.params.clusterName);
