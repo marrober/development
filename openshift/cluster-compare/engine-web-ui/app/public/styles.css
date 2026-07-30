@@ -765,6 +765,36 @@ tr.cluster-version-row td.label-cell {
   font-weight: 600;
 }
 
+tr.node-group-control-plane td {
+  background: #1a1f27;
+}
+
+tr.node-group-control-plane td.label-cell {
+  background: #1a1f27;
+}
+
+tr.node-group-worker td {
+  background: #242a33;
+}
+
+tr.node-group-worker td.label-cell {
+  background: #242a33;
+}
+
+tr.node-group-other td,
+tr.node-group-other td.label-cell {
+  background: #1e232b;
+}
+
+td.label-cell.node-type-label {
+  font-weight: 400;
+}
+
+td.label-cell.node-resource-label {
+  padding-left: 1.6rem;
+  color: var(--muted);
+}
+
 .section-divider td {
   background: #10151c;
   color: var(--muted);

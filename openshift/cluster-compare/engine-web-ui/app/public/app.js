@@ -75,6 +75,22 @@ let selectedSnapshotIds = new Set();
 let snapshotsSort = "time";
 
 function displayRowLabel(row) {
+  const nodeInfo = parseNodeRowKey(row.rowKey);
+  if (nodeInfo) {
+    if (nodeInfo.kind === "count") {
+      return formatNodeTypeHeading(nodeInfo.typeKey);
+    }
+    const resource =
+      nodeInfo.resource === "cpu"
+        ? "CPU"
+        : nodeInfo.resource === "memory"
+          ? "Memory"
+          : nodeInfo.resource === "gpu"
+            ? "GPU"
+            : nodeInfo.resource;
+    return `${resource} ${nodeInfo.metric}`;
+  }
+
   if (row.rowKey?.startsWith("installed-operator:")) {
     const label = String(row.label || "").trim();
     if (label && !/\.v\d+/i.test(label)) {
@@ -90,6 +106,80 @@ function displayRowLabel(row) {
       .join(" ") || pkg || label || "unknown";
   }
   return String(row.label || "").replace(/\s\[[^\]]*\]$/, "");
+}
+
+function parseNodeRowKey(rowKey) {
+  if (!rowKey || !rowKey.startsWith("nodes:type:")) return null;
+  const rest = rowKey.slice("nodes:type:".length);
+  let typeKey;
+  let kind;
+  let resource;
+  let metric;
+  if (rest.endsWith(":count")) {
+    typeKey = rest.slice(0, -":count".length);
+    kind = "count";
+  } else {
+    const match = rest.match(/^(.*):(cpu|memory|gpu):(allocatable|allocated)$/);
+    if (!match) return null;
+    typeKey = match[1];
+    kind = "resource";
+    resource = match[2];
+    metric = match[3];
+  }
+  typeKey = normalizeNodeTypeKey(typeKey);
+  return { typeKey, kind, resource, metric };
+}
+
+function normalizeNodeTypeKey(typeKey) {
+  const roles = String(typeKey || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const hasControlPlane = roles.includes("control-plane");
+  const hasMaster = roles.includes("master");
+  const normalized = roles.filter((role) => role !== "master" && role !== "control-plane");
+  if (hasControlPlane || hasMaster) {
+    normalized.push("control-plane");
+  }
+  const unique = [...new Set(normalized)].sort();
+  return unique.length ? unique.join(",") : "unknown";
+}
+
+function formatNodeTypeHeading(typeKey) {
+  const canonical = normalizeNodeTypeKey(typeKey);
+  if (!canonical || canonical === "unknown") return "Unknown nodes";
+  const parts = canonical
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      if (part === "control-plane") return "Control-plane";
+      if (part === "worker") return "Worker";
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    });
+  if (!parts.length) return "Unknown nodes";
+  if (parts.length === 1) return `${parts[0]} nodes`;
+  return `${parts.join(" & ")} nodes`;
+}
+
+function nodeGroupClass(typeKey) {
+  const parts = normalizeNodeTypeKey(typeKey)
+    .split(",")
+    .map((part) => part.trim());
+  if (parts.includes("control-plane")) return "node-group-control-plane";
+  if (parts.includes("worker")) return "node-group-worker";
+  return "node-group-other";
+}
+
+function applyNodeRowClasses(tr, labelTd, row) {
+  const nodeInfo = parseNodeRowKey(row.rowKey);
+  if (!nodeInfo) return;
+  tr.classList.add(nodeGroupClass(nodeInfo.typeKey));
+  if (nodeInfo.kind === "resource") {
+    labelTd.classList.add("node-resource-label");
+  } else {
+    labelTd.classList.add("node-type-label");
+  }
 }
 
 function shouldShowStatus(status) {
@@ -595,6 +685,7 @@ function renderCrossCompareTable() {
     const labelTd = document.createElement("td");
     labelTd.className = "label-cell";
     labelTd.textContent = displayRowLabel(row);
+    applyNodeRowClasses(tr, labelTd, row);
     tr.appendChild(labelTd);
 
     const baselineCell = row.cells[baseline];
@@ -842,6 +933,7 @@ function renderTable() {
     const labelTd = document.createElement("td");
     labelTd.className = "label-cell";
     labelTd.textContent = displayRowLabel(row);
+    applyNodeRowClasses(tr, labelTd, row);
     tr.appendChild(labelTd);
 
     let previousVersion = null;

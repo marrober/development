@@ -1,11 +1,36 @@
 const fs = require("fs");
 const path = require("path");
 const { normalizeClusterSnapshot } = require("./normalize");
-const { buildNodeEntries, buildNetworkEntries } = require("./resources");
+const { buildNodeEntries, buildNetworkEntries, canonicalizeNodeRowKey, nodeTypeLabel } = require("./resources");
 const { operatorDisplayName, operatorRowKey, operatorPackageName, shouldShowStatus } = require("./operators");
+
+function resourceMetricLabel(resource, metric) {
+  const name =
+    resource === "cpu"
+      ? "CPU"
+      : resource === "memory"
+        ? "Memory"
+        : resource === "gpu"
+          ? "GPU"
+          : resource;
+  return `${name} ${metric}`;
+}
 
 function normalizeEntryIdentity(entry) {
   const rowKey = String(entry.rowKey || "");
+
+  const nodeIdentity = canonicalizeNodeRowKey(rowKey);
+  if (nodeIdentity) {
+    return {
+      rowKey: nodeIdentity.rowKey,
+      label:
+        nodeIdentity.kind === "count"
+          ? nodeTypeLabel(nodeIdentity.typeKey)
+          : resourceMetricLabel(nodeIdentity.resource, nodeIdentity.metric),
+      status: "",
+    };
+  }
+
   if (!rowKey.startsWith("installed-operator:")) {
     return {
       rowKey,
@@ -600,11 +625,19 @@ function buildComparison(clusterName, snapshots, getEntries) {
       } catch {
         details = {};
       }
-      row.cells[columnId] = {
+      const nextCell = {
         version: entry.version,
         status: identity.status,
         details,
       };
+      const existingCell = row.cells[columnId];
+      // Prefer the non-empty cell when legacy master/control-plane keys collapse.
+      if (
+        !existingCell ||
+        ((!existingCell.version || existingCell.version === "—") && nextCell.version)
+      ) {
+        row.cells[columnId] = nextCell;
+      }
     }
   }
 

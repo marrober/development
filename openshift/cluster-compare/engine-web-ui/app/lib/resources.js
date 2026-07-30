@@ -111,9 +111,60 @@ function normalizeNodeRoles(roles) {
   return [...new Set(normalized)].sort();
 }
 
+/** Canonical type key for stored/displayed node rows (collapses master → control-plane). */
+function normalizeNodeTypeKey(typeKey) {
+  const roles = normalizeNodeRoles(
+    String(typeKey || "")
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean)
+  );
+  return roles.length ? roles.join(",") : "unknown";
+}
+
+/**
+ * Rewrite legacy node row keys (e.g. control-plane,master) onto the canonical type key.
+ * Returns null when the key is not a node-type row.
+ */
+function canonicalizeNodeRowKey(rowKey) {
+  const key = String(rowKey || "");
+  if (!key.startsWith("nodes:type:")) return null;
+  const rest = key.slice("nodes:type:".length);
+  if (rest.endsWith(":count")) {
+    const typeKey = normalizeNodeTypeKey(rest.slice(0, -":count".length));
+    return {
+      rowKey: `nodes:type:${typeKey}:count`,
+      typeKey,
+      kind: "count",
+    };
+  }
+  const match = rest.match(/^(.*):(cpu|memory|gpu):(allocatable|allocated)$/);
+  if (!match) return null;
+  const typeKey = normalizeNodeTypeKey(match[1]);
+  return {
+    rowKey: `nodes:type:${typeKey}:${match[2]}:${match[3]}`,
+    typeKey,
+    kind: "resource",
+    resource: match[2],
+    metric: match[3],
+  };
+}
+
 function nodeTypeLabel(typeKey) {
-  if (!typeKey || typeKey === "unknown") return "unknown role";
-  return typeKey.split(",").join(" + ");
+  const canonical = normalizeNodeTypeKey(typeKey);
+  if (!canonical || canonical === "unknown") return "Unknown nodes";
+  const parts = canonical
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      if (part === "control-plane") return "Control-plane";
+      if (part === "worker") return "Worker";
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    });
+  if (!parts.length) return "Unknown nodes";
+  if (parts.length === 1) return `${parts[0]} nodes`;
+  return `${parts.join(" & ")} nodes`;
 }
 
 function emptyResourceTotals() {
@@ -169,7 +220,6 @@ function resourceLabel(resourceName) {
 }
 
 function pushNodeResourceRows(entries, group, resourceName, totals, nextOrder) {
-  const label = nodeTypeLabel(group.typeKey);
   const hasCapacity =
     totals.capacity > 0 || totals.allocatable > 0 || totals.allocated > 0;
   if (!hasCapacity && resourceName === "gpu") {
@@ -179,7 +229,7 @@ function pushNodeResourceRows(entries, group, resourceName, totals, nextOrder) {
   for (const metric of ["allocatable", "allocated"]) {
     entries.push({
       rowKey: `nodes:type:${group.typeKey}:${resourceName}:${metric}`,
-      rowLabel: `${label} · ${resourceLabel(resourceName)} ${metric}`,
+      rowLabel: `${resourceLabel(resourceName)} ${metric}`,
       sortOrder: nextOrder++,
       version: formatResource(resourceName, totals[metric]),
       status: "",
@@ -223,10 +273,9 @@ function buildNodeEntries(nodes) {
 
   const types = [...byType.values()].sort((a, b) => a.typeKey.localeCompare(b.typeKey));
   for (const group of types) {
-    const label = nodeTypeLabel(group.typeKey);
     entries.push({
       rowKey: `nodes:type:${group.typeKey}:count`,
-      rowLabel: `${label} nodes`,
+      rowLabel: nodeTypeLabel(group.typeKey),
       sortOrder: order++,
       version: String(group.count),
       status: "",
@@ -320,6 +369,9 @@ module.exports = {
   formatResource,
   nodeTypeKey,
   nodeTypeLabel,
+  normalizeNodeRoles,
+  normalizeNodeTypeKey,
+  canonicalizeNodeRowKey,
   aggregateNodesByType,
   buildNodeEntries,
   buildNetworkEntries,
