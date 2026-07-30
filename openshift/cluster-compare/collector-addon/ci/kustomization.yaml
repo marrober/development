@@ -17,3 +17,5 @@ resources:
 - image-streams/terminal.yaml
 - image-streams/buildah-image.yaml
 - image-streams/ose.yaml
+- admin-job/role-and-binding.yaml
+- admin-job/replicaset-cleanup-cronjob.yaml
