@@ -14,4 +14,4 @@ resources:
 - route.yaml
 images:
 - name: quay.io/marrober/cluster-compare-engine
-  newTag: 6p6p2
+  newTag: 7xbpt
