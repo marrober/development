@@ -226,7 +226,7 @@ function buildNodeEntries(nodes) {
     const label = nodeTypeLabel(group.typeKey);
     entries.push({
       rowKey: `nodes:type:${group.typeKey}:count`,
-      rowLabel: `Type: ${label}`,
+      rowLabel: `${label} nodes`,
       sortOrder: order++,
       version: String(group.count),
       status: "",
