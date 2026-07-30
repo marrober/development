@@ -11,3 +11,11 @@ rules:
       - list
       - get
       - watch
+  - apiGroups:
+      - open-cluster-management.io
+    resources:
+      - clustercollectors
+    verbs:
+      - list
+      - get
+      - watch
