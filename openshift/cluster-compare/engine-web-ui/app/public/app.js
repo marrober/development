@@ -54,6 +54,9 @@ const nsDiffOnlyATitle = document.getElementById("nsDiffOnlyATitle");
 const nsDiffOnlyBTitle = document.getElementById("nsDiffOnlyBTitle");
 const nsDiffOnlyAWhen = document.getElementById("nsDiffOnlyAWhen");
 const nsDiffOnlyBWhen = document.getElementById("nsDiffOnlyBWhen");
+const nsDiffBannerCurrent = document.getElementById("nsDiffBannerCurrent");
+const nsDiffBannerPrior = document.getElementById("nsDiffBannerPrior");
+const nsDiffBannerBoth = document.getElementById("nsDiffBannerBoth");
 
 const MAX_COMPARE_COLUMNS = 3;
 const MAX_CLUSTER_COMPARE = 3;
@@ -226,14 +229,26 @@ function diffNamespaces(left, right) {
 function renderNamespacesDialogContent() {
   if (!namespacesDialogState) return;
 
-  const { row, columns, primaryColumnId } = namespacesDialogState;
+  const { row, columns, primaryColumnId, mode } = namespacesDialogState;
   const primaryColumn = columns.find((c) => c.id === primaryColumnId);
   const primaryNamespaces = namespacesForCell(row, primaryColumnId);
   const compareId = namespacesCompareSelect.value;
+  const isCrossCluster = mode === "cross-cluster";
 
-  namespacesDialogSubtitle.textContent = primaryColumn
-    ? `Import: ${primaryColumn.label}`
-    : "";
+  const compareLabelText = document.getElementById("namespacesCompareLabelText");
+  if (compareLabelText) {
+    compareLabelText.textContent = isCrossCluster
+      ? "Compare with cluster"
+      : "Compare with import";
+  }
+
+  namespacesDialogSubtitle.textContent = isCrossCluster
+    ? primaryColumn
+      ? `Cluster: ${primaryColumn.label}`
+      : ""
+    : primaryColumn
+      ? `Import: ${primaryColumn.label}`
+      : "";
 
   if (!compareId) {
     namespacesSingleView.hidden = false;
@@ -252,10 +267,45 @@ function renderNamespacesDialogContent() {
 
   namespacesSingleView.hidden = true;
   namespacesCompareView.hidden = false;
-  nsDiffOnlyATitle.textContent = "Only in current";
-  nsDiffOnlyBTitle.textContent = "Only in prior";
-  nsDiffOnlyAWhen.textContent = primaryColumn?.label || "";
-  nsDiffOnlyBWhen.textContent = compareColumn?.label || "";
+
+  if (nsDiffBannerBoth) {
+    nsDiffBannerBoth.textContent = "In both";
+  }
+
+  if (isCrossCluster) {
+    if (nsDiffBannerCurrent) {
+      nsDiffBannerCurrent.textContent = primaryColumn?.label || "Cluster";
+      nsDiffBannerCurrent.classList.add("ns-diff-banner-named");
+    }
+    if (nsDiffBannerPrior) {
+      nsDiffBannerPrior.textContent = compareColumn?.label || "Cluster";
+      nsDiffBannerPrior.classList.add("ns-diff-banner-named");
+    }
+    nsDiffOnlyATitle.hidden = true;
+    nsDiffOnlyBTitle.hidden = true;
+    nsDiffOnlyAWhen.hidden = true;
+    nsDiffOnlyBWhen.hidden = true;
+    nsDiffOnlyAWhen.textContent = "";
+    nsDiffOnlyBWhen.textContent = "";
+  } else {
+    if (nsDiffBannerCurrent) {
+      nsDiffBannerCurrent.textContent = "CURRENT";
+      nsDiffBannerCurrent.classList.remove("ns-diff-banner-named");
+    }
+    if (nsDiffBannerPrior) {
+      nsDiffBannerPrior.textContent = "PRIOR";
+      nsDiffBannerPrior.classList.remove("ns-diff-banner-named");
+    }
+    nsDiffOnlyATitle.hidden = false;
+    nsDiffOnlyBTitle.hidden = false;
+    nsDiffOnlyAWhen.hidden = false;
+    nsDiffOnlyBWhen.hidden = false;
+    nsDiffOnlyATitle.textContent = "Only in current";
+    nsDiffOnlyBTitle.textContent = "Only in prior";
+    nsDiffOnlyAWhen.textContent = primaryColumn?.label || "";
+    nsDiffOnlyBWhen.textContent = compareColumn?.label || "";
+  }
+
   fillNamespaceList(nsDiffOnlyA, onlyLeft, "None");
   fillNamespaceList(nsDiffBoth, both, "None");
   fillNamespaceList(nsDiffOnlyB, onlyRight, "None");
@@ -263,7 +313,13 @@ function renderNamespacesDialogContent() {
 
 function openNamespacesDialog(row, columns, primaryColumnId, clusterName = "") {
   const operatorName = displayRowLabel(row);
-  namespacesDialogState = { row, columns, primaryColumnId, clusterName };
+  namespacesDialogState = {
+    mode: "same-cluster",
+    row,
+    columns,
+    primaryColumnId,
+    clusterName,
+  };
   namespacesDialogTitle.textContent = operatorName;
   namespacesDialogCluster.textContent = clusterName
     ? `Cluster : ${clusterName}`
@@ -280,6 +336,44 @@ function openNamespacesDialog(row, columns, primaryColumnId, clusterName = "") {
   }
   namespacesCompareSelect.disabled = columns.length < 2;
   namespacesCompareSelect.value = "";
+
+  renderNamespacesDialogContent();
+  namespacesDialog.showModal();
+}
+
+/**
+ * Cross-cluster: compare this operator's namespaces on the clicked cluster
+ * against the same operator on other selected clusters.
+ */
+function openCrossClusterNamespacesDialog(mergedRow, primaryClusterName, clusterNames) {
+  const operatorName = displayRowLabel(mergedRow);
+  const columns = clusterNames.map((name) => ({
+    id: name,
+    label: name,
+  }));
+
+  namespacesDialogState = {
+    mode: "cross-cluster",
+    row: mergedRow,
+    columns,
+    primaryColumnId: primaryClusterName,
+    clusterName: primaryClusterName,
+  };
+  namespacesDialogTitle.textContent = operatorName;
+  namespacesDialogCluster.textContent = `Cluster : ${primaryClusterName}`;
+  namespacesDialogCluster.hidden = false;
+
+  namespacesCompareSelect.innerHTML = '<option value="">No comparison</option>';
+  const others = clusterNames.filter((name) => name !== primaryClusterName);
+  for (const name of others) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    namespacesCompareSelect.appendChild(option);
+  }
+  namespacesCompareSelect.disabled = others.length === 0;
+  // Default to the first other cluster so the diff is shown immediately.
+  namespacesCompareSelect.value = others[0] || "";
 
   renderNamespacesDialogContent();
   namespacesDialog.showModal();
@@ -347,6 +441,15 @@ function cellFingerprint(cell) {
     namespaces: Array.isArray(cell.details?.namespaces)
       ? [...cell.details.namespaces].sort()
       : [],
+  });
+}
+
+/** Cross-cluster operator compare ignores namespace lists (often cluster-specific). */
+function cellFingerprintIgnoringNamespaces(cell) {
+  if (!cell) return "";
+  return JSON.stringify({
+    version: cell.version || "",
+    status: cell.status || "",
   });
 }
 
@@ -598,7 +701,10 @@ function crossCellDiffers(leftCell, rightCell) {
   const rightPresent = crossCellPresent(rightCell);
   if (leftPresent !== rightPresent) return true;
   if (!leftPresent && !rightPresent) return false;
-  return cellFingerprint(leftCell) !== cellFingerprint(rightCell);
+  return (
+    cellFingerprintIgnoringNamespaces(leftCell) !==
+    cellFingerprintIgnoringNamespaces(rightCell)
+  );
 }
 
 function renderCrossCompareTable() {
@@ -729,12 +835,7 @@ function renderCrossCompareTable() {
             : "Namespaces";
           nsBtn.addEventListener("click", (event) => {
             event.stopPropagation();
-            const data = crossCompareDataByCluster[clusterName];
-            const dateId = crossCompareSelectedDates[clusterName];
-            const sourceRow = (data?.rows || []).find((r) => r.rowKey === row.rowKey);
-            if (sourceRow && data?.columns) {
-              openNamespacesDialog(sourceRow, data.columns, dateId, clusterName);
-            }
+            openCrossClusterNamespacesDialog(row, clusterName, clusterNames);
           });
           td.appendChild(nsBtn);
         }

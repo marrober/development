@@ -152,7 +152,7 @@
 
       <div class="namespaces-compare-controls">
         <label class="namespaces-compare-label">
-          Compare with import
+          <span id="namespacesCompareLabelText">Compare with import</span>
           <select id="namespacesCompareSelect">
             <option value="">No comparison</option>
           </select>
@@ -166,7 +166,7 @@
 
       <div id="namespacesCompareView" class="namespaces-compare-view" hidden>
         <div class="ns-diff-pane">
-          <div class="ns-diff-banner ns-diff-banner-current">CURRENT</div>
+          <div id="nsDiffBannerCurrent" class="ns-diff-banner ns-diff-banner-current">CURRENT</div>
           <div class="ns-diff-column ns-diff-removed">
             <h4 id="nsDiffOnlyATitle">Only in this import</h4>
             <p id="nsDiffOnlyAWhen" class="ns-diff-when"></p>
@@ -174,15 +174,13 @@
           </div>
         </div>
         <div class="ns-diff-pane">
-          <div class="ns-diff-banner ns-diff-banner-spacer" aria-hidden="true"></div>
+          <div id="nsDiffBannerBoth" class="ns-diff-banner ns-diff-banner-both">In both</div>
           <div class="ns-diff-column ns-diff-shared">
-            <h4>In both</h4>
-            <p class="ns-diff-when ns-diff-when-spacer" aria-hidden="true">&nbsp;</p>
             <ul id="nsDiffBoth"></ul>
           </div>
         </div>
         <div class="ns-diff-pane">
-          <div class="ns-diff-banner ns-diff-banner-prior">PRIOR</div>
+          <div id="nsDiffBannerPrior" class="ns-diff-banner ns-diff-banner-prior">PRIOR</div>
           <div class="ns-diff-column ns-diff-added">
             <h4 id="nsDiffOnlyBTitle">Only in compared import</h4>
             <p id="nsDiffOnlyBWhen" class="ns-diff-when"></p>

@@ -676,9 +676,21 @@ th.sticky-col {
   border: 1px solid rgba(62, 207, 142, 0.4);
 }
 
-.ns-diff-banner-spacer {
-  visibility: hidden;
-  border: 1px solid transparent;
+.ns-diff-banner-both {
+  background: rgba(77, 163, 255, 0.18);
+  color: #9ec9ff;
+  border: 1px solid rgba(77, 163, 255, 0.45);
+}
+
+.ns-diff-banner.ns-diff-banner-named {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  padding: 0 0.6rem;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ns-diff-column {
@@ -742,11 +754,6 @@ th.sticky-col {
 @media (max-width: 900px) {
   .namespaces-compare-view {
     grid-template-columns: 1fr;
-  }
-
-  .ns-diff-banner-spacer,
-  .ns-diff-when-spacer {
-    display: none;
   }
 
   .namespaces-dialog-header h3,
