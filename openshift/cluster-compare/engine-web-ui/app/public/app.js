@@ -327,8 +327,12 @@ function openNamespacesDialog(row, columns, primaryColumnId, clusterName = "") {
   namespacesDialogCluster.hidden = !clusterName;
 
   namespacesCompareSelect.innerHTML = '<option value="">No comparison</option>';
-  for (const column of columns) {
-    if (column.id === primaryColumnId) continue;
+  // Columns arrive oldest→newest; list most recent first in the dropdown.
+  const otherColumns = columns
+    .filter((column) => column.id !== primaryColumnId)
+    .slice()
+    .reverse();
+  for (const column of otherColumns) {
     const option = document.createElement("option");
     option.value = column.id;
     option.textContent = column.label;
