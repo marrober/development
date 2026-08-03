@@ -854,6 +854,11 @@ td.label-cell.node-resource-label {
   box-shadow: inset 0 0 0 1px rgba(77, 163, 255, 0.35);
 }
 
+.changed .version {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 @media (max-width: 720px) {
   .page-header {
     flex-direction: column;
