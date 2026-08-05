@@ -5,6 +5,7 @@ const {
   normalizeClusterCollector,
   config: k8sConfig,
 } = require("./k8s");
+const { platformInfoFromManagedCluster } = require("./claims");
 
 // Matches collector-addon deploy template: --resync-interval=60 (minutes).
 const RESYNC_INTERVAL_MINUTES = Number(process.env.RESYNC_INTERVAL_MINUTES || 60);
@@ -51,6 +52,8 @@ function reportCollectedClusterInfo(snapshot, meta = {}) {
     clusterOperators: clusterOperators.length,
     installedOperators: installedOperators.length,
     nodes: nodes.length,
+    hostingType: snapshot.hostingType || "",
+    kubernetesVersion: snapshot.kubernetesVersion || "",
     networkType: network.networkType || "",
     clusterNetwork: network.clusterNetwork || [],
     serviceNetwork: network.serviceNetwork || [],
@@ -180,10 +183,14 @@ async function syncFromCluster(options = {}) {
 
     // Index by managed cluster name + lastSync; refresh entries when the CR
     // payload gains fields (nodes/network) even if lastSync is unchanged.
+    // Hub ManagedCluster clusterClaims enrich hosting type / Kubernetes version.
+    const platform = platformInfoFromManagedCluster(mc);
     const snapshot = {
       ...normalized.snapshot,
       clusterName,
       date: lastSync,
+      hostingType: platform.hostingType,
+      kubernetesVersion: platform.kubernetesVersion,
     };
     const outcome = await saveSnapshot(snapshot);
     const result = {

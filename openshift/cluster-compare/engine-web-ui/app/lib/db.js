@@ -141,7 +141,12 @@ function buildEntries(snapshot) {
     });
   }
 
-  entries.push(...buildNodeEntries(snapshot.nodes));
+  entries.push(
+    ...buildNodeEntries(snapshot.nodes, {
+      hostingType: snapshot.hostingType,
+      kubernetesVersion: snapshot.kubernetesVersion,
+    })
+  );
   entries.push(...buildNetworkEntries(snapshot.network));
 
   return entries;

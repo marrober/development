@@ -250,13 +250,39 @@ function pushNodeResourceRows(entries, group, resourceName, totals, nextOrder) {
   return nextOrder;
 }
 
-function buildNodeEntries(nodes) {
+function buildNodeEntries(nodes, platform = {}) {
   const entries = [];
   const list = Array.isArray(nodes) ? nodes : [];
   const byType = aggregateNodesByType(list);
 
-  // Keep node rows ordered: total → per-type count → allocatable/allocated metrics.
+  // Keep node rows ordered: hosting/k8s → total → per-type count → metrics.
   let order = 300;
+
+  const hostingType = platform.hostingType || "Self-managed control plane";
+  entries.push({
+    rowKey: "nodes:hosting-type",
+    rowLabel: "Hosting type",
+    sortOrder: order++,
+    version: hostingType,
+    status: "",
+    details: JSON.stringify({
+      kind: "hosting-type",
+      hostingType,
+    }),
+  });
+
+  const kubernetesVersion = platform.kubernetesVersion || "";
+  entries.push({
+    rowKey: "nodes:kubernetes-version",
+    rowLabel: "Kubernetes version",
+    sortOrder: order++,
+    version: kubernetesVersion,
+    status: "",
+    details: JSON.stringify({
+      kind: "kubernetes-version",
+      kubernetesVersion,
+    }),
+  });
 
   entries.push({
     rowKey: "nodes:total",

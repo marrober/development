@@ -20,7 +20,8 @@ function snapshotDateFrom(input) {
 
 /**
  * Normalize ClusterCollector CRs and flat JSON payloads into a single snapshot shape:
- * { clusterName, date, spokeURL, clusterVersion, clusterOperators, installedOperators, nodes, network }
+ * { clusterName, date, spokeURL, clusterVersion, clusterOperators, installedOperators,
+ *   nodes, network, hostingType, kubernetesVersion }
  */
 function normalizeClusterSnapshot(input) {
   if (!input || typeof input !== "object") {
@@ -38,6 +39,8 @@ function normalizeClusterSnapshot(input) {
       installedOperators: status.installedOperators || [],
       nodes: normalizeNodes(status.nodes),
       network: status.network || {},
+      hostingType: status.hostingType || input.hostingType || "",
+      kubernetesVersion: status.kubernetesVersion || input.kubernetesVersion || "",
     };
   }
 
@@ -50,6 +53,8 @@ function normalizeClusterSnapshot(input) {
     installedOperators: input.installedOperators || [],
     nodes: normalizeNodes(input.nodes),
     network: input.network || {},
+    hostingType: input.hostingType || "",
+    kubernetesVersion: input.kubernetesVersion || "",
   };
 }
 
