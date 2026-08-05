@@ -5,3 +5,4 @@ metadata:
   labels:
     app.kubernetes.io/name: cluster-compare
     app.kubernetes.io/part-of: cluster-compare
+    argocd.argoproj.io/managed-by: openshift-gitops
