@@ -1,0 +1,17 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: rogue
+  namespace: rogue
+  labels:
+    app: rogue
+    app.kubernetes.io/component: rogue
+    app.kubernetes.io/instance: rogue
+spec:
+  to:
+    kind: Service
+    name: rogue
+    weight: 100
+  port:
+    targetPort: 8080-tcp
+  wildcardPolicy: None

@@ -1,0 +1,19 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: rogue
+  namespace: rogue
+  labels:
+    app: rogue
+    app.kubernetes.io/comproguent: rogue
+    app.kubernetes.io/instance: rogue
+spec:
+  ipFamilies:
+    - IPv4
+  ports:
+    - name: 8080-tcp
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+  selector:
+    deployment: rogue

@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- one/namespace.yaml
+- one/deployment.yaml
+- one/service.yaml
+- one/route.yaml
+- two/namespace.yaml
+- two/deployment.yaml
+- two/service.yaml
+- rogue/namespace.yaml
+- rogue/deployment.yaml
+- rogue/service.yaml
+- rogue/route.yaml
