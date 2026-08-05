@@ -202,6 +202,18 @@ spec:
             - kind: ServiceAccount
               name: cluster-collector-agent-sa
               namespace: open-cluster-management-agent-addon
+        - kind: ClusterRoleBinding
+          apiVersion: rbac.authorization.k8s.io/v1
+          metadata:
+            name: cluster-collector-agent-hosted
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-collector-agent
+          subjects:
+            - kind: ServiceAccount
+              name: klusterlet-hosted-cluster-work-sa
+              namespace: open-cluster-management-hosted-cluster
         - apiVersion: rbac.authorization.k8s.io/v1
           kind: ClusterRoleBinding
           metadata:
