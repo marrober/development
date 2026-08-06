@@ -1,0 +1,12 @@
+apiVersion: platform.stackrox.io/v1alpha1
+kind: Central
+metadata:
+  name: stackrox-central-services
+  namespace: stackrox
+spec:
+  customize:
+      envVars:
+        - name: ROX_BASELINE_GENERATION_DURATION
+          value: "30m"
+        - name: ROX_NETWORK_BASELINE_OBSERVATION_PERIOD
+          value: "30m"
