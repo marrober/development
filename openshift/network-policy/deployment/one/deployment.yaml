@@ -22,8 +22,7 @@ spec:
     spec:
       containers:
         - name: one
-          image: >-
-            quay.io/marrober/layers:28
+          image: quay.io/marrober/layers:31
           ports:
             - containerPort: 8080
               protocol: TCP

@@ -3,7 +3,10 @@
 ## Create the namespaces and deployments.
 
 ````bash 
-./asset-creation.sh
+oc apple -k deployment
+
+echo "Copy and paste this command : export LEFTROUTE=$(oc get route/one -n left -o jsonpath='{"http://"}{.spec.host}{"/call-layers\n"}')"
+echo "Copy and paste this command : export ROGUEROUTE=$(oc get route/rogue -n rogue -o jsonpath='{"http://"}{.spec.host}{"/call-layers\n"}')"
  ````
 
 Create environment variables for the routes using the information exposed at the end of the script. Example shown below.
