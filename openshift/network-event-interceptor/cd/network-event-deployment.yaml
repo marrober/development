@@ -35,7 +35,7 @@ spec:
     - /spec/host
     kind: Route
   source:
-    path: openshift/network-event-interceptor/collector-addon/deploy
+    path: openshift/network-event-interceptor/application/deploy
     targetRevision: main
     repoURL: https://github.com/marrober/development.git
   syncPolicy:

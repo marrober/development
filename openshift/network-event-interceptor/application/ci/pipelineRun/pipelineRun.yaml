@@ -13,7 +13,7 @@ spec:
     - name: GIT_REPO_NAME
       value: development
     - name: app-dir
-      value: development/openshift/network-event-interceptor/collector-addon/app
+      value: development/openshift/network-event-interceptor/application/app
     - name: dockerfile
       value: Dockerfile
     - name: image-short-name
@@ -28,7 +28,7 @@ spec:
     - name: cd-git-repo-name
       value: development
     - name: cd-git-repo-path-to-content-development
-      value: openshift/network-event-interceptor/collector-addon/deploy
+      value: openshift/network-event-interceptor/application/deploy
     - name: cd-git-commit-comment-dev
       value: "Update from ci process - dev"
     - name: cd-git-user-name
