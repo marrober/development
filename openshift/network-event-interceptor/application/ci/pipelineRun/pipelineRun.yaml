@@ -22,8 +22,6 @@ spec:
       value: nodejs
     - name: node_js_image_tag
       value: latest
-    - name: image-short-name
-      value: cluster-compare-engine
     - name: dockerfile
       value: Dockerfile
     - name: image-short-name
