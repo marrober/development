@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- role-binding/argocd-admin-role.yaml
+- pipelines/pipeline.yaml
+- tasks/build.yaml
+- tasks/build-node-js.yaml
+- tasks/git-clone.yaml
+- tasks/pushImageToOCPImageStream.yaml
+- tasks/update-and-commit-dev-env.yaml
+- tasks/pushImageToQuay.yaml
+- triggers/eventListener.yaml
+- triggers/eventListenerRoute.yaml
+- triggers/triggerBinding.yaml
+- triggers/triggerTemplate.yaml
+- image-streams/terminal.yaml
+- image-streams/buildah-image.yaml
+- image-streams/ose.yaml
+- admin-job/role-and-binding.yaml
+- admin-job/replicaset-cleanup-cronjob.yaml

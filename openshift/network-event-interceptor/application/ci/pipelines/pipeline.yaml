@@ -1,0 +1,190 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: collector-addon
+spec:
+  params:
+      # Buildah step configuration parameters - storage driver and TLS settings.
+      #
+    - name: STORAGE_DRIVER
+      type: string
+      default: vfs
+    - name: TLSVERIFY
+      type: string
+      default: 'false'
+      #
+      # Git repository parameters
+      #
+    ## Repository parameters
+    - name: GIT_REPO
+      type: string
+    - name: GIT_REVISION
+      default: ""
+      type: string
+    - name: GIT_REPO_NAME
+      type: string
+    - name: app-dir
+      type: string
+    - name: dockerfile
+      type: string
+    - name: image-short-name
+      type: string
+    - name: imagestream-url
+      type: string
+      ## Update Kustomize file for the deployment of the application to development
+    - name: repo_type
+      type: string
+    - name: cd-git-url
+      type: string
+    - name: cd-git-repo-name
+      type: string
+    - name: cd-git-repo-path-to-content-development
+      type: string
+    - name: cd-git-user-name
+      type: string
+    - name: cd-git-user-email
+      type: string
+    - name: cd-git-commit-comment-dev 
+      type: string
+      ## Push to quay
+    - name: quay-instance-url
+      type: string
+    - name: quay-account                   # Quay account name
+      type: string
+    - name: quay-repository                # Quay repository name
+      type: string
+  tasks:
+##------------------------------------------------------------------
+# Git clone resources task
+##------------------------------------------------------------------
+    - name: git-clone-resources
+      params:
+      - name: url
+        value: $(params.GIT_REPO)
+      - name: revision
+        value: $(params.GIT_REVISION)
+      - name: repoName
+        value: $(params.GIT_REPO_NAME)
+      - name: subdirectory
+        value: "."
+      - name: verbose
+        value: 'false'
+      - name: deleteExisting
+        value: 'true'
+      taskRef:
+        kind: Task
+        name:  git-clone
+      workspaces:
+      - name: output
+        workspace: resources
+##------------------------------------------------------------------
+# Build the container
+##------------------------------------------------------------------
+    - name: build
+      params:
+        - name: TLSVERIFY
+          value: "$(params.TLSVERIFY)"
+        - name: STORAGE_DRIVER
+          value: $(params.STORAGE_DRIVER)
+        - name: app-dir
+          value: $(params.app-dir)
+        - name: dockerfile
+          value: $(params.dockerfile)
+      taskRef:
+        kind: Task
+        name: build
+      runAfter:
+      - git-clone-resources
+      workspaces:
+      - name: files
+        workspace: files
+      - name: resources
+        workspace: resources
+#------------------------------------------------------------------
+# Push the new runtime image to OpenShift quay
+#------------------------------------------------------------------
+    - name: push-image-to-imagestream
+      params:
+      - name: imagestream-url
+        value: $(params.imagestream-url)
+      - name: STORAGE_DRIVER
+        value: $(params.STORAGE_DRIVER)
+      - name: TLSVERIFY
+        value: "$(params.TLSVERIFY)"
+      - name: pipelineRunName
+        value: $(context.pipelineRun.name)
+      - name: image-short-name
+        value: $(params.image-short-name)
+      taskRef:
+        kind: Task
+        name: push-image-to-ocp
+      runAfter:
+        - build
+      workspaces:
+      - name: files
+        workspace: files
+##------------------------------------------------------------------
+# Push the new runtime image to quay.io
+##------------------------------------------------------------------
+    - name: push-image-to-quay
+      params:
+      - name: quay-instance-url
+        value: $(params.quay-instance-url)
+      - name: quay-account
+        value: $(params.quay-account)
+      - name: quay-repository
+        value: $(params.quay-repository)
+      - name: STORAGE_DRIVER
+        value: $(params.STORAGE_DRIVER)
+      - name: TLSVERIFY
+        value: "$(params.TLSVERIFY)"
+      - name: imageTag
+        value: $(tasks.push-image-to-imagestream.results.new-tag)
+      - name: image-short-name
+        value: $(params.image-short-name)
+      taskRef:
+        kind: Task
+        name: push-image-to-quay
+      runAfter:
+        - push-image-to-imagestream
+      workspaces:
+      - name: files
+        workspace: files
+##------------------------------------------------------------------
+# Clone the cd repository and update the argocd application file 
+# to refer to the new tagged image.
+##------------------------------------------------------------------
+    - name: update-and-commit-dev-env
+      params:
+      - name: GIT_URL
+        value: $(params.repo_type)/$(params.cd-git-url)
+      - name: GIT_REPO_NAME
+        value: $(params.cd-git-repo-name)
+      - name: GIT_BRANCH
+        value: "main"
+      - name: GIT_PATH_TO_CONTENT
+        value: $(params.cd-git-repo-path-to-content-development)
+      - name: GIT_USER_NAME
+        value: $(params.cd-git-user-name)
+      - name: GIT_USER_EMAIL
+        value: $(params.cd-git-user-email)
+      - name: GIT_COMMIT_COMMENT
+        value: $(params.cd-git-commit-comment-dev)
+      - name: IMAGE
+        value: $(params.quay-instance-url)/$(params.quay-account)/$(params.quay-repository):$(tasks.push-image-to-imagestream.results.new-tag)
+      - name: LOCATION
+        value: "dev"
+      taskRef:
+        kind: Task
+        name: update-and-commit-dev-env
+      runAfter:
+      - push-image-to-quay
+      workspaces:
+      - name: files
+        workspace: files
+##------------------------------------------------------------------
+# Workspace definitions
+##------------------------------------------------------------------
+  workspaces:
+    - name: resources
+    - name: files

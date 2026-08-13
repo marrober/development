@@ -1,0 +1,17 @@
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: ClusterManagementAddOn
+metadata:
+  name: network-event-interceptor
+spec:
+  addOnMeta:
+    displayName: network-event-interceptor
+  supportedConfigs:
+    - group: addon.open-cluster-management.io
+      resource: addontemplates
+      defaultConfig:
+        name: network-event-interceptor
+  installStrategy:
+    type: Placements
+    placements:
+      - name: dev-clusters
+        namespace: open-cluster-management-addon
