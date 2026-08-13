@@ -31,6 +31,12 @@ spec:
       type: string
     - name: imagestream-url
       type: string
+    - name: node_js_image_repo
+      type: string
+    - name: node_js_image_name
+      type: string
+    - name: node_js_image_tag
+      type: string
       ## Update Kustomize file for the deployment of the application to development
     - name: repo_type
       type: string
