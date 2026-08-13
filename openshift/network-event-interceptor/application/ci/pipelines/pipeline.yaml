@@ -125,7 +125,7 @@ spec:
         kind: Task
         name: push-image-to-ocp
       runAfter:
-        - build
+        - build-node-js
       workspaces:
       - name: files
         workspace: files
