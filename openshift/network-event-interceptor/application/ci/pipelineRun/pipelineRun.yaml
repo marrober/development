@@ -1,10 +1,10 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  generateName: collector-addon-pr-
+  generateName: network-event-interceptor-pr-
 spec:
   pipelineRef:
-    name: collector-addon
+    name: network-event-interceptor
   params:
     - name: GIT_REPO
       value: https://github.com/marrober/development.git
@@ -14,6 +14,16 @@ spec:
       value: development
     - name: app-dir
       value: development/openshift/network-event-interceptor/application/app
+    - name: node_js_image_repo
+      value: registry.access.redhat.com/hi
+    - name: node_js_short_name
+      value: nodejs
+    - name: node_js_image_name
+      value: nodejs
+    - name: node_js_image_tag
+      value: latest
+    - name: image-short-name
+      value: cluster-compare-engine
     - name: dockerfile
       value: Dockerfile
     - name: image-short-name

@@ -1,7 +1,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
-  name: collector-addon-template
+  name: network-event-interceptor-template
 spec:
   params:
   - name: gitrepository.url
@@ -11,11 +11,11 @@ spec:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
     metadata:
-      generateName: collector-addon-
+      generateName: network-event-interceptor-
     spec:
       serviceAccountName: pipeline
       pipelineRef:
-        name: collector-addon
+        name: network-event-interceptor
       params:
         - name: GIT_REPO
           value: $(tt.params.gitrepository.url)

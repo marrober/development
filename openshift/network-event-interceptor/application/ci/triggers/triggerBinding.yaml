@@ -1,7 +1,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
-  name: collector-addon-binding
+  name: network-event-interceptor-binding
 spec:
   params:
   - name: gitrepository.url

@@ -1,7 +1,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: collector-addon-listener-interceptor
+  name: network-event-interceptor-listener-interceptor
 spec:
   serviceAccountName: pipeline
   triggers:
@@ -19,12 +19,12 @@ spec:
         name: cel
       params:
       - name: "filter"
-        value: 'body["ref"].contains("main") && header.match("X-GitHub-Event", "push") && extensions.changed_files.matches("collector-addon/app")'
+        value: 'body["ref"].contains("main") && header.match("X-GitHub-Event", "push") && extensions.changed_files.matches("network-event-interceptor/app")'
       - name: "overlays"
         value:
         - key: branch
           expression: "body.ref.split('/')[2]"
     bindings:
-      - ref: collector-addon-binding
+      - ref: network-event-interceptor-binding
     template:
-      ref: collector-addon-template
+      ref: network-event-interceptor-template

@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: collector-addon
+  name: network-event-interceptor
 spec:
   params:
       # Buildah step configuration parameters - storage driver and TLS settings.
@@ -80,7 +80,7 @@ spec:
 ##------------------------------------------------------------------
 # Build the container
 ##------------------------------------------------------------------
-    - name: build
+    - name: build-node-js
       params:
         - name: TLSVERIFY
           value: "$(params.TLSVERIFY)"
@@ -88,11 +88,17 @@ spec:
           value: $(params.STORAGE_DRIVER)
         - name: app-dir
           value: $(params.app-dir)
-        - name: dockerfile
-          value: $(params.dockerfile)
+        - name: node_js_image_repo
+          value: $(params.node_js_image_repo)
+        - name: node_js_image_name
+          value: $(params.node_js_image_name)
+        - name: node_js_image_tag
+          value: $(params.node_js_image_tag)
+        - name: image-short-name
+          value: $(params.image-short-name)
       taskRef:
         kind: Task
-        name: build
+        name: build-node-js
       runAfter:
       - git-clone-resources
       workspaces:
