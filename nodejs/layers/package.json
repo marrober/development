@@ -2,6 +2,7 @@
   "name": "layer-node-application",
   "version": "1.0.0",
   "description": "The layer appliction - a micro-service communication example",
+  "type": "module",
   "main": "./layer.js",
   "private": true,
   "scripts": {

@@ -1,8 +1,13 @@
-const http = require('http');
-const express = require('express');
-const sprintfJS = require('sprintf-js');
-var ip = require("ip");
+import http from 'http';
+import express from 'express';
+import sprintfJS from 'sprintf-js';
+import ip from 'ip';
+import fs from 'node:fs';
+import { Readable } from 'node:stream';
+import { finished } from 'node:stream/promises';
+
 const app = express();
+
 
 /* API endpoints ......
     /             - Get the IP address of the current layer.
@@ -27,6 +32,22 @@ var skipCallLayersResponses = 0;
 var resultHash = {};
 var resultCollection = {};
 var resultCollectionTimeSlots = {};
+
+async function downloadFile(url, outputPath) {
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+  }
+
+  const fileStream = fs.createWriteStream(outputPath);
+
+  const bodyStream = Readable.fromWeb(response.body);
+  bodyStream.pipe(fileStream);
+
+  await finished(fileStream);
+  console.log('Download complete!');
+}
 
 if (typeof ignoreDelays != 'undefined') {
   if (ignoreDelays.toUpperCase() == "TRUE") {
@@ -89,7 +110,6 @@ var options = {
 };
 
 
-var ip = require("ip");
 var messageText = "";
 
 app.get('/', (request, response) => {
@@ -271,6 +291,15 @@ app.get('/call-layers-sleep:sleepTime', (request, response) => {
       response.send(messageText);
     }
   });
+});
+
+app.get('/download-test', (request, response) => {
+  console.log("phase: run", "download test");
+
+  if (verbose == true) {
+    console.log("phase: timing", "sleeping ... " + thisSleepTime);
+  }
+
 });
 
 app.get('/health', (request, response) => {
