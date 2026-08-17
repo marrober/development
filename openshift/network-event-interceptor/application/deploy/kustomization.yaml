@@ -9,5 +9,4 @@ resources:
 images:
 - name: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/network-event-interceptor/network-event-interceptor
   newTag: gp572
-- name: quay.io/marrober/network-event-interceptor-collector
-  newTag: xc9d5
+
