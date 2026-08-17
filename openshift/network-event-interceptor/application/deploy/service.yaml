@@ -1,0 +1,19 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: nei-app
+  namespace: network-event-interceptor
+  labels:
+    app.kubernetes.io/instance: nei-app-dev
+    app.kubernetes.io/name: nei-app
+spec:
+  ports:
+    - name: 8080-tcp
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: nei-app-dev
+    app.kubernetes.io/name: nei-app
+    app.openshift.io/runtime: nodejs
