@@ -25,6 +25,8 @@ spec:
       containers:
         - name: nei-app
           image: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/network-event-interceptor/network-event-interceptor
+          args:
+            - "--verbose"
           ports:
             - containerPort: 8080
               protocol: TCP
