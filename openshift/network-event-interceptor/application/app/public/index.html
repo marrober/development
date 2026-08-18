@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network Event Interceptor</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <div>
+      <h1>Network Event Interceptor</h1>
+      <p class="subtitle">RHACS security alert webhook dashboard</p>
+    </div>
+    <div class="header-actions">
+      <button id="refreshBtn" type="button" class="secondary">Refresh</button>
+      <button id="clearBtn" type="button" class="danger">Clear all</button>
+    </div>
+  </header>
+
+  <section id="statsBar" class="stats-bar">
+    <div class="stat-card">
+      <span class="stat-label">Webhook requests</span>
+      <strong id="statWebhooks">0</strong>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Decoded alerts</span>
+      <strong id="statDecoded">0</strong>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Stored events</span>
+      <strong id="statStored">0</strong>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Uptime</span>
+      <strong id="statUptime">0s</strong>
+    </div>
+  </section>
+
+  <section class="toolbar">
+    <label class="filter-label">
+      Filter
+      <input id="filterInput" type="search" placeholder="Policy, cluster, namespace, deployment…" />
+    </label>
+    <label class="filter-label">
+      Severity
+      <select id="severityFilter">
+        <option value="">All</option>
+        <option value="HIGH_SEVERITY">High</option>
+        <option value="MEDIUM_SEVERITY">Medium</option>
+        <option value="LOW_SEVERITY">Low</option>
+      </select>
+    </label>
+    <span id="pollStatus" class="poll-status">Polling…</span>
+  </section>
+
+  <main class="layout">
+    <section class="event-list-panel">
+      <div id="emptyState" class="empty-state" hidden>
+        <p>No webhook events yet. POST alerts to <code>/webhook</code> to populate this view.</p>
+      </div>
+      <div id="eventList" class="event-list"></div>
+    </section>
+
+    <aside id="detailPanel" class="detail-panel" hidden>
+      <div class="detail-header">
+        <h2 id="detailTitle">Alert details</h2>
+        <button id="closeDetailBtn" type="button" class="secondary icon-btn" aria-label="Close details">×</button>
+      </div>
+      <div id="detailContent" class="detail-content"></div>
+    </aside>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
