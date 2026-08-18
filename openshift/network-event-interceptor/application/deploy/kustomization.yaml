@@ -8,4 +8,4 @@ resources:
 
 images:
 - name: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/network-event-interceptor/network-event-interceptor
-  newTag: 2skz6
+  newTag: 8lzcm
