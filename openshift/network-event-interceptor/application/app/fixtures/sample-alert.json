@@ -72,10 +72,22 @@
       {
         "type": "GENERIC",
         "message": "Unexpected process executed",
+        "time": "2026-08-17T16:21:49.049708712Z",
         "keyValueAttrs": {
           "attrs": [
             { "key": "Unexpected Process Executed", "value": "true" },
             { "key": "User ID", "value": "1001050000" }
+          ]
+        }
+      },
+      {
+        "type": "K8S_EVENT",
+        "message": "Earlier kubernetes event violation",
+        "time": "2026-08-13T10:22:16.866141470Z",
+        "keyValueAttrs": {
+          "attrs": [
+            { "key": "Event reason", "value": "Started" },
+            { "key": "Resource", "value": "Pod/two-76b8fbbd7d-htz8w" }
           ]
         }
       }

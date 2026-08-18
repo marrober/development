@@ -275,17 +275,85 @@ function getEventPayloadText(event) {
   return event.raw || "";
 }
 
-function renderViolationDetails(violationDetails) {
-  if (!violationDetails?.attributes?.length) {
-    return "";
+function renderExpandableBlock(summaryHtml, bodyHtml, { open = false } = {}) {
+  return `
+    <details class="expandable-item"${open ? " open" : ""}>
+      <summary class="expandable-summary">${summaryHtml}</summary>
+      <div class="expandable-body">${bodyHtml}</div>
+    </details>
+  `;
+}
+
+function renderViolationDetailSummary(violation) {
+  const typeLabel = violation.type ? `[${violation.type}] ` : "";
+  const attributeSummary = violation.attributes
+    .slice(0, 2)
+    .map((attribute) => `${attribute.key}: ${attribute.value}`)
+    .join(", ");
+  const summaryText = violation.message || attributeSummary || "Violation detail";
+
+  return `
+    <span class="expandable-summary-text">${escapeHtml(typeLabel + summaryText)}</span>
+    <span class="expandable-summary-meta">${escapeHtml(formatDate(violation.time))}</span>
+  `;
+}
+
+function renderViolationDetailBody(violation) {
+  const sections = [];
+
+  if (violation.message) {
+    sections.push(`<p class="detail-text">${escapeHtml(violation.message)}</p>`);
   }
 
-  const rows = violationDetails.attributes.map((attribute) => [attribute.key, attribute.value]);
+  if (violation.attributes.length > 0) {
+    sections.push(renderDetailGrid(
+      violation.attributes.map((attribute) => [attribute.key, attribute.value]),
+    ));
+  }
+
+  if (violation.networkFlowInfo) {
+    sections.push(`
+      <div class="expandable-subsection">
+        <h5 class="expandable-subheading">Network flow</h5>
+        <pre class="json-block expandable-json">${escapeHtml(JSON.stringify(violation.networkFlowInfo, null, 2))}</pre>
+      </div>
+    `);
+  }
+
+  if (violation.fileAccess) {
+    sections.push(`
+      <div class="expandable-subsection">
+        <h5 class="expandable-subheading">File access</h5>
+        <pre class="json-block expandable-json">${escapeHtml(JSON.stringify(violation.fileAccess, null, 2))}</pre>
+      </div>
+    `);
+  }
+
+  if (sections.length === 0) {
+    sections.push(`<p class="detail-text">No additional detail available.</p>`);
+  }
+
+  return sections.join("");
+}
+
+function renderViolationDetails(violationDetails) {
+  const violations = violationDetails?.violations || [];
+  if (!violations.length) {
+    return "";
+  }
 
   return `
     <div class="violation-details">
       <h4 class="subsection-heading">Details</h4>
-      ${renderDetailGrid(rows)}
+      <div class="expandable-list">
+        ${violations
+          .map((violation, index) => renderExpandableBlock(
+            renderViolationDetailSummary(violation),
+            renderViolationDetailBody(violation),
+            { open: index === 0 },
+          ))
+          .join("")}
+      </div>
     </div>
   `;
 }

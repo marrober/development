@@ -103,27 +103,50 @@ function summarizeKeyValueAttrs(keyValueAttrs) {
     .filter((attr) => attr.key);
 }
 
-function extractViolationDetails(alert) {
-  const violations = asArray(alert?.violations);
-  const attributes = [];
-
-  for (const violation of violations) {
-    const keyValuePairs = summarizeKeyValueAttrs(violation?.keyValueAttrs);
-    for (const pair of keyValuePairs) {
-      attributes.push({
-        key: pair.key,
-        value: pair.value,
-        violationType: violation?.type,
-      });
-    }
-  }
-
-  if (attributes.length === 0) {
+function decodeViolationEntry(violation) {
+  const attributes = summarizeKeyValueAttrs(violation?.keyValueAttrs);
+  if (
+    !violation
+    || (!attributes.length && !violation.message && !violation.type && !violation.time)
+  ) {
     return null;
   }
 
   return {
+    type: violation.type,
+    message: violation.message,
+    time: violation.time,
+    attributes,
+    networkFlowInfo: violation.networkFlowInfo || null,
+    fileAccess: violation.fileAccess || null,
+  };
+}
+
+function extractViolationDetails(alert) {
+  const violations = asArray(alert?.violations)
+    .map(decodeViolationEntry)
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.time || "") || 0;
+      const rightTime = Date.parse(right.time || "") || 0;
+      return rightTime - leftTime;
+    });
+
+  if (violations.length === 0) {
+    return null;
+  }
+
+  const attributes = violations.flatMap((violation) =>
+    violation.attributes.map((attribute) => ({
+      key: attribute.key,
+      value: attribute.value,
+      violationType: violation.type,
+    })),
+  );
+
+  return {
     violationCount: violations.length,
+    violations,
     attributes,
   };
 }
