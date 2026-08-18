@@ -13,6 +13,7 @@
       <p class="subtitle">RHACS security alert webhook dashboard</p>
     </div>
     <div class="header-actions">
+      <button id="configBtn" type="button" class="secondary">Settings</button>
       <button id="refreshBtn" type="button" class="secondary">Refresh</button>
       <button id="clearBtn" type="button" class="danger">Clear all</button>
     </div>
@@ -70,6 +71,29 @@
       <div id="detailContent" class="detail-content"></div>
     </aside>
   </main>
+
+  <div id="configModal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-config></div>
+    <div class="modal-dialog" role="dialog" aria-labelledby="configModalTitle" aria-modal="true">
+      <h2 id="configModalTitle">Configuration</h2>
+      <p class="modal-subtitle">Set the RHACS central cluster URL used to build policy links.</p>
+      <form id="configForm">
+        <label class="modal-field" for="clusterUrlInput">
+          Cluster URL
+          <input
+            id="clusterUrlInput"
+            name="clusterUrl"
+            type="url"
+            placeholder="https://central.example.com"
+            required
+          />
+        </label>
+        <div class="modal-actions">
+          <button type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>

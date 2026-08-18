@@ -68,6 +68,18 @@
         }
       ]
     },
+    "violations": [
+      {
+        "type": "GENERIC",
+        "message": "Unexpected process executed",
+        "keyValueAttrs": {
+          "attrs": [
+            { "key": "Unexpected Process Executed", "value": "true" },
+            { "key": "User ID", "value": "1001050000" }
+          ]
+        }
+      }
+    ],
     "time": "2026-08-17T16:21:49.053849984Z",
     "firstOccurred": "2026-08-13T10:22:16.869705604Z",
     "entityType": "DEPLOYMENT"

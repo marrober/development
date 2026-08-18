@@ -1,10 +1,12 @@
 const POLL_INTERVAL_MS = 4000;
+const CLUSTER_URL_KEY = "nei.clusterUrl";
 
 const state = {
   events: [],
   selectedEventId: null,
   filterText: "",
   severityFilter: "",
+  clusterUrl: "",
 };
 
 const els = {
@@ -20,6 +22,10 @@ const els = {
   detailPanel: document.getElementById("detailPanel"),
   detailTitle: document.getElementById("detailTitle"),
   detailContent: document.getElementById("detailContent"),
+  configBtn: document.getElementById("configBtn"),
+  configModal: document.getElementById("configModal"),
+  configForm: document.getElementById("configForm"),
+  clusterUrlInput: document.getElementById("clusterUrlInput"),
   refreshBtn: document.getElementById("refreshBtn"),
   clearBtn: document.getElementById("clearBtn"),
   closeDetailBtn: document.getElementById("closeDetailBtn"),
@@ -63,6 +69,45 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function normalizeClusterUrl(url) {
+  return String(url || "").trim().replace(/\/+$/, "");
+}
+
+function getStoredClusterUrl() {
+  return normalizeClusterUrl(localStorage.getItem(CLUSTER_URL_KEY) || "");
+}
+
+function setStoredClusterUrl(url) {
+  const normalized = normalizeClusterUrl(url);
+  localStorage.setItem(CLUSTER_URL_KEY, normalized);
+  state.clusterUrl = normalized;
+}
+
+function buildPolicyUrl(policyId) {
+  const clusterUrl = state.clusterUrl || getStoredClusterUrl();
+  if (!clusterUrl || !policyId) {
+    return null;
+  }
+  return `${clusterUrl}/main/policy-management/policies/${policyId}`;
+}
+
+function openConfigModal() {
+  els.clusterUrlInput.value = state.clusterUrl || getStoredClusterUrl();
+  els.configModal.hidden = false;
+  els.clusterUrlInput.focus();
+}
+
+function closeConfigModal() {
+  els.configModal.hidden = true;
+}
+
+function initConfig() {
+  state.clusterUrl = getStoredClusterUrl();
+  if (!state.clusterUrl) {
+    openConfigModal();
+  }
+}
+
 function matchesFilter(event) {
   const text = state.filterText.trim().toLowerCase();
   if (!text) return true;
@@ -101,13 +146,22 @@ function renderStats(status) {
 function renderEventCard(event) {
   const severity = event.summary?.severity;
   const policyName = event.brief?.policyName || event.decodeError || "Unrecognized webhook";
+  const policyId = event.brief?.policyId || event.summary?.policyId;
+  const policyUrl = buildPolicyUrl(policyId);
   const selected = event.eventId === state.selectedEventId;
+
+  const policyLink = policyUrl
+    ? `<a class="policy-link" href="${escapeHtml(policyUrl)}" target="_blank" rel="noopener noreferrer">POLICY</a>`
+    : `<span class="policy-link disabled" title="Configure cluster URL and ensure policy ID is present">POLICY</span>`;
 
   return `
     <article class="event-card${selected ? " selected" : ""}" data-event-id="${escapeHtml(event.eventId)}">
       <div class="event-card-header">
         <div class="event-policy">${escapeHtml(policyName)}</div>
-        <span class="badge ${severityClass(severity)}">${escapeHtml(severityLabel(severity))}</span>
+        <div class="event-card-aside">
+          <span class="badge ${severityClass(severity)}">${escapeHtml(severityLabel(severity))}</span>
+          ${policyLink}
+        </div>
       </div>
       <div class="event-meta">
         <div class="meta-item">
@@ -145,6 +199,12 @@ function renderEventList() {
       state.selectedEventId = card.dataset.eventId;
       renderEventList();
       loadEventDetail(state.selectedEventId);
+    });
+  });
+
+  els.eventList.querySelectorAll(".policy-link:not(.disabled)").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.stopPropagation();
     });
   });
 }
@@ -215,13 +275,58 @@ function getEventPayloadText(event) {
   return event.raw || "";
 }
 
+function renderViolationDetails(violationDetails) {
+  if (!violationDetails?.attributes?.length) {
+    return "";
+  }
+
+  const rows = violationDetails.attributes.map((attribute) => [attribute.key, attribute.value]);
+
+  return `
+    <div class="violation-details">
+      <h4 class="subsection-heading">Details</h4>
+      ${renderDetailGrid(rows)}
+    </div>
+  `;
+}
+
+function renderViolationSection(processViolation, violationDetails) {
+  const message = processViolation?.message;
+  const detailsHtml = renderViolationDetails(violationDetails);
+
+  if (!message && !detailsHtml) {
+    return renderDetailSection("Violation", `<p class="detail-text">—</p>`);
+  }
+
+  return renderDetailSection(
+    "Violation",
+    `<p class="detail-text">${escapeHtml(message || "—")}</p>${detailsHtml}`
+  );
+}
+
+function sortProcessesByTime(processes) {
+  return [...processes].sort((left, right) => {
+    const leftTime = Date.parse(left.signal?.time || "") || 0;
+    const rightTime = Date.parse(right.signal?.time || "") || 0;
+    return rightTime - leftTime;
+  });
+}
+
 function renderProcessTable(processes) {
   if (!processes?.length) {
     return `<p class="detail-text">No process details available.</p>`;
   }
 
+  const sortedProcesses = sortProcessesByTime(processes);
+  const displayedProcesses = sortedProcesses.slice(0, 5);
+  const totalCount = sortedProcesses.length;
+  const showingNote = totalCount > 5
+    ? `<p class="detail-text process-table-note">Showing 5 of ${totalCount} most recent processes.</p>`
+    : "";
+
   return `
-    <div class="table-wrap">
+    ${showingNote}
+    <div class="table-wrap process-table-wrap">
       <table>
         <thead>
           <tr>
@@ -233,7 +338,7 @@ function renderProcessTable(processes) {
           </tr>
         </thead>
         <tbody>
-          ${processes
+          ${displayedProcesses
             .map((process) => `
               <tr>
                 <td>${escapeHtml(formatDate(process.signal?.time))}</td>
@@ -273,6 +378,7 @@ function renderDetail(event) {
   const policy = alert?.policy;
   const deployment = alert?.deployment;
   const violation = alert?.processViolation;
+  const violationDetails = alert?.violationDetails;
 
   els.detailContent.innerHTML = [
     renderDetailSection(
@@ -288,7 +394,7 @@ function renderDetail(event) {
         ["Received", formatDate(event.receivedAt)],
       ])
     ),
-    renderDetailSection("Violation", `<p class="detail-text">${escapeHtml(violation?.message || "—")}</p>`),
+    renderViolationSection(violation, violationDetails),
     renderDetailSection(
       "Policy",
       renderDetailGrid([
@@ -394,11 +500,22 @@ els.severityFilter.addEventListener("change", () => {
 
 els.refreshBtn.addEventListener("click", () => refreshData());
 els.clearBtn.addEventListener("click", () => clearEvents());
+els.configBtn.addEventListener("click", () => openConfigModal());
+els.configForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  setStoredClusterUrl(els.clusterUrlInput.value);
+  closeConfigModal();
+  renderEventList();
+});
+els.configModal.querySelectorAll("[data-close-config]").forEach((element) => {
+  element.addEventListener("click", () => closeConfigModal());
+});
 els.closeDetailBtn.addEventListener("click", () => {
   state.selectedEventId = null;
   renderEventList();
   renderDetail(null);
 });
 
+initConfig();
 refreshData();
 setInterval(refreshData, POLL_INTERVAL_MS);

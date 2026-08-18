@@ -94,6 +94,40 @@ function decodeProcessViolation(processViolation) {
   };
 }
 
+function summarizeKeyValueAttrs(keyValueAttrs) {
+  return asArray(keyValueAttrs?.attrs)
+    .map((attr) => ({
+      key: attr?.key,
+      value: attr?.value,
+    }))
+    .filter((attr) => attr.key);
+}
+
+function extractViolationDetails(alert) {
+  const violations = asArray(alert?.violations);
+  const attributes = [];
+
+  for (const violation of violations) {
+    const keyValuePairs = summarizeKeyValueAttrs(violation?.keyValueAttrs);
+    for (const pair of keyValuePairs) {
+      attributes.push({
+        key: pair.key,
+        value: pair.value,
+        violationType: violation?.type,
+      });
+    }
+  }
+
+  if (attributes.length === 0) {
+    return null;
+  }
+
+  return {
+    violationCount: violations.length,
+    attributes,
+  };
+}
+
 function decodeAlertWebhook(payload) {
   if (!payload || typeof payload !== "object") {
     return { ok: false, error: "Payload is not a JSON object" };
@@ -107,6 +141,7 @@ function decodeAlertWebhook(payload) {
   const policy = decodePolicy(alert.policy);
   const deployment = decodeDeployment(alert.deployment);
   const processViolation = decodeProcessViolation(alert.processViolation);
+  const violationDetails = extractViolationDetails(alert);
 
   return {
     ok: true,
@@ -123,9 +158,11 @@ function decodeAlertWebhook(payload) {
       policy,
       deployment,
       processViolation,
+      violationDetails,
     },
     summary: {
       policyName: policy?.name,
+      policyId: policy?.id,
       severity: policy?.severity,
       clusterName: alert.clusterName,
       namespace: alert.namespace,
@@ -149,6 +186,7 @@ function getBriefAlertFields(decoded) {
   return {
     id: alert.id,
     policyName: alert.policy?.name,
+    policyId: alert.policy?.id,
     time: alert.time,
     deploymentName: alert.deployment?.name,
     deploymentNamespace: alert.deployment?.namespace,
