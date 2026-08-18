@@ -25,8 +25,16 @@ spec:
           value: development
         - name: app-dir
           value: development/openshift/network-event-interceptor/application/app
+        - name: node_js_image_repo
+          value: registry.access.redhat.com/hi
+        - name: node_js_short_name
+          value: nodejs
+        - name: node_js_image_name
+          value: nodejs
+        - name: node_js_image_tag
+          value: latest
         - name: dockerfile
-          value: Dockerfile
+          value: dockerfile
         - name: image-short-name
           value: network-event-interceptor
         - name: imagestream-url
@@ -52,9 +60,6 @@ spec:
           value: "marrober"
         - name: quay-repository
           value: "network-event-interceptor-collector" 
-
-
-
       workspaces:
       - name: files
         volumeClaimTemplate:
