@@ -173,6 +173,48 @@ function renderDetailGrid(items) {
   `;
 }
 
+function renderPayloadBlock(title, text) {
+  return `
+    <section class="detail-section payload-section">
+      <div class="section-header-row">
+        <h3>${escapeHtml(title)}</h3>
+        <button type="button" class="secondary copy-payload-btn">Copy</button>
+      </div>
+      <pre class="json-block payload-text">${escapeHtml(text)}</pre>
+    </section>
+  `;
+}
+
+function wireCopyButtons() {
+  els.detailContent.querySelectorAll(".copy-payload-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const payloadText = button.closest(".payload-section")?.querySelector(".payload-text");
+      if (!payloadText) return;
+
+      try {
+        await navigator.clipboard.writeText(payloadText.textContent);
+        const originalLabel = button.textContent;
+        button.textContent = "Copied!";
+        setTimeout(() => {
+          button.textContent = originalLabel;
+        }, 1500);
+      } catch {
+        button.textContent = "Failed";
+        setTimeout(() => {
+          button.textContent = "Copy";
+        }, 1500);
+      }
+    });
+  });
+}
+
+function getEventPayloadText(event) {
+  if (event.payload) {
+    return JSON.stringify(event.payload, null, 2);
+  }
+  return event.raw || "";
+}
+
 function renderProcessTable(processes) {
   if (!processes?.length) {
     return `<p class="detail-text">No process details available.</p>`;
@@ -221,13 +263,9 @@ function renderDetail(event) {
     els.detailContent.innerHTML = [
       renderDetailSection("Status", `<p class="detail-text">This webhook could not be decoded as an RHACS alert.</p>`),
       renderDetailSection("Error", `<p class="detail-text">${escapeHtml(event.decodeError || "Unknown error")}</p>`),
-      renderDetailSection(
-        "Raw payload",
-        `<pre class="json-block">${escapeHtml(
-          event.payload ? JSON.stringify(event.payload, null, 2) : event.raw || ""
-        )}</pre>`
-      ),
+      renderPayloadBlock("Raw payload", getEventPayloadText(event)),
     ].join("");
+    wireCopyButtons();
     return;
   }
 
@@ -277,11 +315,9 @@ function renderDetail(event) {
       `Processes (${violation?.processCount || 0})`,
       renderProcessTable(violation?.processes)
     ),
-    renderDetailSection(
-      "Full payload",
-      `<pre class="json-block">${escapeHtml(JSON.stringify(event.payload, null, 2))}</pre>`
-    ),
+    renderPayloadBlock("Full payload", getEventPayloadText(event)),
   ].join("");
+  wireCopyButtons();
 }
 
 async function loadEventDetail(eventId) {
