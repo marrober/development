@@ -22,6 +22,7 @@ const els = {
   detailPanel: document.getElementById("detailPanel"),
   detailTitle: document.getElementById("detailTitle"),
   detailContent: document.getElementById("detailContent"),
+  copyPayloadBtn: document.getElementById("copyPayloadBtn"),
   configBtn: document.getElementById("configBtn"),
   configModal: document.getElementById("configModal"),
   configForm: document.getElementById("configForm"),
@@ -218,6 +219,8 @@ function renderDetailSection(title, contentHtml) {
   `;
 }
 
+let currentDetailEvent = null;
+
 function renderDetailGrid(items) {
   return `
     <div class="detail-grid">
@@ -233,46 +236,34 @@ function renderDetailGrid(items) {
   `;
 }
 
-function renderPayloadBlock(title, text) {
-  return `
-    <section class="detail-section payload-section">
-      <div class="section-header-row">
-        <h3>${escapeHtml(title)}</h3>
-        <button type="button" class="secondary copy-payload-btn">Copy</button>
-      </div>
-      <pre class="json-block payload-text">${escapeHtml(text)}</pre>
-    </section>
-  `;
-}
-
-function wireCopyButtons() {
-  els.detailContent.querySelectorAll(".copy-payload-btn").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const payloadText = button.closest(".payload-section")?.querySelector(".payload-text");
-      if (!payloadText) return;
-
-      try {
-        await navigator.clipboard.writeText(payloadText.textContent);
-        const originalLabel = button.textContent;
-        button.textContent = "Copied!";
-        setTimeout(() => {
-          button.textContent = originalLabel;
-        }, 1500);
-      } catch {
-        button.textContent = "Failed";
-        setTimeout(() => {
-          button.textContent = "Copy";
-        }, 1500);
-      }
-    });
-  });
-}
-
 function getEventPayloadText(event) {
   if (event.payload) {
     return JSON.stringify(event.payload, null, 2);
   }
   return event.raw || "";
+}
+
+async function copyCurrentPayload() {
+  if (!currentDetailEvent) {
+    return;
+  }
+
+  const payloadText = getEventPayloadText(currentDetailEvent);
+  const button = els.copyPayloadBtn;
+  const originalLabel = button.textContent;
+
+  try {
+    await navigator.clipboard.writeText(payloadText);
+    button.textContent = "Copied!";
+    setTimeout(() => {
+      button.textContent = originalLabel;
+    }, 1500);
+  } catch {
+    button.textContent = "Failed";
+    setTimeout(() => {
+      button.textContent = originalLabel;
+    }, 1500);
+  }
 }
 
 function renderExpandableBlock(summaryHtml, bodyHtml, { open = false } = {}) {
@@ -424,21 +415,23 @@ function renderProcessTable(processes) {
 }
 
 function renderDetail(event) {
+  currentDetailEvent = event;
+
   if (!event) {
     els.detailPanel.hidden = true;
+    els.copyPayloadBtn.hidden = true;
     return;
   }
 
   els.detailPanel.hidden = false;
+  els.copyPayloadBtn.hidden = false;
   els.detailTitle.textContent = event.brief?.policyName || "Webhook event";
 
   if (!event.decoded) {
     els.detailContent.innerHTML = [
       renderDetailSection("Status", `<p class="detail-text">This webhook could not be decoded as an RHACS alert.</p>`),
       renderDetailSection("Error", `<p class="detail-text">${escapeHtml(event.decodeError || "Unknown error")}</p>`),
-      renderPayloadBlock("Raw payload", getEventPayloadText(event)),
     ].join("");
-    wireCopyButtons();
     return;
   }
 
@@ -489,9 +482,7 @@ function renderDetail(event) {
       `Processes (${violation?.processCount || 0})`,
       renderProcessTable(violation?.processes)
     ),
-    renderPayloadBlock("Full payload", getEventPayloadText(event)),
   ].join("");
-  wireCopyButtons();
 }
 
 async function loadEventDetail(eventId) {
@@ -568,6 +559,7 @@ els.severityFilter.addEventListener("change", () => {
 
 els.refreshBtn.addEventListener("click", () => refreshData());
 els.clearBtn.addEventListener("click", () => clearEvents());
+els.copyPayloadBtn.addEventListener("click", () => copyCurrentPayload());
 els.configBtn.addEventListener("click", () => openConfigModal());
 els.configForm.addEventListener("submit", (event) => {
   event.preventDefault();

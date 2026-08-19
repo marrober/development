@@ -69,7 +69,7 @@ Open `GET /` in a browser.
 | Feature | Description |
 |---------|-------------|
 | Event list | Cards showing policy name, severity, cluster, namespace, deployment, and alert time |
-| Detail panel | Summary, violation message, policy/deployment info, processes (5 most recent), full payload with copy button |
+| Detail panel | Summary, violation message, policy/deployment info, processes (5 most recent), **Copy full payload** button in header |
 | Settings | Configure RHACS **Cluster URL** for POLICY links (`{clusterURL}/main/policy-management/policies/{policy.id}`) |
 | Filters | Text search and severity filter |
 | Auto-refresh | Polls the API every 4 seconds |

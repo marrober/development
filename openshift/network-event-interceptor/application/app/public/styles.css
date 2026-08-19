@@ -339,6 +339,18 @@ select {
   flex-shrink: 0;
 }
 
+.detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+#copyPayloadBtn {
+  font-size: 0.8rem;
+  padding: 0.45rem 0.75rem;
+}
+
 .detail-content {
   padding: 1rem 1.1rem 1.25rem;
   overflow-y: auto;
@@ -394,12 +406,6 @@ select {
 
 .section-header-row h3 {
   margin: 0;
-}
-
-.copy-payload-btn {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.8rem;
-  flex-shrink: 0;
 }
 
 .detail-grid {

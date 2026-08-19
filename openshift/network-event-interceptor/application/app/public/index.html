@@ -66,7 +66,10 @@
     <aside id="detailPanel" class="detail-panel" hidden>
       <div class="detail-header">
         <h2 id="detailTitle">Alert details</h2>
-        <button id="closeDetailBtn" type="button" class="secondary icon-btn" aria-label="Close details">×</button>
+        <div class="detail-header-actions">
+          <button id="copyPayloadBtn" type="button" class="secondary" hidden>Copy full payload</button>
+          <button id="closeDetailBtn" type="button" class="secondary icon-btn" aria-label="Close details">×</button>
+        </div>
       </div>
       <div id="detailContent" class="detail-content"></div>
     </aside>
