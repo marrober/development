@@ -7,6 +7,7 @@ const state = {
   filterText: "",
   severityFilter: "",
   clusterUrl: "",
+  expandedViolationKey: null,
 };
 
 const els = {
@@ -198,6 +199,7 @@ function renderEventList() {
   els.eventList.querySelectorAll(".event-card").forEach((card) => {
     card.addEventListener("click", () => {
       state.selectedEventId = card.dataset.eventId;
+      state.expandedViolationKey = null;
       renderEventList();
       loadEventDetail(state.selectedEventId);
     });
@@ -266,13 +268,38 @@ async function copyCurrentPayload() {
   }
 }
 
-function renderExpandableBlock(summaryHtml, bodyHtml, { open = false } = {}) {
+function renderExpandableBlock(summaryHtml, bodyHtml, { open = false, detailKey = "" } = {}) {
+  const keyAttr = detailKey ? ` data-violation-key="${escapeHtml(detailKey)}"` : "";
+  const itemClass = detailKey ? "expandable-item violation-detail-item" : "expandable-item";
+
   return `
-    <details class="expandable-item"${open ? " open" : ""}>
+    <details class="${itemClass}"${keyAttr}${open ? " open" : ""}>
       <summary class="expandable-summary">${summaryHtml}</summary>
       <div class="expandable-body">${bodyHtml}</div>
     </details>
   `;
+}
+
+function getViolationDetailKey(violation) {
+  return `${violation.time || ""}|${violation.type || ""}|${violation.message || ""}`;
+}
+
+function wireViolationDetailExpanders() {
+  els.detailContent.querySelectorAll(".violation-detail-item").forEach((details) => {
+    details.addEventListener("toggle", () => {
+      const key = details.dataset.violationKey;
+      if (details.open) {
+        state.expandedViolationKey = key;
+        els.detailContent.querySelectorAll(".violation-detail-item").forEach((other) => {
+          if (other !== details && other.open) {
+            other.open = false;
+          }
+        });
+      } else if (state.expandedViolationKey === key) {
+        state.expandedViolationKey = null;
+      }
+    });
+  });
 }
 
 function renderViolationDetailSummary(violation) {
@@ -327,39 +354,56 @@ function renderViolationDetailBody(violation) {
   return sections.join("");
 }
 
-function renderViolationDetails(violationDetails) {
+function renderViolationDetailsSection(violationDetails) {
   const violations = violationDetails?.violations || [];
   if (!violations.length) {
     return "";
   }
 
-  return `
-    <div class="violation-details">
-      <h4 class="subsection-heading">Details</h4>
-      <div class="expandable-list">
-        ${violations
-          .map((violation, index) => renderExpandableBlock(
+  return renderDetailSection(
+    "Details",
+    `<div class="expandable-list">
+      ${violations
+        .map((violation) => {
+          const detailKey = getViolationDetailKey(violation);
+          return renderExpandableBlock(
             renderViolationDetailSummary(violation),
             renderViolationDetailBody(violation),
-            { open: index === 0 },
-          ))
-          .join("")}
-      </div>
-    </div>
-  `;
+            {
+              open: state.expandedViolationKey === detailKey,
+              detailKey,
+            },
+          );
+        })
+        .join("")}
+    </div>`,
+  );
 }
 
-function renderViolationSection(processViolation, violationDetails) {
-  const message = processViolation?.message;
-  const detailsHtml = renderViolationDetails(violationDetails);
+function renderViolationMessageSection(processViolation) {
+  return renderDetailSection(
+    "Violation",
+    `<p class="detail-text">${escapeHtml(processViolation?.message || "—")}</p>`,
+  );
+}
 
-  if (!message && !detailsHtml) {
-    return renderDetailSection("Violation", `<p class="detail-text">—</p>`);
+function renderPolicySection(policy) {
+  if (!policy) {
+    return "";
   }
 
   return renderDetailSection(
-    "Violation",
-    `<p class="detail-text">${escapeHtml(message || "—")}</p>${detailsHtml}`
+    "Policy",
+    renderDetailGrid([
+      ["Name", policy.name],
+      ["Severity", severityLabel(policy.severity)],
+      ["Categories", (policy.categories || []).join(", ") || "—"],
+      ["Lifecycle", (policy.lifecycleStages || []).join(", ") || "—"],
+    ]) +
+      `<p class="detail-text">${escapeHtml(policy.description || "")}</p>` +
+      (policy.remediation
+        ? `<p class="detail-text"><strong>Remediation:</strong> ${escapeHtml(policy.remediation)}</p>`
+        : ""),
   );
 }
 
@@ -455,20 +499,9 @@ function renderDetail(event) {
         ["Received", formatDate(event.receivedAt)],
       ])
     ),
-    renderViolationSection(violation, violationDetails),
-    renderDetailSection(
-      "Policy",
-      renderDetailGrid([
-        ["Name", policy?.name],
-        ["Severity", severityLabel(policy?.severity)],
-        ["Categories", (policy?.categories || []).join(", ") || "—"],
-        ["Lifecycle", (policy?.lifecycleStages || []).join(", ") || "—"],
-      ]) +
-        `<p class="detail-text">${escapeHtml(policy?.description || "")}</p>` +
-        (policy?.remediation
-          ? `<p class="detail-text"><strong>Remediation:</strong> ${escapeHtml(policy.remediation)}</p>`
-          : "")
-    ),
+    renderViolationMessageSection(violation),
+    renderPolicySection(policy),
+    renderViolationDetailsSection(violationDetails),
     renderDetailSection(
       "Deployment",
       renderDetailGrid([
@@ -483,6 +516,7 @@ function renderDetail(event) {
       renderProcessTable(violation?.processes)
     ),
   ].join("");
+  wireViolationDetailExpanders();
 }
 
 async function loadEventDetail(eventId) {
@@ -524,10 +558,6 @@ async function refreshData() {
     }
 
     renderEventList();
-
-    if (state.selectedEventId) {
-      await loadEventDetail(state.selectedEventId);
-    }
 
     els.pollStatus.textContent = `Updated ${new Date().toLocaleTimeString()}`;
   } catch (error) {
