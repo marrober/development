@@ -501,7 +501,6 @@ function renderDetail(event) {
     ),
     renderViolationMessageSection(violation),
     renderPolicySection(policy),
-    renderViolationDetailsSection(violationDetails),
     renderDetailSection(
       "Deployment",
       renderDetailGrid([
@@ -511,6 +510,7 @@ function renderDetail(event) {
         ["Images", (deployment?.images || []).join(", ") || "—"],
       ])
     ),
+    renderViolationDetailsSection(violationDetails),
     renderDetailSection(
       `Processes (${violation?.processCount || 0})`,
       renderProcessTable(violation?.processes)
