@@ -5,7 +5,7 @@ metadata:
   namespace: franc
   labels:
     app.kubernetes.io/instance: franc-dev
-    app.kubernetes.io/name:franc
+    app.kubernetes.io/name: franc
 spec:
   ports:
     - name: 8080-tcp
