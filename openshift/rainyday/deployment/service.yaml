@@ -1,11 +1,11 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: franc
-  namespace: franc
+  name: rainyday
+  namespace: rainyday
   labels:
-    app.kubernetes.io/instance: franc-dev
-    app.kubernetes.io/name: franc
+    app.kubernetes.io/instance: rainyday-dev
+    app.kubernetes.io/name: rainyday
 spec:
   ports:
     - name: 8080-tcp
@@ -14,6 +14,6 @@ spec:
       targetPort: 8080
   type: ClusterIP
   selector:
-    app.kubernetes.io/instance: franc-dev
-    app.kubernetes.io/name: franc
+    app.kubernetes.io/instance: rainyday-dev
+    app.kubernetes.io/name: rainyday
     app.openshift.io/runtime: nodejs

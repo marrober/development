@@ -1,30 +1,30 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: franc
-  namespace: franc
+  name: rainyday
+  namespace: rainyday
   labels:
-    app.kubernetes.io/instance: franc-dev
-    app.kubernetes.io/name: franc
+    app.kubernetes.io/instance: rainyday-dev
+    app.kubernetes.io/name: rainyday
     app.openshift.io/runtime: nodejs
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/instance: franc-dev
-      app.kubernetes.io/name: franc
+      app.kubernetes.io/instance: rainyday-dev
+      app.kubernetes.io/name: rainyday
       app.openshift.io/runtime: nodejs
   template:
     metadata:
       creationTimestamp: null
       labels:
-        app.kubernetes.io/instance: franc-dev
-        app.kubernetes.io/name: franc
+        app.kubernetes.io/instance: rainyday-dev
+        app.kubernetes.io/name: rainyday
         app.openshift.io/runtime: nodejs
     spec:
       containers:
-        - name: franc
-          image: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/franc/development-git:latest
+        - name: rainyday
+          image: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/rainyday/development-git:latest
           ports:
             - containerPort: 8080
               protocol: TCP

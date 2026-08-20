@@ -1,13 +1,13 @@
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
-  name: franc
-  namespace: franc
+  name: rainyday
+  namespace: rainyday
 spec:
   path: /
   to:
     kind: Service
-    name: franc
+    name: rainyday
     weight: 100
   port:
     targetPort: 8080-tcp

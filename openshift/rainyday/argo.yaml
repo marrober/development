@@ -1,12 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: franc
+  name: rainyday
   namespace: openshift-gitops
 spec:
   project: default
   destination:
-    namespace: franc
+    namespace: rainyday
     server: https://kubernetes.default.svc
   ignoreDifferences:
   - group: image.openshift.io
@@ -35,7 +35,7 @@ spec:
     - /spec/host
     kind: Route
   source:
-    path: openshift/franc/deployment
+    path: openshift/rainyday/deployment
     targetRevision: main
     repoURL: https://github.com/marrober/development.git
   syncPolicy:
