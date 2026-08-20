@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: rainyday
-          image: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/rainyday/development-git:latest
+          image: quay.io/marrober/pacman:franc-2
           ports:
             - containerPort: 8080
               protocol: TCP
