@@ -138,30 +138,30 @@ spec:
 ##------------------------------------------------------------------
 # Push the new runtime image to quay.io
 ##------------------------------------------------------------------
-    - name: push-image-to-quay
-      params:
-      - name: quay-instance-url
-        value: $(params.quay-instance-url)
-      - name: quay-account
-        value: $(params.quay-account)
-      - name: quay-repository
-        value: $(params.quay-repository)
-      - name: STORAGE_DRIVER
-        value: $(params.STORAGE_DRIVER)
-      - name: TLSVERIFY
-        value: "$(params.TLSVERIFY)"
-      - name: imageTag
-        value: $(tasks.push-image-to-imagestream.results.new-tag)
-      - name: image-short-name
-        value: $(params.image-short-name)
-      taskRef:
-        kind: Task
-        name: push-image-to-quay
-      runAfter:
-        - push-image-to-imagestream
-      workspaces:
-      - name: files
-        workspace: files
+#    - name: push-image-to-quay
+#      params:
+#      - name: quay-instance-url
+#        value: $(params.quay-instance-url)
+#      - name: quay-account
+#        value: $(params.quay-account)
+#      - name: quay-repository
+#        value: $(params.quay-repository)
+#      - name: STORAGE_DRIVER
+#        value: $(params.STORAGE_DRIVER)
+#      - name: TLSVERIFY
+#        value: "$(params.TLSVERIFY)"
+#      - name: imageTag
+#        value: $(tasks.push-image-to-imagestream.results.new-tag)
+#      - name: image-short-name
+#        value: $(params.image-short-name)
+#      taskRef:
+#        kind: Task
+#        name: push-image-to-quay
+#      runAfter:
+#        - push-image-to-imagestream
+#      workspaces:
+#      - name: files
+#        workspace: files
 ##------------------------------------------------------------------
 # Clone the cd repository and update the argocd application file 
 # to refer to the new tagged image.
@@ -183,14 +183,14 @@ spec:
       - name: GIT_COMMIT_COMMENT
         value: $(params.cd-git-commit-comment-dev)
       - name: IMAGE
-        value: $(params.quay-instance-url)/$(params.quay-account)/$(params.quay-repository):$(tasks.push-image-to-imagestream.results.new-tag)
+        value: $(params.imagestream-url):$(tasks.push-image-to-imagestream.results.new-tag)
       - name: LOCATION
         value: "dev"
       taskRef:
         kind: Task
         name: update-and-commit-dev-env
       runAfter:
-      - push-image-to-quay
+      - push-image-to-imagestream
       workspaces:
       - name: files
         workspace: files

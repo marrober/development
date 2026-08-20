@@ -1,28 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
 resources:
-- namespace.yaml
-- addon-template.yaml
-- cluster-management-addon.yaml
-- cluster-role.yaml
-- clustercollector-crd.yaml
-- placement.yaml
-- role-bindings/addon-template-role-bindings.yaml
-- role-bindings/addon-template-role.yaml
+- deployment.yaml
+- service.yaml
+- route.yaml
 
 images:
-- name: quay.io/marrober/network-event-interceptor-collector
-  newTag: glkcj
-
-commonAnnotations:
-  addon.open-cluster-management.io/image-version: quay.io/marrober/network-event-interceptor-collector:88f6q
-
-patches:
-- patch: |
-    - op: add
-      path: /spec/agentSpec/workload/manifests/4/metadata/annotations
-      value:
-        network-event-interceptor.addon/image-image: quay.io/marrober/network-event-interceptor-collector:glkcj
-  target:
-    kind: AddOnTemplate
-    name: clustercollector
+- name: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/network-event-interceptor/network-event-interceptor
+  newTag: 4ljrn

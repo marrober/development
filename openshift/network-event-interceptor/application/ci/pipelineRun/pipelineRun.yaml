@@ -23,7 +23,7 @@ spec:
     - name: node_js_image_tag
       value: latest
     - name: dockerfile
-      value: Dockerfile
+      value: dockerfile
     - name: image-short-name
       value: network-event-interceptor
     - name: imagestream-url

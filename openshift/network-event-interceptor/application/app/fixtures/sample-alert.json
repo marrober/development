@@ -1,0 +1,99 @@
+{
+  "alert": {
+    "id": "78da57bd-3ae5-457b-a6b4-ebb181e5e65e",
+    "policy": {
+      "id": "89cae2e6-0cb7-4329-8692-c2c3717c1237",
+      "name": "Unauthorized Process Execution",
+      "description": "This policy generates a violation for any process execution that is not explicitly allowed by a locked process baseline for a given container specification within a Kubernetes deployment.",
+      "rationale": "A locked process baseline communicates high confidence that execution of a process not included in the baseline positively indicates malicious activity.",
+      "remediation": "Evaluate this process execution for malicious intent, examine other accessible resources for abnormal activity, then kill the pod in which this process executed.",
+      "categories": ["Anomalous Activity"],
+      "lifecycleStages": ["RUNTIME"],
+      "eventSource": "DEPLOYMENT_EVENT",
+      "severity": "HIGH_SEVERITY",
+      "lastUpdated": "2026-08-17T16:21:22.950796161Z",
+      "policyVersion": "1.1"
+    },
+    "lifecycleStage": "RUNTIME",
+    "clusterId": "4beb6c12-4a69-4237-b6e8-020d4dbdc9b6",
+    "clusterName": "hub-cluster",
+    "namespace": "right",
+    "namespaceId": "d7e1a326-e2d0-4e92-a9e8-399363de65f7",
+    "deployment": {
+      "id": "da842a0b-c89a-4f1b-b434-71cfbbf8b4d6",
+      "name": "two",
+      "type": "Deployment",
+      "namespace": "right",
+      "labels": { "app": "two" },
+      "clusterName": "hub-cluster",
+      "containers": [
+        {
+          "image": {
+            "id": "sha256:abc",
+            "name": { "fullName": "quay.io/marrober/layers:31" }
+          },
+          "name": "two"
+        }
+      ]
+    },
+    "processViolation": {
+      "message": "Binaries '/usr/bin/curl', '/usr/bin/dnf', '/usr/bin/rm', and '/usr/bin/yum' executed with 5 different arguments under user ID 1001050000",
+      "processes": [
+        {
+          "id": "39a51aef-fc79-486c-bb70-cd05af70c635",
+          "containerName": "two",
+          "podId": "two-76b8fbbd7d-htz8w",
+          "namespace": "right",
+          "signal": {
+            "time": "2026-08-13T10:22:16.866141470Z",
+            "name": "curl",
+            "execFilePath": "/usr/bin/curl",
+            "pid": 1674987,
+            "uid": 1001050000
+          }
+        },
+        {
+          "id": "62f476f9-46b8-4acd-ac32-d0413788d17c",
+          "containerName": "two",
+          "podId": "two-76b8fbbd7d-8t8j7",
+          "namespace": "right",
+          "signal": {
+            "time": "2026-08-17T16:21:49.049708712Z",
+            "name": "dnf",
+            "args": "/usr/bin/dnf",
+            "execFilePath": "/usr/bin/dnf",
+            "pid": 4048155,
+            "uid": 1001050000
+          }
+        }
+      ]
+    },
+    "violations": [
+      {
+        "type": "GENERIC",
+        "message": "Unexpected process executed",
+        "time": "2026-08-17T16:21:49.049708712Z",
+        "keyValueAttrs": {
+          "attrs": [
+            { "key": "Unexpected Process Executed", "value": "true" },
+            { "key": "User ID", "value": "1001050000" }
+          ]
+        }
+      },
+      {
+        "type": "K8S_EVENT",
+        "message": "Earlier kubernetes event violation",
+        "time": "2026-08-13T10:22:16.866141470Z",
+        "keyValueAttrs": {
+          "attrs": [
+            { "key": "Event reason", "value": "Started" },
+            { "key": "Resource", "value": "Pod/two-76b8fbbd7d-htz8w" }
+          ]
+        }
+      }
+    ],
+    "time": "2026-08-17T16:21:49.053849984Z",
+    "firstOccurred": "2026-08-13T10:22:16.869705604Z",
+    "entityType": "DEPLOYMENT"
+  }
+}

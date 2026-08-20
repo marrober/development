@@ -6,9 +6,12 @@ COPY package.json ./
 RUN npm install --omit=dev
 
 COPY server.js ./
+COPY lib ./lib
+COPY public ./public
+COPY public ./public
 RUN chown -R 1001:0 /opt/app-root/src
 
 USER 1001
 EXPOSE 8080
 ENV PORT=8080
-CMD ["node", "server.js"]
+ENTRYPOINT ["node", "server.js"]
