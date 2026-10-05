@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tekton analyser</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="mast">
+      <p class="eyebrow">Tekton analyser</p>
+      <h1>Start from the repository that holds the pipelines.</h1>
+      <p class="lede">Drop in the git repository and the context directory where the Tekton tasks, pipelines, and pipeline runs live.</p>
+    </header>
+
+    <main>
+      <form id="source-form" class="panel" autocomplete="off">
+        <div class="drop-hint" id="drop-hint">Paste a repository URL here</div>
+
+        <div class="field">
+          <label for="repository">Git repository</label>
+          <input id="repository" name="repository" type="url" inputmode="url" spellcheck="false" autocomplete="off" placeholder="https://github.com/org/pipelines.git" required>
+        </div>
+
+        <div class="field">
+          <label for="context-dir">Context directory</label>
+          <input id="context-dir" name="contextDir" type="text" spellcheck="false" autocomplete="off" placeholder=".tekton" aria-describedby="context-hint">
+          <p class="hint" id="context-hint">Path inside the repository. Leave this empty to read from the repository root.</p>
+        </div>
+
+        <div class="field">
+          <label for="token">Git token - for access to private repo</label>
+          <input id="token" name="token" type="password" spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off" aria-describedby="token-hint" maxlength="4096">
+          <p class="hint" id="token-hint">Optional. Obfuscated here and used only to clone a private repository. It is not stored or written into the page.</p>
+        </div>
+
+        <div class="actions">
+          <button id="submit" type="submit">Analyse repository</button>
+          <p id="status" class="status" role="status" hidden></p>
+        </div>
+        <p id="error" class="error" role="alert" hidden></p>
+      </form>
+    </main>
+    <script type="module" src="/main.js"></script>
+    <noscript>This page needs JavaScript to clone the repository and read its Tekton resources.</noscript>
+  </body>
+</html>
