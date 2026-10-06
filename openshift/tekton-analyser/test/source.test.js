@@ -5,6 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { arrangeTasks } from '../public/results.js';
+import { describeEnvVar, describeReference, describeShellParam, parameterUses } from '../public/task-view.js';
 import { digestPipelineRun } from '../dist/pipelinerun-digest.js';
 import { parseRepositoryUrl, redactSecret, resolveContextDir } from '../dist/git-source.js';
 import { loadResources } from '../dist/load.js';
@@ -57,6 +58,82 @@ spec:
       notes: ['A file is created for each key in configmap build-config.'],
     },
   ]);
+  const pipeline = {
+    name: 'build-and-test',
+    paramDefaults: [],
+    tasks: [{
+      name: 'fetch',
+      content: {
+        params: [{ name: 'url', value: '$(params.url)' }],
+        workspaces: [{ name: 'source', pipeline: 'shared' }],
+        steps: [{ name: 'clone', script: 'echo "$(params.url)" > $(workspaces.source.path)/repo' }],
+      },
+    }],
+    finally: [],
+  };
+  const uses = parameterUses([pipeline], digest.params);
+  assert.deepEqual(uses[0].uses, [{ pipeline: 'build-and-test', task: 'fetch', step: 'clone', field: 'script' }]);
+  const described = describeReference('params.url', pipeline.tasks[0], pipeline, digest);
+  assert.equal(described.value, 'https://example.com/app.git');
+  const workspace = describeReference('workspaces.source.path', pipeline.tasks[0], pipeline, digest);
+  assert.equal(workspace.value, '/workspace/source');
+  assert.match(workspace.because, /shared/);
+  assert.match(workspace.because, /config\/app\.yaml/);
+
+  const linked = {
+    name: 'build-and-test',
+    paramDefaults: [{ name: 'GIT_REPO', default: 'https://default.example/app.git' }],
+    tasks: [{
+      name: 'fetch',
+      content: {
+        params: [{ name: 'url', value: "$(params['GIT_REPO'])" }],
+        steps: [{ name: 'clone', image: 'example.com/clone:latest', script: 'git clone "$(params.url)"' }],
+      },
+    }],
+    finally: [],
+  };
+  const linkedRun = {
+    params: [{ name: 'GIT_REPO', value: 'https://github.com/example/app.git' }],
+    workspaces: [],
+  };
+  const linkedUses = parameterUses([linked], linkedRun.params);
+  assert.deepEqual(linkedUses[0].uses, [{ pipeline: 'build-and-test', task: 'fetch', step: 'clone', field: 'script' }]);
+  const fromTask = describeReference('params.url', linked.tasks[0], linked, linkedRun);
+  assert.equal(fromTask.value, 'https://github.com/example/app.git');
+  assert.match(fromTask.because, /GIT_REPO/);
+  const fromRun = describeReference('params["GIT_REPO"]', linked.tasks[0], linked, linkedRun);
+  assert.equal(fromRun.value, 'https://github.com/example/app.git');
+  assert.match(fromRun.because, /PipelineRun sets GIT_REPO/);
+  const shell = describeShellParam('PARAM_URL', {
+    env: [{ name: 'PARAM_URL', value: '$(params.url)' }],
+    script: 'git clone "${PARAM_URL}"',
+  }, linked.tasks[0], linked, linkedRun);
+  assert.equal(shell.reference, "$(params['GIT_REPO'])");
+  assert.equal(shell.value, 'https://github.com/example/app.git');
+  const shellUses = parameterUses([{
+    ...linked,
+    tasks: [{
+      ...linked.tasks[0],
+      content: {
+        ...linked.tasks[0].content,
+        steps: [{
+          name: 'clone',
+          env: [{ name: 'PARAM_URL', value: '$(params.url)' }],
+          script: 'git clone "${PARAM_URL}"',
+        }],
+      },
+    }],
+  }], linkedRun.params);
+  assert.equal(shellUses[0].uses.some((use) => use.field === 'script'), true);
+  const env = describeEnvVar('WORKSPACE_OUTPUT_PATH', {
+    env: [{ name: 'WORKSPACE_OUTPUT_PATH', value: '$(workspaces.source.path)' }],
+  }, linked.tasks[0], linked, linkedRun);
+  assert.equal(env.reference, '${WORKSPACE_OUTPUT_PATH}');
+  assert.equal(env.value, '/workspace/source');
+  const revision = describeEnvVar('GIT_REV', {
+    env: [{ name: 'GIT_REV', value: '$(params.GIT_REPO)' }],
+  }, linked.tasks[0], linked, linkedRun);
+  assert.equal(revision.value, 'https://github.com/example/app.git');
 });
 
 test('repository URL rejects embedded credentials', () => {
@@ -99,6 +176,8 @@ test('a checkout summarises pipelines, tasks, and ordering', async () => {
   assert.equal(summary.pipelines[0].finally[0].name, 'notify');
   assert.deepEqual(summary.pipelines[0].tasks[0].mounts, { workspaces: ['source -> shared'], volumes: ['ssh-key', 'cache'], secrets: ['git-ssh'] });
   assert.deepEqual(summary.pipelines[0].tasks[1].mounts, { workspaces: [], volumes: [], secrets: [] });
+  assert.equal(summary.pipelines[0].tasks[0].content.steps[0].script, 'echo "$(params.url)"');
+  assert.equal(summary.pipelines[0].tasks[0].content.params[0].value, '$(params.url)');
   assert.equal(summary.tasks[0].steps[0], 'clone');
   assert.equal(JSON.stringify(summary).includes('bearer'), false);
 });
@@ -137,11 +216,12 @@ test('the main page starts with repository, context directory, and a masked toke
     const resultsHtml = await results.text();
     assert.equal(results.status, 200);
     assert.match(resultsHtml, /id="results"/);
-    assert.match(resultsHtml, /id="data-switch"/);
     assert.match(resultsHtml, /results\.js/);
     const script = await fetch(`http://127.0.0.1:${port}/results.js`);
     const scriptText = await script.text();
     assert.match(scriptText, /pipeline-flow/);
+    assert.match(scriptText, /id = 'data-switch'/);
+    assert.match(scriptText, /Workspaces/);
     assert.equal(scriptText.includes('→ ${task.ref}'), false);
 
     const rejected = await fetch(`http://127.0.0.1:${port}/api/analyse`, {

@@ -72,6 +72,7 @@ export interface TaskSpec {
   sidecars: Step[];
   volumes: TaskVolume[];
   stepTemplateImage?: string;
+  stepTemplateEnv: { name: string; value?: string }[];
   hasResources: boolean;
 }
 

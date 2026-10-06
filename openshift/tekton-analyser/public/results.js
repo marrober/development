@@ -1,4 +1,5 @@
-const STORAGE_KEY = 'tekton-analyser-summary';
+import { RUN_KEY, SUMMARY_KEY, readJson, removeKey, writeJson } from './analysis-store.js';
+import { parameterUses } from './task-view.js';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 let resultsNode;
@@ -6,27 +7,16 @@ let metaNode;
 let summaryData;
 let showData = false;
 let runDigest;
+const selectedRunParams = new Set();
 
 function boot() {
   resultsNode = document.querySelector('#results');
   metaNode = document.querySelector('#meta');
   if (!resultsNode || !metaNode) return;
 
-  document.querySelector('#data-switch')?.addEventListener('change', (event) => {
-    showData = event.target.checked;
-    const current = document.querySelector('#pipelines');
-    if (!summaryData || !current) return;
-    current.replaceWith(renderPipelines(summaryData.pipelines ?? []));
-  });
-
-  const stored = sessionStorage.getItem(STORAGE_KEY);
-  let summary;
-  try {
-    summary = stored ? JSON.parse(stored) : null;
-  } catch {
-    summary = null;
-  }
-  summaryData = summary;
+  summaryData = readJson(SUMMARY_KEY);
+  runDigest = readJson(RUN_KEY) ?? undefined;
+  const summary = summaryData;
 
   if (!summary) {
     metaNode.textContent = 'Analyse a repository to see pipelines, tasks, and runs.';
@@ -38,6 +28,7 @@ function boot() {
     resultsNode.append(empty);
   } else {
     renderSummary(summary);
+    if (runDigest) showRunDigest(runDigest, runDigest.name || 'PipelineRun');
   }
 }
 
@@ -75,9 +66,18 @@ function renderSummary(summary) {
 }
 
 function renderRunDrop() {
-  const box = el('div', 'run-drop');
+  const box = el('section', 'card run-card is-empty');
   box.id = 'run-drop';
-  box.tabIndex = 0;
+  const details = document.createElement('details');
+  details.className = 'collapsible';
+  details.open = true;
+  const summary = document.createElement('summary');
+  summary.id = 'run-summary';
+  summary.textContent = 'Drop a PipelineRun file';
+  details.append(summary);
+  const body = el('div', 'collapsible-body');
+  const target = el('div', 'run-target');
+  target.tabIndex = 0;
   const input = document.createElement('input');
   input.className = 'run-file';
   input.type = 'file';
@@ -88,21 +88,23 @@ function renderRunDrop() {
     if (file) void readRunFile(file);
     input.value = '';
   });
-  box.append(el('p', 'run-drop-label', 'Drop a PipelineRun file'));
-  const status = el('p', 'run-drop-status', 'YAML or JSON. Parameter values are read from the file.');
-  status.id = 'run-drop-status';
-  box.append(status);
-  const params = el('div', 'run-params');
-  params.id = 'run-params';
-  box.append(params, input);
-
-  box.addEventListener('click', () => input.click());
-  box.addEventListener('keydown', (event) => {
+  target.append(el('p', 'run-drop-label', 'Drop a PipelineRun file here'));
+  target.append(input);
+  target.addEventListener('click', () => input.click());
+  target.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       input.click();
     }
   });
+  const status = el('p', 'run-drop-status', 'YAML or JSON. Parameter values are read from the file.');
+  status.id = 'run-drop-status';
+  const params = el('div', 'run-params');
+  params.id = 'run-params';
+  body.append(target, status, params);
+  details.append(body);
+  box.append(details);
+
   box.addEventListener('dragover', (event) => {
     event.preventDefault();
     box.classList.add('is-dropping');
@@ -121,7 +123,8 @@ function renderRunDrop() {
 }
 
 async function readRunFile(file) {
-  setRunStatus(`Reading ${file.name}…`);
+  const status = document.querySelector('#run-drop-status');
+  if (status) status.textContent = `Reading ${file.name}…`;
   try {
     const manifest = await file.text();
     const response = await fetch('/api/pipelinerun', {
@@ -134,20 +137,7 @@ async function readRunFile(file) {
       setRunStatus(body.error || 'Could not read that PipelineRun.');
       return;
     }
-    runDigest = body.digest;
-    const status = document.querySelector('#run-drop-status');
-    const params = document.querySelector('#run-params');
-    if (status) {
-      status.textContent = runDigest.params?.length
-        ? file.name
-        : `${file.name} has no parameters.`;
-    }
-    params?.replaceChildren(...(runDigest.params ?? []).map((param) => {
-      const line = el('p', 'run-param');
-      line.append(el('span', 'run-param-name', `${param.name}:`), document.createTextNode(` ${param.value}`));
-      return line;
-    }));
-    refreshWorkspaces();
+    showRunDigest(body.digest, file.name);
   } catch {
     setRunStatus('Could not reach the analyser.');
   }
@@ -157,8 +147,54 @@ function setRunStatus(message) {
   const status = document.querySelector('#run-drop-status');
   if (status) status.textContent = message;
   document.querySelector('#run-params')?.replaceChildren();
+  document.querySelector('#run-drop')?.classList.remove('is-loaded');
+  const summary = document.querySelector('#run-summary');
+  if (summary) summary.textContent = 'Drop a PipelineRun file';
   runDigest = undefined;
+  selectedRunParams.clear();
+  removeKey(RUN_KEY);
   refreshWorkspaces();
+  refreshPipelines();
+}
+
+function showRunDigest(digest, label) {
+  runDigest = digest;
+  selectedRunParams.clear();
+  writeJson(RUN_KEY, digest);
+  document.querySelector('#run-drop')?.classList.add('is-loaded');
+  const summary = document.querySelector('#run-summary');
+  if (summary) summary.textContent = 'Pipeline run parameters';
+  const status = document.querySelector('#run-drop-status');
+  const params = document.querySelector('#run-params');
+  if (status) {
+    status.textContent = digest.params?.length
+      ? label
+      : `${label} has no parameters.`;
+  }
+  params?.replaceChildren(...(digest.params ?? []).map((param) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'run-param';
+    button.setAttribute('aria-pressed', 'false');
+    button.append(el('span', 'run-param-name', param.name), el('span', 'run-param-value', param.value));
+    button.addEventListener('click', () => {
+      const selected = !selectedRunParams.has(param.name);
+      if (selected) selectedRunParams.add(param.name);
+      else selectedRunParams.delete(param.name);
+      button.classList.toggle('is-selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+      refreshPipelines();
+    });
+    return button;
+  }));
+  refreshWorkspaces();
+  refreshPipelines();
+}
+
+function refreshPipelines() {
+  const current = document.querySelector('#pipelines');
+  if (!current || !summaryData) return;
+  current.replaceWith(renderPipelines(summaryData.pipelines ?? []));
 }
 
 function refreshWorkspaces() {
@@ -175,6 +211,10 @@ function renderPipelines(pipelines) {
     section.append(el('p', 'empty', 'No pipelines in this directory.'));
     return section;
   }
+  const toolbar = el('div', 'pipeline-toolbar');
+  toolbar.append(workspacesSwitch());
+  if (runDigest?.params?.length) toolbar.append(clearParametersButton());
+  section.append(toolbar);
   pipelines.forEach((pipeline, index) => {
     const block = el('article', 'resource');
     block.append(el('h3', null, titled(pipeline.namespace, pipeline.name)));
@@ -185,6 +225,52 @@ function renderPipelines(pipelines) {
     section.append(block);
   });
   return section;
+}
+
+function workspacesSwitch() {
+  const label = document.createElement('label');
+  label.className = 'data-switch pipeline-data-switch';
+  const input = document.createElement('input');
+  input.id = 'data-switch';
+  input.type = 'checkbox';
+  input.checked = showData;
+  input.addEventListener('change', (event) => {
+    showData = event.target.checked;
+    refreshPipelines();
+  });
+  label.append(input, document.createTextNode('Workspaces'));
+  return label;
+}
+
+function clearParametersButton() {
+  const clear = document.createElement('button');
+  clear.type = 'button';
+  clear.className = 'param-clear';
+  clear.textContent = 'Clear selected parameters';
+  clear.disabled = selectedRunParams.size === 0;
+  clear.addEventListener('click', () => {
+    selectedRunParams.clear();
+    for (const button of document.querySelectorAll('.run-param.is-selected')) {
+      button.classList.remove('is-selected');
+      button.setAttribute('aria-pressed', 'false');
+    }
+    refreshPipelines();
+  });
+  return clear;
+}
+
+function selectedParamsByTask(pipeline) {
+  const names = new Map();
+  if (!selectedRunParams.size) return names;
+  const chosen = (runDigest?.params ?? []).filter((param) => selectedRunParams.has(param.name));
+  for (const item of parameterUses([pipeline], chosen)) {
+    for (const use of item.uses) {
+      const current = names.get(use.task) ?? [];
+      if (!current.includes(item.name)) current.push(item.name);
+      names.set(use.task, current);
+    }
+  }
+  return names;
 }
 
 function flowDiagram(pipeline, index) {
@@ -210,20 +296,22 @@ function flowDiagram(pipeline, index) {
     refs.set(task.name, task.ref ?? '');
   }
 
+  const paramsByTask = selectedParamsByTask(pipeline);
   const names = [...drawnLevels.flat(), ...finallyNames];
   const longest = Math.max(...names.map((name) => {
     const ref = refs.get(name) ?? '';
     const detail = finallyNames.includes(name) && ref ? `finally · ${ref}` : ref;
-    const mounted = showData ? mountLines(taskByName.get(name)).reduce((size, line) => Math.max(size, line.length), 0) : 0;
+    const captions = taskCaptions(taskByName.get(name), paramsByTask.get(name) ?? []);
+    const mounted = captions.reduce((size, line) => Math.max(size, line.length), 0);
     return Math.max(name.length, detail.length, mounted);
   }));
-  const captionHeight = showData
-    ? Math.max(0, ...names.map((name) => mountLines(taskByName.get(name)).length)) * 14 + 8
-    : 0;
+  const captionHeight = Math.max(0, ...names.map((name) => taskCaptions(taskByName.get(name), paramsByTask.get(name) ?? []).length)) * 14 + 8;
+  const captionSpace = captionHeight > 8 ? captionHeight : 0;
   const model = arrangeTasks(drawnLevels, pipeline.edges ?? [], finallyNames, tasks, {
     nodeWidth: Math.min(280, Math.max(156, longest * 7.2 + 32)),
-    captionHeight: captionHeight > 8 ? captionHeight : 0,
+    captionHeight: captionSpace,
   });
+  wrap.style.maxHeight = `min(75vh, ${520 + captionSpace}px)`;
 
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', `0 0 ${model.width} ${model.height}`);
@@ -260,6 +348,9 @@ function flowDiagram(pipeline, index) {
 
   for (const [name, position] of model.positions) {
     const group = document.createElementNS(SVG_NS, 'g');
+    group.setAttribute('class', 'flow-task');
+    group.style.cursor = 'pointer';
+    group.addEventListener('click', () => openTask(pipeline.name, name));
     const rect = document.createElementNS(SVG_NS, 'rect');
     rect.setAttribute('x', String(position.x));
     rect.setAttribute('y', String(position.y));
@@ -271,7 +362,7 @@ function flowDiagram(pipeline, index) {
 
     const title = document.createElementNS(SVG_NS, 'title');
     const ref = refs.get(name);
-    title.textContent = ref ? `${name} (${ref})` : name;
+    title.textContent = `Open ${name}`;
     group.append(title);
 
     const label = document.createElementNS(SVG_NS, 'text');
@@ -291,17 +382,15 @@ function flowDiagram(pipeline, index) {
       detail.textContent = fit(position.finally ? `finally · ${ref}` : ref, model.nodeWidth);
       group.append(detail);
     }
-    if (showData) {
-      mountLines(taskByName.get(name)).forEach((line, lineIndex) => {
-        const mounted = document.createElementNS(SVG_NS, 'text');
-        mounted.setAttribute('x', String(position.x + model.nodeWidth / 2));
-        mounted.setAttribute('y', String(position.y + model.nodeHeight + 16 + lineIndex * 14));
-        mounted.setAttribute('text-anchor', 'middle');
-        mounted.setAttribute('class', 'flow-data');
-        mounted.textContent = fit(line, model.nodeWidth);
-        group.append(mounted);
-      });
-    }
+    taskCaptions(taskByName.get(name), paramsByTask.get(name) ?? []).forEach((line, lineIndex) => {
+      const mounted = document.createElementNS(SVG_NS, 'text');
+      mounted.setAttribute('x', String(position.x + model.nodeWidth / 2));
+      mounted.setAttribute('y', String(position.y + model.nodeHeight + 16 + lineIndex * 14));
+      mounted.setAttribute('text-anchor', 'middle');
+      mounted.setAttribute('class', lineIndex < (paramsByTask.get(name)?.length ?? 0) ? 'flow-param' : 'flow-data');
+      mounted.textContent = fit(line, model.nodeWidth);
+      group.append(mounted);
+    });
     svg.append(group);
   }
 
@@ -398,7 +487,7 @@ export function arrangeTasks(levels, edges, finallyNames = [], tasks = [], metri
     nodeWidth,
     nodeHeight,
     width: maxX + pad,
-    height: maxY + pad,
+    height: maxY + pad + (metrics.captionHeight ?? 0),
     positions,
     routes: drafts.map((draft) => ({
       from: draft.edge.from,
@@ -585,6 +674,13 @@ function workspaceFileNotes(name) {
   ];
 }
 
+function taskCaptions(task, paramNames) {
+  return [
+    ...paramNames,
+    ...(showData ? mountLines(task) : []),
+  ];
+}
+
 function mountLines(task) {
   const mounts = task?.mounts;
   if (!mounts) return [];
@@ -593,6 +689,13 @@ function mountLines(task) {
     ...(mounts.volumes ?? []).filter(Boolean).map((name) => `volume ${name}`),
     ...(mounts.secrets ?? []).filter(Boolean).map((name) => `secret ${name}`),
   ];
+}
+
+function openTask(pipelineName, taskName) {
+  readJson(SUMMARY_KEY);
+  readJson(RUN_KEY);
+  const url = `/task.html?pipeline=${encodeURIComponent(pipelineName)}&task=${encodeURIComponent(taskName)}`;
+  window.open(url, '_blank', 'noopener');
 }
 
 function flowLabel(name, levels, finallyNames) {

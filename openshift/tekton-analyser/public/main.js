@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'tekton-analyser-summary';
+import { RUN_KEY, SUMMARY_KEY, removeKey, writeJson } from './analysis-store.js';
 const form = document.querySelector('#source-form');
 const repositoryInput = document.querySelector('#repository');
 const contextInput = document.querySelector('#context-dir');
@@ -54,7 +54,8 @@ async function analyse() {
       return;
     }
     tokenInput.value = '';
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(body.summary));
+    writeJson(SUMMARY_KEY, body.summary);
+    removeKey(RUN_KEY);
     window.location.assign('/results');
   } catch {
     showError('Could not reach the analyser.');

@@ -5,7 +5,7 @@ import { resourceName, type PipelineResource, type PipelineRunResource, type Pip
 import { isPipeline, isPipelineRun, isTask, isTaskRun } from './parse.js';
 import { extractSubstitutions } from './substitutions.js';
 import type { Issue } from './types.js';
-import { collectStrings } from './util.js';
+import { collectStrings, formatInline } from './util.js';
 
 export interface SummaryResource {
   name: string;
@@ -22,17 +22,37 @@ export interface TaskView extends SummaryResource {
   steps: string[];
 }
 
+export interface TaskStepContent {
+  name: string;
+  image?: string;
+  script?: string;
+  command?: string[];
+  args?: string[];
+  workingDir?: string;
+  env: { name: string; value?: string }[];
+  sidecar?: boolean;
+}
+
+export interface TaskContent {
+  description?: string;
+  params: { name: string; value?: string; default?: string }[];
+  workspaces: { name: string; mountPath?: string; pipeline?: string }[];
+  steps: TaskStepContent[];
+}
+
 export interface PipelineTaskView {
   name: string;
   ref: string;
   runAfter: string[];
   mounts: { workspaces: string[]; volumes: string[]; secrets: string[] };
+  content: TaskContent;
 }
 
 export interface PipelineView extends SummaryResource {
   description?: string;
   params: string[];
   workspaces: string[];
+  paramDefaults: { name: string; default?: string }[];
   tasks: PipelineTaskView[];
   finally: PipelineTaskView[];
   order: string[][];
@@ -124,6 +144,10 @@ function pipelineView(pipeline: PipelineResource, root: string, catalog: TaskRes
     source: displaySource(pipeline.source, root),
     description: pipeline.spec.description,
     params: pipeline.spec.params.map((param) => param.name).filter(Boolean),
+    paramDefaults: pipeline.spec.params.filter((param) => param.name).map((param) => ({
+      name: param.name,
+      default: param.hasDefault ? formatInline(param.default) : undefined,
+    })),
     workspaces: pipeline.spec.workspaces.map((workspace) => workspace.name).filter(Boolean),
     tasks,
     finally: finallyTasks,
@@ -144,6 +168,7 @@ function pipelineTaskView(task: PipelineTask, catalog: TaskResource[], namespace
       volumes: volumes.map((volume) => volume.name),
       secrets: [...new Set(volumes.flatMap((volume) => volume.secrets))],
     },
+    content: taskContent(task, spec),
   };
 }
 
@@ -151,6 +176,54 @@ function workspaceLabels(task: PipelineTask): string[] {
   return task.workspaces
     .filter((binding) => binding.name && binding.workspace)
     .map((binding) => `${binding.name} -> ${binding.workspace}`);
+}
+
+function taskContent(task: PipelineTask, spec: ReturnType<typeof taskSpecFromCatalog>): TaskContent {
+  const provided = new Map(task.params.filter((param) => param.name).map((param) => [param.name, formatInline(param.value)]));
+  const params = (spec?.params ?? []).filter((param) => param.name).map((param) => ({
+    name: param.name,
+    value: provided.get(param.name),
+    default: param.hasDefault ? formatInline(param.default) : undefined,
+  }));
+  for (const [name, value] of provided) {
+    if (!params.some((param) => param.name === name)) params.push({ name, value, default: undefined });
+  }
+  const bound = new Map(task.workspaces.filter((item) => item.name).map((item) => [item.name, item.workspace]));
+  const workspaces = (spec?.workspaces ?? []).filter((item) => item.name).map((item) => ({
+    name: item.name,
+    mountPath: item.mountPath,
+    pipeline: bound.get(item.name),
+  }));
+  for (const [name, pipeline] of bound) {
+    if (!workspaces.some((item) => item.name === name)) workspaces.push({ name, mountPath: undefined, pipeline });
+  }
+  const steps = [
+    ...(spec?.steps ?? []).map((step, index) => stepContent(step, index, false, spec?.stepTemplateEnv ?? [])),
+    ...(spec?.sidecars ?? []).map((step, index) => stepContent(step, index, true, spec?.stepTemplateEnv ?? [])),
+  ];
+  return {
+    description: spec?.description ?? task.description,
+    params,
+    workspaces,
+    steps,
+  };
+}
+
+function stepContent(step: { name?: string; image?: string; script?: string; command?: string[]; args?: string[]; workingDir?: string; env: { name: string; value?: string }[] }, index: number, sidecar: boolean, templateEnv: { name: string; value?: string }[]): TaskStepContent {
+  const own = new Set(step.env.map((item) => item.name));
+  return {
+    name: step.name || `${sidecar ? 'sidecar' : 'step'}-${index + 1}`,
+    image: step.image,
+    script: step.script,
+    command: step.command,
+    args: step.args,
+    workingDir: step.workingDir,
+    env: [
+      ...templateEnv.filter((item) => item.name && !own.has(item.name)),
+      ...step.env.filter((item) => item.name),
+    ],
+    sidecar,
+  };
 }
 
 function taskSpecFromCatalog(task: PipelineTask, catalog: TaskResource[], namespace?: string) {

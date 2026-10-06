@@ -172,6 +172,14 @@ function whenOf(raw) {
         cel: asString(raw.cel),
     };
 }
+function envList(value) {
+    return recordsOf(value).flatMap((item) => {
+        const name = asString(item.name);
+        if (!name)
+            return [];
+        return [{ name, value: asString(item.value) }];
+    });
+}
 function stepOf(raw) {
     const ref = asRecord(raw.ref);
     const env = recordsOf(raw.env).map((item) => ({
@@ -206,6 +214,7 @@ function taskSpecOf(value) {
         sidecars: recordsOf(spec.sidecars).map(stepOf),
         volumes: recordsOf(spec.volumes).map(taskVolumeOf),
         stepTemplateImage: asString(stepTemplate?.image),
+        stepTemplateEnv: envList(stepTemplate?.env),
         hasResources: hasOwn(spec, 'resources') && spec.resources != null,
     };
 }

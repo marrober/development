@@ -3,7 +3,7 @@ import { buildTaskGraph } from './graph.js';
 import { resourceName } from './model.js';
 import { isPipeline, isPipelineRun, isTask, isTaskRun } from './parse.js';
 import { extractSubstitutions } from './substitutions.js';
-import { collectStrings } from './util.js';
+import { collectStrings, formatInline } from './util.js';
 export function summarise(loaded, options) {
     const taskResources = loaded.resources.filter(isTask);
     const tasks = taskResources.map((task) => taskView(task, options.root));
@@ -57,6 +57,10 @@ function pipelineView(pipeline, root, catalog) {
         source: displaySource(pipeline.source, root),
         description: pipeline.spec.description,
         params: pipeline.spec.params.map((param) => param.name).filter(Boolean),
+        paramDefaults: pipeline.spec.params.filter((param) => param.name).map((param) => ({
+            name: param.name,
+            default: param.hasDefault ? formatInline(param.default) : undefined,
+        })),
         workspaces: pipeline.spec.workspaces.map((workspace) => workspace.name).filter(Boolean),
         tasks,
         finally: finallyTasks,
@@ -76,12 +80,61 @@ function pipelineTaskView(task, catalog, namespace) {
             volumes: volumes.map((volume) => volume.name),
             secrets: [...new Set(volumes.flatMap((volume) => volume.secrets))],
         },
+        content: taskContent(task, spec),
     };
 }
 function workspaceLabels(task) {
     return task.workspaces
         .filter((binding) => binding.name && binding.workspace)
         .map((binding) => `${binding.name} -> ${binding.workspace}`);
+}
+function taskContent(task, spec) {
+    const provided = new Map(task.params.filter((param) => param.name).map((param) => [param.name, formatInline(param.value)]));
+    const params = (spec?.params ?? []).filter((param) => param.name).map((param) => ({
+        name: param.name,
+        value: provided.get(param.name),
+        default: param.hasDefault ? formatInline(param.default) : undefined,
+    }));
+    for (const [name, value] of provided) {
+        if (!params.some((param) => param.name === name))
+            params.push({ name, value, default: undefined });
+    }
+    const bound = new Map(task.workspaces.filter((item) => item.name).map((item) => [item.name, item.workspace]));
+    const workspaces = (spec?.workspaces ?? []).filter((item) => item.name).map((item) => ({
+        name: item.name,
+        mountPath: item.mountPath,
+        pipeline: bound.get(item.name),
+    }));
+    for (const [name, pipeline] of bound) {
+        if (!workspaces.some((item) => item.name === name))
+            workspaces.push({ name, mountPath: undefined, pipeline });
+    }
+    const steps = [
+        ...(spec?.steps ?? []).map((step, index) => stepContent(step, index, false, spec?.stepTemplateEnv ?? [])),
+        ...(spec?.sidecars ?? []).map((step, index) => stepContent(step, index, true, spec?.stepTemplateEnv ?? [])),
+    ];
+    return {
+        description: spec?.description ?? task.description,
+        params,
+        workspaces,
+        steps,
+    };
+}
+function stepContent(step, index, sidecar, templateEnv) {
+    const own = new Set(step.env.map((item) => item.name));
+    return {
+        name: step.name || `${sidecar ? 'sidecar' : 'step'}-${index + 1}`,
+        image: step.image,
+        script: step.script,
+        command: step.command,
+        args: step.args,
+        workingDir: step.workingDir,
+        env: [
+            ...templateEnv.filter((item) => item.name && !own.has(item.name)),
+            ...step.env.filter((item) => item.name),
+        ],
+        sidecar,
+    };
 }
 function taskSpecFromCatalog(task, catalog, namespace) {
     const name = task.taskRef?.name;

@@ -14,6 +14,33 @@ export interface TaskView extends SummaryResource {
     results: string[];
     steps: string[];
 }
+export interface TaskStepContent {
+    name: string;
+    image?: string;
+    script?: string;
+    command?: string[];
+    args?: string[];
+    workingDir?: string;
+    env: {
+        name: string;
+        value?: string;
+    }[];
+    sidecar?: boolean;
+}
+export interface TaskContent {
+    description?: string;
+    params: {
+        name: string;
+        value?: string;
+        default?: string;
+    }[];
+    workspaces: {
+        name: string;
+        mountPath?: string;
+        pipeline?: string;
+    }[];
+    steps: TaskStepContent[];
+}
 export interface PipelineTaskView {
     name: string;
     ref: string;
@@ -23,11 +50,16 @@ export interface PipelineTaskView {
         volumes: string[];
         secrets: string[];
     };
+    content: TaskContent;
 }
 export interface PipelineView extends SummaryResource {
     description?: string;
     params: string[];
     workspaces: string[];
+    paramDefaults: {
+        name: string;
+        default?: string;
+    }[];
     tasks: PipelineTaskView[];
     finally: PipelineTaskView[];
     order: string[][];

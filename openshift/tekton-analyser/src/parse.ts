@@ -223,6 +223,14 @@ function whenOf(raw: Record<string, unknown>): WhenExpression {
   };
 }
 
+function envList(value: unknown): { name: string; value?: string }[] {
+  return recordsOf(value).flatMap((item) => {
+    const name = asString(item.name);
+    if (!name) return [];
+    return [{ name, value: asString(item.value) }];
+  });
+}
+
 function stepOf(raw: Record<string, unknown>): Step {
   const ref = asRecord(raw.ref);
   const env = recordsOf(raw.env).map((item) => ({
@@ -258,6 +266,7 @@ function taskSpecOf(value: unknown): TaskSpec {
     sidecars: recordsOf(spec.sidecars).map(stepOf),
     volumes: recordsOf(spec.volumes).map(taskVolumeOf),
     stepTemplateImage: asString(stepTemplate?.image),
+    stepTemplateEnv: envList(stepTemplate?.env),
     hasResources: hasOwn(spec, 'resources') && spec.resources != null,
   };
 }
