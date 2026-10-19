@@ -1,0 +1,18 @@
+export declare function asRecord(value: unknown): Record<string, unknown> | undefined;
+export declare function asString(value: unknown): string | undefined;
+export declare function asNumber(value: unknown): number | undefined;
+export declare function asBoolean(value: unknown): boolean | undefined;
+export declare function asDuration(value: unknown): string | undefined;
+export declare function asStringMap(value: unknown): Record<string, string> | undefined;
+export declare function recordsOf(value: unknown): Record<string, unknown>[];
+export declare function hasOwn(record: Record<string, unknown>, key: string): boolean;
+export declare function errorMessage(error: unknown): string;
+export declare function collectStrings(value: unknown, out?: string[]): string[];
+export declare function containsSubstitution(value: unknown): boolean;
+export type ValueShape = 'string' | 'array' | 'object' | 'empty' | 'other';
+export declare function valueShape(value: unknown): ValueShape;
+export declare function formatInline(value: unknown): string;
+export declare function durationMs(start?: string, end?: string): number | undefined;
+export declare function formatDuration(ms: number): string;
+export declare function quote(value: string): string;
+export declare function plural(count: number, noun: string, pluralForm?: string): string;

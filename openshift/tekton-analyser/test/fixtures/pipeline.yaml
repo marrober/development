@@ -1,0 +1,64 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: fetch-source
+  namespace: ci
+spec:
+  params:
+    - name: url
+      type: string
+  workspaces:
+    - name: source
+    - name: unused
+  results:
+    - name: commit
+  volumes:
+    - name: ssh-key
+      secret:
+        secretName: git-ssh
+    - name: cache
+      emptyDir: {}
+  steps:
+    - name: clone
+      image: alpine/git
+      script: echo "$(params.url)"
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: build-and-test
+  namespace: ci
+spec:
+  description: Fetch source and test it.
+  params:
+    - name: url
+      type: string
+  workspaces:
+    - name: source
+  tasks:
+    - name: fetch
+      taskRef:
+        name: fetch-source
+      workspaces:
+        - name: source
+          workspace: shared
+      params:
+        - name: url
+          value: $(params.url)
+    - name: test
+      runAfter: [fetch]
+      params:
+        - name: commit
+          value: $(tasks.fetch.results.commit)
+      taskSpec:
+        steps:
+          - name: test
+            image: alpine
+            script: echo ok
+  finally:
+    - name: notify
+      taskSpec:
+        steps:
+          - name: announce
+            image: alpine
+            script: echo done
