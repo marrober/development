@@ -12,7 +12,10 @@ export interface TaskView extends SummaryResource {
     params: string[];
     workspaces: string[];
     results: string[];
-    steps: string[];
+    steps: {
+        name: string;
+        params: string[];
+    }[];
 }
 export interface TaskStepContent {
     name: string;

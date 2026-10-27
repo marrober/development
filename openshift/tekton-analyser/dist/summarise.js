@@ -41,8 +41,46 @@ function taskView(task, root) {
         params: task.spec.params.map((param) => param.name).filter(Boolean),
         workspaces: task.spec.workspaces.map((workspace) => workspace.name).filter(Boolean),
         results: task.spec.results.map((result) => result.name).filter(Boolean),
-        steps: task.spec.steps.map((step, index) => step.name || `step-${index + 1}`),
+        steps: task.spec.steps.map((step, index) => ({
+            name: step.name || `step-${index + 1}`,
+            params: stepParamNames(step, task.spec.stepTemplateEnv, task.spec.params.map((param) => param.name).filter(Boolean)),
+        })),
     };
+}
+function stepParamNames(step, templateEnv, declared) {
+    const own = new Set(step.env.map((item) => item.name));
+    const env = [...templateEnv.filter((item) => item.name && !own.has(item.name)), ...step.env];
+    const text = [
+        step.script,
+        step.image,
+        step.workingDir,
+        ...(step.command ?? []),
+        ...(step.args ?? []),
+        ...env.map((item) => `${item.name}=${item.value ?? ''}`),
+    ].filter(Boolean).join('\n');
+    const found = [];
+    const add = (name) => {
+        if (name && !found.includes(name))
+            found.push(name);
+    };
+    for (const match of text.matchAll(/\$\(([^)]*)\)/g)) {
+        const parts = (match[1] ?? '')
+            .trim()
+            .replace(/\[\s*['"]([^'"]+)['"]\s*\]/g, '.$1')
+            .replace(/\[\s*(\*|\d+)\s*\]/g, '.$1')
+            .split('.')
+            .map((part) => part.trim())
+            .filter(Boolean);
+        if (parts[0] === 'params' && parts[1])
+            add(parts[1]);
+    }
+    for (const match of text.matchAll(/\$\{(PARAM_[A-Za-z0-9_]+)\}/g)) {
+        const target = (match[1] ?? '').replace(/^PARAM_/, '').toLowerCase().replace(/[_-]/g, '');
+        const param = declared.find((name) => name.toLowerCase().replace(/[_-]/g, '') === target);
+        if (param)
+            add(param);
+    }
+    return found;
 }
 function pipelineView(pipeline, root, catalog) {
     const tasks = pipeline.spec.tasks.map((task) => pipelineTaskView(task, catalog, pipeline.metadata.namespace));
@@ -152,8 +190,10 @@ function taskReference(task) {
         return `pipeline resolver ${task.pipelineRef.resolver}`;
     if (task.pipelineRef?.name)
         return `pipeline ${task.pipelineRef.name}`;
-    if (task.taskRef?.resolver)
-        return `resolver ${task.taskRef.resolver}`;
+    if (task.taskRef?.resolver) {
+        const name = task.taskRef.name ? `/${task.taskRef.name}` : '';
+        return `resolver ${task.taskRef.resolver}${name}`;
+    }
     if (task.taskRef?.apiVersion && task.taskRef.kind && task.taskRef.kind !== 'Task') {
         const name = task.taskRef.name ? `/${task.taskRef.name}` : '';
         return `custom ${task.taskRef.apiVersion} ${task.taskRef.kind}${name}`;

@@ -99,6 +99,25 @@ function fieldText(step, field) {
   return step[field] ?? '';
 }
 
+export function resolveBoundParam(pipelineTask, paramName, pipeline, runDigest) {
+  const parsed = usedParam(paramName);
+  if (!parsed) return '';
+  const described = describeParam(parsed.name, parsed.path, pipelineTask, pipeline, runDigest);
+  const value = described?.value ?? '';
+  if (!value || value === 'No value is set.' || unresolvedParam(value)) return '';
+  return value;
+}
+
+function usedParam(paramName) {
+  const parts = splitReference(`params.${paramName}`);
+  if (parts[0] !== 'params' || !parts[1]) return null;
+  return { name: parts[1], path: parts.slice(2).filter((part) => part !== '*') };
+}
+
+function unresolvedParam(value) {
+  return /^\$\(params\.[^)]*\)$/.test(String(value).trim());
+}
+
 function describeParam(name, path, task, pipeline, runDigest) {
   const binding = (task.content?.params ?? []).find((param) => param.name === name);
   const source = present(binding?.value) ? binding.value : binding?.default;

@@ -1,0 +1,62 @@
+FROM registry.redhat.io/devspaces/udi-base-rhel9:3.31-1792686842
+
+ENV UDI_BASE_IMAGE=udi-base-rhel9:3.31-1792686842
+
+USER root
+
+# Use chroot because the default runc does not work when running rootless
+RUN echo "export BUILDAH_ISOLATION=chroot" >> /home/build/.bashrc
+
+# Use VFS because fuse does not work
+RUN mkdir -p /home/build/.config/containers \
+&& (echo '[storage]';echo 'driver = "vfs"') > /home/build/.config/containers/storage.conf
+
+##----------------------------------
+# Install cosign 2
+#
+RUN curl -O -L "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64"
+RUN mv cosign-linux-amd64 /usr/local/bin/cosign-2
+RUN chmod +x /usr/local/bin/cosign-2
+##----------------------------------
+
+##----------------------------------
+# Install cosign 3
+#
+RUN curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
+RUN mv cosign-linux-amd64 /usr/local/bin/cosign-3
+RUN chmod +x /usr/local/bin/cosign-3
+##----------------------------------
+
+##----------------------------------
+# Install the OpenShift oc command line
+#
+RUN curl -sL -o /tmp/oc.tar.gz https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz && \
+tar -C /tmp -xf /tmp/oc.tar.gz --no-same-owner && \
+mv /tmp/oc /usr/local/bin && \
+chmod +x /usr/local/bin/oc && \
+rm /tmp/*
+##----------------------------------
+
+##----------------------------------
+# Install jq
+#
+RUN dnf -y install jq container-selinux
+##----------------------------------
+
+##----------------------------------
+# Install syft
+#
+RUN curl -sSfL https://get.anchore.io/syft | sudo sh -s -- -b /usr/local/bin
+##----------------------------------
+
+WORKDIR /home/build
+
+EXPOSE 8080
+
+USER build
+
+ENV HOME=/home/build
+
+ENV TERMINAL-VERSION=1.0
+
+

@@ -4,8 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { arrangeTasks } from '../public/results.js';
-import { describeEnvVar, describeReference, describeShellParam, parameterUses } from '../public/task-view.js';
+import { arrangeTasks, pipelineTaskUses, valuesForTaskParam, workspaceOutputs } from '../public/results.js';
+import { analyseParameters } from '../public/parameter-analysis.js';
+import { describeEnvVar, describeReference, describeShellParam, parameterUses, resolveBoundParam } from '../public/task-view.js';
 import { digestPipelineRun } from '../dist/pipelinerun-digest.js';
 import { parseRepositoryUrl, redactSecret, resolveContextDir } from '../dist/git-source.js';
 import { loadResources } from '../dist/load.js';
@@ -178,7 +179,8 @@ test('a checkout summarises pipelines, tasks, and ordering', async () => {
   assert.deepEqual(summary.pipelines[0].tasks[1].mounts, { workspaces: [], volumes: [], secrets: [] });
   assert.equal(summary.pipelines[0].tasks[0].content.steps[0].script, 'echo "$(params.url)"');
   assert.equal(summary.pipelines[0].tasks[0].content.params[0].value, '$(params.url)');
-  assert.equal(summary.tasks[0].steps[0], 'clone');
+  assert.equal(summary.tasks[0].steps[0].name, 'clone');
+  assert.deepEqual(summary.tasks[0].steps[0].params, ['url']);
   assert.equal(JSON.stringify(summary).includes('bearer'), false);
 });
 
@@ -279,4 +281,131 @@ test('pipeline diagram aligns parallel tasks with their dependencies', () => {
   assert.equal(chains.positions.get('a').y, chains.positions.get('b').y);
   assert.equal(chains.positions.get('c').y, chains.positions.get('d').y);
   assert.ok(chains.positions.get('a').y !== chains.positions.get('c').y);
+});
+
+test('parameter analysis reports duplicates and hard-coded values', () => {
+  const findings = analyseParameters({
+    pipelines: [{
+      name: 'build',
+      source: 'ci/pipeline.yaml',
+      params: ['GIT_REPO', 'IMAGE'],
+      paramDefaults: [
+        { name: 'GIT_REPO', default: 'https://github.com/org/app' },
+        { name: 'IMAGE', default: 'https://github.com/org/app/image:latest' },
+      ],
+      tasks: [{
+        name: 'fetch',
+        content: { params: [{ name: 'url', value: 'https://github.com/org/app' }, { name: 'revision', value: 'main' }] },
+      }, {
+        name: 'compile',
+        content: { params: [{ name: 'revision', value: 'main' }] },
+      }, {
+        name: 'publish',
+        content: { params: [{ name: 'image', value: 'https://github.com/org/app/image:latest' }] },
+      }],
+      finally: [],
+    }],
+  }, { params: [{ name: 'GIT_REPO', value: 'https://github.com/org/app' }] });
+
+  const duplicated = findings.filter((item) => item.type === 'duplication');
+  const repo = duplicated.find((item) => item.value === 'https://github.com/org/app');
+  const revision = duplicated.find((item) => item.value === 'main');
+  assert.ok(repo);
+  assert.deepEqual(repo.parameters.map((param) => param.name), ['GIT_REPO', 'url']);
+  assert.equal(repo.parameters.find((param) => param.name === 'GIT_REPO').value, 'https://github.com/org/app');
+  assert.equal(repo.parameters.find((param) => param.name === 'url').value, 'https://github.com/org/app');
+  assert.ok(repo.places.some((place) => place.includes('parameter GIT_REPO default')));
+  assert.ok(repo.places.some((place) => place.includes('task fetch, parameter url')));
+  assert.equal(repo.places.some((place) => place.startsWith('PipelineRun parameter')), false);
+  assert.ok(revision);
+  assert.ok(revision.places.some((place) => place.includes('task fetch, parameter revision')));
+  assert.ok(revision.places.some((place) => place.includes('task compile, parameter revision')));
+
+  const embedded = findings.filter((item) => item.type === 'embedded');
+  const imageDefault = embedded.find((item) => item.places[0].includes('parameter IMAGE default'));
+  const publish = embedded.find((item) => item.places[0].includes('task publish, parameter image'));
+  assert.ok(imageDefault);
+  assert.equal(imageDefault.value, 'https://github.com/org/app/image:latest');
+  assert.ok(imageDefault.places.some((place) => place.includes('parameter GIT_REPO default')));
+  assert.ok(publish);
+  assert.equal(publish.value, 'https://github.com/org/app/image:latest');
+  assert.ok(publish.places.some((place) => place.includes('parameter GIT_REPO default')));
+});
+
+test('task parameter values follow the PipelineRun for the selected pipeline', () => {
+  const task = { name: 'git-clone', steps: [{ name: 'clone' }] };
+  const summary = {
+    pipelines: [
+      {
+        name: 'other',
+        tasks: [{ ref: 'task git-clone', content: { params: [{ name: 'url', value: 'https://wrong.example' }] } }],
+        finally: [],
+      },
+      {
+        name: 'build',
+        paramDefaults: [{ name: 'IMAGE', default: '$(params.REGISTRY)/app:$(params.TAG)' }],
+        tasks: [{
+          name: 'fetch-app',
+          ref: 'resolver git',
+          content: {
+            steps: [{ name: 'clone' }],
+            params: [
+              { name: 'url', value: "$(params['GIT_REPO'])" },
+              { name: 'image', value: '$(params.IMAGE)' },
+              { name: 'packages', value: '["$(params.EXTRA)","base"]' },
+            ],
+          },
+        }, {
+          name: 'fetch-docs',
+          ref: 'resolver git',
+          content: {
+            steps: [{ name: 'clone' }],
+            params: [
+              { name: 'url', value: '$(params.DOCS_REPO)' },
+              { name: 'image', value: '$(params.IMAGE)' },
+              { name: 'packages', value: '["$(params.EXTRA)","base"]' },
+            ],
+          },
+        }],
+        finally: [],
+      },
+    ],
+  };
+  const digest = {
+    pipeline: 'build',
+    params: [
+      { name: 'GIT_REPO', value: 'https://github.com/org/app' },
+      { name: 'DOCS_REPO', value: 'https://github.com/org/docs' },
+      { name: 'REGISTRY', value: 'quay.io/org' },
+      { name: 'TAG', value: '1' },
+      { name: 'EXTRA', value: 'curl' },
+    ],
+  };
+  assert.equal(valuesForTaskParam(summary, digest, task, 'url'), 'https://github.com/org/app | https://github.com/org/docs');
+  assert.equal(valuesForTaskParam(summary, digest, task, 'image'), 'quay.io/org/app:1');
+  assert.equal(valuesForTaskParam(summary, digest, task, 'packages[0]'), 'curl');
+  assert.equal(valuesForTaskParam(summary, digest, task, 'packages[*]'), '["curl","base"]');
+  const uses = pipelineTaskUses(summary, digest, task);
+  assert.deepEqual(uses.map((use) => use.name), ['fetch-app', 'fetch-docs']);
+  assert.equal(resolveBoundParam(uses[0].item, 'url', uses[0].pipeline, digest), 'https://github.com/org/app');
+  assert.equal(resolveBoundParam(uses[1].item, 'url', uses[1].pipeline, digest), 'https://github.com/org/docs');
+});
+
+test('workspace outputs include the directory and file name', () => {
+  const task = {
+    content: {
+      workspaces: [{ name: 'source', mountPath: '/workspace/source', pipeline: 'shared' }],
+      steps: [{
+        script: 'echo "$(params.url)" > $(workspaces.source.path)/repo\ncp app $(workspaces.source.path)/bin/$(params.OUT)',
+      }],
+    },
+  };
+  assert.deepEqual(workspaceOutputs(task, {
+    params: [{ name: 'OUT', value: 'app' }],
+    workspaces: [{ name: 'shared', files: [{ path: 'config/app.yaml', source: 'secret git-auth' }], notes: [] }],
+  }), [
+    { location: '/workspace/source', name: 'repo' },
+    { location: '/workspace/source/bin', name: 'app' },
+    { location: '/workspace/source/config', name: 'app.yaml' },
+  ]);
 });

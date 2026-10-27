@@ -1,11 +1,15 @@
 import { RUN_KEY, SUMMARY_KEY, readJson, removeKey, writeJson } from './analysis-store.js';
-import { parameterUses } from './task-view.js';
+import { resolveBoundParam } from './task-view.js';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 let resultsNode;
 let metaNode;
 let summaryData;
 let showData = false;
+let showParamValues = false;
+let showOutputs = false;
+let showTaskParams = false;
+let showRunParamValues = false;
 let runDigest;
 const selectedRunParams = new Set();
 
@@ -148,6 +152,7 @@ function setRunStatus(message) {
   if (status) status.textContent = message;
   document.querySelector('#run-params')?.replaceChildren();
   document.querySelector('#run-drop')?.classList.remove('is-loaded');
+  document.querySelector('#run-drop')?.classList.add('is-empty');
   const summary = document.querySelector('#run-summary');
   if (summary) summary.textContent = 'Drop a PipelineRun file';
   runDigest = undefined;
@@ -155,6 +160,7 @@ function setRunStatus(message) {
   removeKey(RUN_KEY);
   refreshWorkspaces();
   refreshPipelines();
+  refreshTasks();
 }
 
 function showRunDigest(digest, label) {
@@ -162,6 +168,7 @@ function showRunDigest(digest, label) {
   selectedRunParams.clear();
   writeJson(RUN_KEY, digest);
   document.querySelector('#run-drop')?.classList.add('is-loaded');
+  document.querySelector('#run-drop')?.classList.remove('is-empty');
   const summary = document.querySelector('#run-summary');
   if (summary) summary.textContent = 'Pipeline run parameters';
   const status = document.querySelector('#run-drop-status');
@@ -189,6 +196,7 @@ function showRunDigest(digest, label) {
   }));
   refreshWorkspaces();
   refreshPipelines();
+  refreshTasks();
 }
 
 function refreshPipelines() {
@@ -204,6 +212,13 @@ function refreshWorkspaces() {
   current.replaceWith(renderWorkspaces(summaryData.pipelines ?? [], open));
 }
 
+function refreshTasks() {
+  const current = document.querySelector('#tasks');
+  if (!current || !summaryData) return;
+  const open = current.querySelector('details')?.open ?? true;
+  current.replaceWith(renderTasks(summaryData.tasks ?? [], open));
+}
+
 function renderPipelines(pipelines) {
   const section = card('Pipelines');
   section.id = 'pipelines';
@@ -212,7 +227,9 @@ function renderPipelines(pipelines) {
     return section;
   }
   const toolbar = el('div', 'pipeline-toolbar');
-  toolbar.append(workspacesSwitch());
+  const switches = el('div', 'pipeline-switches');
+  switches.append(workspacesSwitch(), parameterValuesSwitch(), outputsSwitch());
+  toolbar.append(switches);
   if (runDigest?.params?.length) toolbar.append(clearParametersButton());
   section.append(toolbar);
   pipelines.forEach((pipeline, index) => {
@@ -242,6 +259,34 @@ function workspacesSwitch() {
   return label;
 }
 
+function parameterValuesSwitch() {
+  const label = document.createElement('label');
+  label.className = 'data-switch pipeline-data-switch';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = showParamValues;
+  input.addEventListener('change', (event) => {
+    showParamValues = event.target.checked;
+    refreshPipelines();
+  });
+  label.append(input, document.createTextNode('Display parameter values'));
+  return label;
+}
+
+function outputsSwitch() {
+  const label = document.createElement('label');
+  label.className = 'data-switch pipeline-data-switch';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = showOutputs;
+  input.addEventListener('change', (event) => {
+    showOutputs = event.target.checked;
+    refreshPipelines();
+  });
+  label.append(input, document.createTextNode('Outputs'));
+  return label;
+}
+
 function clearParametersButton() {
   const clear = document.createElement('button');
   clear.type = 'button';
@@ -262,15 +307,32 @@ function clearParametersButton() {
 function selectedParamsByTask(pipeline) {
   const names = new Map();
   if (!selectedRunParams.size) return names;
-  const chosen = (runDigest?.params ?? []).filter((param) => selectedRunParams.has(param.name));
-  for (const item of parameterUses([pipeline], chosen)) {
-    for (const use of item.uses) {
-      const current = names.get(use.task) ?? [];
-      if (!current.includes(item.name)) current.push(item.name);
-      names.set(use.task, current);
-    }
+  for (const task of [...(pipeline.tasks ?? []), ...(pipeline.finally ?? [])]) {
+    const matched = [...selectedRunParams].filter((name) => taskReferencesParam(task, name));
+    if (matched.length) names.set(task.name, matched);
   }
   return names;
+}
+
+function taskReferencesParam(task, name) {
+  const text = JSON.stringify({ content: task.content, mounts: task.mounts });
+  return text.includes(`$(params.${name}`)
+    || text.includes(`$(params['${name}']`)
+    || text.includes(`$(params["${name}"]`);
+}
+
+function paramCaptionLines(names) {
+  return names.map((name) => {
+    if (!showParamValues) return { name, value: '' };
+    const value = runDigest?.params?.find((param) => param.name === name)?.value ?? '';
+    return { name, value };
+  });
+}
+
+function captionText(line) {
+  if (line.kind === 'data') return line.text;
+  if (line.kind === 'output') return `${line.location} : ${line.name}`;
+  return line.value ? `${line.name} : ${line.value}` : line.name;
 }
 
 function flowDiagram(pipeline, index) {
@@ -301,14 +363,14 @@ function flowDiagram(pipeline, index) {
   const longest = Math.max(...names.map((name) => {
     const ref = refs.get(name) ?? '';
     const detail = finallyNames.includes(name) && ref ? `finally · ${ref}` : ref;
-    const captions = taskCaptions(taskByName.get(name), paramsByTask.get(name) ?? []);
-    const mounted = captions.reduce((size, line) => Math.max(size, line.length), 0);
+    const captions = taskCaptions(taskByName.get(name), paramCaptionLines(paramsByTask.get(name) ?? []));
+    const mounted = captions.lines.reduce((size, line) => Math.max(size, captionText(line).length), 0);
     return Math.max(name.length, detail.length, mounted);
   }));
-  const captionHeight = Math.max(0, ...names.map((name) => taskCaptions(taskByName.get(name), paramsByTask.get(name) ?? []).length)) * 14 + 8;
+  const captionHeight = Math.max(0, ...names.map((name) => taskCaptions(taskByName.get(name), paramCaptionLines(paramsByTask.get(name) ?? [])).lines.length)) * 14 + 8;
   const captionSpace = captionHeight > 8 ? captionHeight : 0;
   const model = arrangeTasks(drawnLevels, pipeline.edges ?? [], finallyNames, tasks, {
-    nodeWidth: Math.min(280, Math.max(156, longest * 7.2 + 32)),
+    nodeWidth: Math.min(showParamValues || showOutputs ? 420 : 280, Math.max(156, longest * 7.2 + 32)),
     captionHeight: captionSpace,
   });
   wrap.style.maxHeight = `min(75vh, ${520 + captionSpace}px)`;
@@ -382,13 +444,38 @@ function flowDiagram(pipeline, index) {
       detail.textContent = fit(position.finally ? `finally · ${ref}` : ref, model.nodeWidth);
       group.append(detail);
     }
-    taskCaptions(taskByName.get(name), paramsByTask.get(name) ?? []).forEach((line, lineIndex) => {
+    const captions = taskCaptions(taskByName.get(name), paramCaptionLines(paramsByTask.get(name) ?? []));
+    captions.lines.forEach((line, lineIndex) => {
       const mounted = document.createElementNS(SVG_NS, 'text');
       mounted.setAttribute('x', String(position.x + model.nodeWidth / 2));
       mounted.setAttribute('y', String(position.y + model.nodeHeight + 16 + lineIndex * 14));
       mounted.setAttribute('text-anchor', 'middle');
-      mounted.setAttribute('class', lineIndex < (paramsByTask.get(name)?.length ?? 0) ? 'flow-param' : 'flow-data');
-      mounted.textContent = fit(line, model.nodeWidth);
+      mounted.setAttribute('class', line.kind === 'param' ? 'flow-param' : line.kind === 'output' ? 'flow-output' : 'flow-data');
+      if (line.kind === 'param' && line.value) {
+        const fitted = fit(`${line.name} : ${line.value}`, model.nodeWidth);
+        const prefix = `${line.name} : `;
+        mounted.append(document.createTextNode(fitted.startsWith(prefix) ? line.name : fitted));
+        if (fitted.startsWith(prefix)) {
+          mounted.append(document.createTextNode(' : '));
+          const value = document.createElementNS(SVG_NS, 'tspan');
+          value.setAttribute('class', 'flow-param-value');
+          value.textContent = fitted.slice(prefix.length);
+          mounted.append(value);
+        }
+      } else if (line.kind === 'output') {
+        const prefix = `${line.location} : `;
+        const fitted = fit(`${prefix}${line.name}`, model.nodeWidth);
+        mounted.append(document.createTextNode(fitted.startsWith(prefix) ? line.location : fitted));
+        if (fitted.startsWith(prefix)) {
+          mounted.append(document.createTextNode(' : '));
+          const file = document.createElementNS(SVG_NS, 'tspan');
+          file.setAttribute('class', 'flow-output-file');
+          file.textContent = fitted.slice(prefix.length);
+          mounted.append(file);
+        }
+      } else {
+        mounted.textContent = fit(line.kind === 'param' ? line.name : line.text, model.nodeWidth);
+      }
       group.append(mounted);
     });
     svg.append(group);
@@ -674,11 +761,65 @@ function workspaceFileNotes(name) {
   ];
 }
 
-function taskCaptions(task, paramNames) {
-  return [
-    ...paramNames,
-    ...(showData ? mountLines(task) : []),
-  ];
+function taskCaptions(task, paramLines) {
+  const data = (showData ? mountLines(task) : []).map((text) => ({ kind: 'data', text }));
+  const params = paramLines.map((line) => ({ kind: 'param', ...line }));
+  const outputs = showOutputs ? workspaceOutputs(task, runDigest).map((file) => ({ kind: 'output', ...file })) : [];
+  return { lines: [...params, ...data, ...outputs] };
+}
+
+export function workspaceOutputs(task, digest) {
+  const found = [];
+  const seen = new Set();
+  const add = (location, name) => {
+    if (!location || !name || name.includes('$')) return;
+    const key = `${location}/${name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    found.push({ location, name });
+  };
+  const roots = new Map();
+  for (const workspace of task?.content?.workspaces ?? []) {
+    if (!workspace.name) continue;
+    roots.set(workspace.name, String(workspace.mountPath || `/workspace/${workspace.name}`).replace(/\/+$/, ''));
+  }
+  const pattern = /\$\(workspaces(?:\.([A-Za-z0-9_.-]+)|\[['"]([^'"]+)['"]\])\.path\)((?:\/(?:\$\([^)]*\)|\$\{[^}]*\}|[^/\s'"`);|&<>\\])+)*)/g;
+  for (const step of task?.content?.steps ?? []) {
+    const text = [step.script, ...(step.command ?? []), ...(step.args ?? []), ...(step.env ?? []).map((item) => item.value ?? '')].filter(Boolean).join('\n');
+    for (const match of text.matchAll(pattern)) {
+      const workspace = match[1] || match[2];
+      const suffix = match[3] || '';
+      if (!workspace || !suffix || suffix.endsWith('/')) continue;
+      const root = roots.get(workspace) || `/workspace/${workspace}`;
+      const relative = substituteParamRefs(suffix, digest);
+      if (relative.includes('$')) continue;
+      const full = `${root}${relative}`.replace(/\/{2,}/g, '/');
+      const name = full.split('/').filter(Boolean).at(-1);
+      const location = full.slice(0, full.length - name.length).replace(/\/$/, '');
+      add(location, name);
+    }
+  }
+  for (const workspace of task?.content?.workspaces ?? []) {
+    if (!workspace.pipeline) continue;
+    const placed = digest?.workspaces?.find((item) => item.name === workspace.pipeline);
+    const root = roots.get(workspace.name) || `/workspace/${workspace.name}`;
+    for (const file of placed?.files ?? []) {
+      const full = `${root}/${substituteParamRefs(file.path, digest)}`.replace(/\/{2,}/g, '/');
+      if (full.includes('$')) continue;
+      const name = full.split('/').filter(Boolean).at(-1);
+      const location = full.slice(0, full.length - name.length).replace(/\/$/, '');
+      add(location, name);
+    }
+  }
+  return found;
+}
+
+function substituteParamRefs(text, digest) {
+  return String(text).replace(/\$\(params(?:\.([A-Za-z0-9_.-]+)|\[['"]([^'"]+)['"]\])\)/g, (match, dotted, bracket) => {
+    const name = dotted || bracket;
+    const provided = digest?.params?.find((param) => param.name === name);
+    return provided && provided.value !== '' ? provided.value : match;
+  });
 }
 
 function mountLines(task) {
@@ -710,22 +851,215 @@ function fit(text, width) {
   return `${text.slice(0, max - 1)}…`;
 }
 
-function renderTasks(tasks) {
-  const section = card('Tasks');
+function renderTasks(tasks, open = true) {
+  const section = el('section', 'card tasks-list');
+  section.id = 'tasks';
+  if (showTaskParams) section.classList.add('show-task-params');
+  if (showTaskParams && showRunParamValues) section.classList.add('show-run-values');
+  const details = document.createElement('details');
+  details.className = 'collapsible';
+  details.open = open;
+  const summary = document.createElement('summary');
+  summary.textContent = 'Tasks';
+  details.append(summary);
+  const body = el('div', 'collapsible-body');
   if (!tasks.length) {
-    section.append(el('p', 'empty', 'No tasks in this directory.'));
-    return section;
+    body.append(el('p', 'empty', 'No tasks in this directory.'));
+  } else {
+    body.append(taskParametersSwitch(section));
+    for (const task of tasks) body.append(renderTaskBlock(task));
   }
-  for (const task of tasks) {
-    const block = el('article', 'resource');
-    block.append(el('h3', null, titled(task.namespace, task.name)));
-    if (task.description) block.append(el('p', null, task.description));
-    const chips = el('ul', 'chips');
-    for (const step of task.steps ?? []) chips.append(el('li', null, step));
-    if (chips.childElementCount) block.append(chips);
-    section.append(block);
-  }
+  details.append(body);
+  section.append(details);
   return section;
+}
+
+function taskParametersSwitch(section) {
+  const row = el('div', 'task-parameters-switches');
+  const parameters = document.createElement('label');
+  parameters.className = 'data-switch task-parameters-switch';
+  const parametersInput = document.createElement('input');
+  parametersInput.type = 'checkbox';
+  parametersInput.checked = showTaskParams;
+  parametersInput.addEventListener('click', (event) => event.stopPropagation());
+
+  const values = document.createElement('label');
+  values.className = 'data-switch task-parameters-switch';
+  if (!showTaskParams) values.classList.add('is-disabled');
+  const valuesInput = document.createElement('input');
+  valuesInput.type = 'checkbox';
+  valuesInput.checked = showTaskParams && showRunParamValues;
+  valuesInput.disabled = !showTaskParams;
+  valuesInput.addEventListener('click', (event) => event.stopPropagation());
+  valuesInput.addEventListener('change', (event) => {
+    showRunParamValues = event.target.checked;
+    section.classList.toggle('show-run-values', showRunParamValues);
+  });
+
+  parametersInput.addEventListener('change', (event) => {
+    showTaskParams = event.target.checked;
+    section.classList.toggle('show-task-params', showTaskParams);
+    if (!showTaskParams) {
+      showRunParamValues = false;
+      valuesInput.checked = false;
+      section.classList.remove('show-run-values');
+    }
+    valuesInput.disabled = !showTaskParams;
+    values.classList.toggle('is-disabled', !showTaskParams);
+  });
+
+  parameters.append(parametersInput, document.createTextNode('Parameters'));
+  values.append(valuesInput, document.createTextNode('Show pipelinerun values'));
+  row.append(parameters, values);
+  return row;
+}
+
+function renderTaskBlock(task) {
+  const block = el('article', 'resource');
+  block.append(headingLine('h3', 'task-heading', 'Task name : ', titled(task.namespace, task.name)));
+  if (task.description) block.append(labeledLine('task-description', 'Description : ', task.description));
+  const uses = pipelineTaskUses(summaryData, runDigest, task);
+  const shared = renderStepList(task);
+  if (uses.length) shared.classList.add('task-steps-shared');
+  if (shared.childElementCount) block.append(shared);
+  if (uses.length) {
+    const group = el('div', 'task-uses');
+    for (const use of uses) {
+      const entry = el('div', 'task-use');
+      entry.append(headingLine('h4', 'task-use-heading', 'Pipeline task name : ', use.name));
+      const steps = renderStepList(task, use);
+      if (steps.childElementCount) entry.append(steps);
+      group.append(entry);
+    }
+    block.append(group);
+  }
+  return block;
+}
+
+function headingLine(tag, className, label, text) {
+  const heading = el(tag, className);
+  heading.append(el('span', 'task-label', label), document.createTextNode(text));
+  return heading;
+}
+
+function renderStepList(task, use) {
+  const steps = el('ul', 'task-steps');
+  for (const step of task.steps ?? []) {
+    const item = document.createElement('li');
+    const name = typeof step === 'string' ? step : step.name;
+    item.append(labeledLine('task-step-name', 'Step : ', name));
+    for (const param of stepParameters(task, step)) item.append(stepParamLine(param, use));
+    steps.append(item);
+  }
+  return steps;
+}
+
+function stepParamLine(param, use) {
+  const line = el('p', 'task-step-param');
+  line.append(document.createTextNode(param));
+  if (!use) return line;
+  const value = resolveBoundParam(use.item, param, use.pipeline, runDigest);
+  if (value) {
+    const suffix = el('span', 'task-step-param-suffix');
+    suffix.append(document.createTextNode(' : '), el('span', 'task-step-param-value', value));
+    line.append(suffix);
+  }
+  return line;
+}
+
+export function pipelineTaskUses(summary, digest, task) {
+  const matches = pipelineTasksFor(summary, task);
+  const named = digest?.pipeline;
+  const preferred = named ? matches.filter((match) => match.pipeline.name === named) : [];
+  return (preferred.length ? preferred : matches).map((match) => ({
+    name: match.item.name,
+    pipeline: match.pipeline,
+    item: match.item,
+  }));
+}
+
+export function valuesForTaskParam(summary, digest, task, paramName) {
+  const values = [];
+  for (const use of pipelineTaskUses(summary, digest, task)) {
+    const value = resolveBoundParam(use.item, paramName, use.pipeline, digest);
+    if (value && !values.includes(value)) values.push(value);
+  }
+  if (values.length) return values.join(' | ');
+  const direct = (digest?.params ?? []).find((param) => param.name === paramName);
+  return direct?.value && !/^\$\(params\.[^)]*\)$/.test(String(direct.value).trim()) ? direct.value : '';
+}
+
+function pipelineTasksFor(summary, task) {
+  const matches = [];
+  for (const pipeline of summary?.pipelines ?? []) {
+    for (const item of pipeline.tasks ?? []) {
+      if (taskRefMatches(item.ref, task.name) || taskShapeMatches(item, task)) matches.push({ pipeline, item });
+    }
+    for (const item of pipeline.finally ?? []) {
+      if (taskRefMatches(item.ref, task.name) || taskShapeMatches(item, task)) matches.push({ pipeline, item });
+    }
+  }
+  return matches;
+}
+
+function taskShapeMatches(item, task) {
+  if (!/^resolver [^/]+$/.test(item.ref ?? '')) return false;
+  const left = (item.content?.steps ?? []).filter((step) => !step.sidecar).map((step) => step.name);
+  const right = (task.steps ?? []).map((step) => (typeof step === 'string' ? step : step.name));
+  return left.length > 0 && left.length === right.length && left.every((name, index) => name === right[index]);
+}
+
+function stepParameters(task, step) {
+  if (typeof step !== 'string' && step.params?.length) return step.params;
+  const name = typeof step === 'string' ? step : step.name;
+  for (const match of pipelineTasksFor(summaryData, task)) {
+    const contentStep = (match.item.content?.steps ?? []).find((candidate) => candidate.name === name && !candidate.sidecar);
+    const params = paramsInStep(contentStep, task.params ?? []);
+    if (params.length) return params;
+  }
+  return typeof step === 'string' ? [] : (step.params ?? []);
+}
+
+function taskRefMatches(ref, taskName) {
+  return ref === taskName || ref === `task ${taskName}` || ref?.endsWith(`/${taskName}`);
+}
+
+function paramsInStep(step, declared) {
+  if (!step) return [];
+  const text = [
+    step.script,
+    step.image,
+    step.workingDir,
+    ...(step.command ?? []),
+    ...(step.args ?? []),
+    ...(step.env ?? []).map((item) => `${item.name}=${item.value ?? ''}`),
+  ].filter(Boolean).join('\n');
+  const found = [];
+  const add = (name) => {
+    if (name && !found.includes(name)) found.push(name);
+  };
+  for (const match of text.matchAll(/\$\(([^)]*)\)/g)) {
+    const parts = (match[1] ?? '')
+      .trim()
+      .replace(/\[\s*['"]([^'"]+)['"]\s*\]/g, '.$1')
+      .replace(/\[\s*(\*|\d+)\s*\]/g, '.$1')
+      .split('.')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts[0] === 'params' && parts[1]) add(parts[1]);
+  }
+  for (const match of text.matchAll(/\$\{(PARAM_[A-Za-z0-9_]+)\}/g)) {
+    const target = (match[1] ?? '').replace(/^PARAM_/, '').toLowerCase().replace(/[_-]/g, '');
+    const param = declared.find((name) => name.toLowerCase().replace(/[_-]/g, '') === target);
+    if (param) add(param);
+  }
+  return found;
+}
+
+function labeledLine(className, label, text) {
+  const line = el('p', className);
+  line.append(el('span', 'task-label', label), document.createTextNode(text));
+  return line;
 }
 
 function renderRuns(title, runs, refLabel) {
