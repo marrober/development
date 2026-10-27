@@ -5,7 +5,7 @@ ENV UDI_BASE_IMAGE=udi-base-rhel9:3.31-1792686842
 USER root
 
 # Use chroot because the default runc does not work when running rootless
-RUN echo "export BUILDAH_ISOLATION=chroot" >> /home/build/.bashrc
+# RUN echo "export BUILDAH_ISOLATION=chroot" >> /home/build/.bashrc
 
 # Use VFS because fuse does not work
 RUN mkdir -p /home/build/.config/containers \
@@ -14,7 +14,7 @@ RUN mkdir -p /home/build/.config/containers \
 ##----------------------------------
 # Install cosign 2
 #
-RUN curl -O -L "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64"
+RUN curl -O -L "https://github.com/sigstore/cosign/releases/download/v2.4.2/cosign-linux-amd64"
 RUN mv cosign-linux-amd64 /usr/local/bin/cosign-2
 RUN chmod +x /usr/local/bin/cosign-2
 ##----------------------------------
@@ -40,7 +40,7 @@ rm /tmp/*
 ##----------------------------------
 # Install jq
 #
-RUN dnf -y install jq container-selinux
+RUN curl -L -o /usr/local/bin/jq https://jqlang.org && chmod +x /usr/local/bin/jq
 ##----------------------------------
 
 ##----------------------------------
@@ -53,10 +53,10 @@ WORKDIR /home/build
 
 EXPOSE 8080
 
-USER build
+USER user
 
 ENV HOME=/home/build
 
-ENV TERMINAL-VERSION=1.0
+ENV TERMINAL-VERSION=1.1
 
 
