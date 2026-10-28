@@ -26,10 +26,12 @@ import type {
   TaskSpec,
   TaskVolume,
   TektonResource,
+  TriggerTemplateResource,
   WhenExpression,
   WorkspaceBinding,
   WorkspaceDecl,
   WorkspacePipelineBinding,
+  WorkspaceSource,
 } from './model.js';
 import type { Issue, OtherResource } from './types.js';
 import { asBoolean, asDuration, asNumber, asRecord, asString, asStringMap, hasOwn, recordsOf } from './util.js';
@@ -37,7 +39,12 @@ import { asBoolean, asDuration, asNumber, asRecord, asString, asStringMap, hasOw
 export interface ParseResult {
   resources: TektonResource[];
   others: OtherResource[];
+  triggerTemplates: TriggerTemplateResource[];
   issues: Issue[];
+}
+
+function blankParse(): ParseResult {
+  return { resources: [], others: [], triggerTemplates: [], issues: [] };
 }
 
 export function parseManifest(text: string, source: string, format: 'yaml' | 'json'): ParseResult {
@@ -46,8 +53,7 @@ export function parseManifest(text: string, source: string, format: 'yaml' | 'js
       return flattenDocuments(JSON.parse(text) as unknown, source);
     } catch (error) {
       return {
-        resources: [],
-        others: [],
+        ...blankParse(),
         issues: [loadIssue('invalid-json', error instanceof Error ? error.message : String(error), source)],
       };
     }
@@ -58,13 +64,12 @@ export function parseManifest(text: string, source: string, format: 'yaml' | 'js
     documents = parseAllDocuments(text);
   } catch (error) {
     return {
-      resources: [],
-      others: [],
+      ...blankParse(),
       issues: [loadIssue('invalid-yaml', error instanceof Error ? error.message : String(error), source)],
     };
   }
 
-  const result: ParseResult = { resources: [], others: [], issues: [] };
+  const result = blankParse();
   documents.forEach((document, index) => {
     const docSource = documents.length > 1 ? `${source}#${index + 1}` : source;
     if (document.errors.length > 0) {
@@ -76,13 +81,14 @@ export function parseManifest(text: string, source: string, format: 'yaml' | 'js
     const parsed = flattenDocuments(data, docSource);
     result.resources.push(...parsed.resources);
     result.others.push(...parsed.others);
+    result.triggerTemplates.push(...parsed.triggerTemplates);
     result.issues.push(...parsed.issues);
   });
   return result;
 }
 
 function flattenDocuments(data: unknown, source: string): ParseResult {
-  const result: ParseResult = { resources: [], others: [], issues: [] };
+  const result = blankParse();
   const items = unwrap(data, source, result.issues);
   for (const item of items) {
     const record = asRecord(item);
@@ -115,6 +121,16 @@ function classify(record: Record<string, unknown>, source: string, result: Parse
   const apiVersion = asString(record.apiVersion) ?? '';
   const kind = asString(record.kind) ?? '';
   const metadata = metadataOf(record.metadata);
+  if (apiVersion.startsWith('triggers.tekton.dev/') && kind === 'TriggerTemplate') {
+    result.triggerTemplates.push({
+      apiVersion,
+      kind: 'TriggerTemplate',
+      metadata,
+      source,
+      spec: triggerTemplateSpecOf(record.spec),
+    });
+    return;
+  }
   if (!apiVersion.startsWith('tekton.dev/')) {
     result.others.push({ apiVersion, kind: kind || 'Unknown', name: metadata.name, namespace: metadata.namespace, source, tekton: false });
     return;
@@ -379,10 +395,38 @@ function volumeKind(raw: Record<string, unknown>): string {
 }
 
 function workspaceVolumeOf(raw: Record<string, unknown>): WorkspaceBinding {
+  const sources: WorkspaceSource[] = [];
+  collectWorkspaceSource(sources, asRecord(raw.secret), 'secret');
+  collectWorkspaceSource(sources, asRecord(raw.configMap), 'configmap');
+  for (const source of recordsOf(asRecord(raw.projected)?.sources)) {
+    collectWorkspaceSource(sources, asRecord(source.secret), 'secret');
+    collectWorkspaceSource(sources, asRecord(source.configMap), 'configmap');
+  }
   return {
     name: asString(raw.name) ?? '',
     subPath: asString(raw.subPath),
     kind: volumeKind(raw),
+    sources,
+  };
+}
+
+function collectWorkspaceSource(sources: WorkspaceSource[], raw: Record<string, unknown> | undefined, kind: 'secret' | 'configmap'): void {
+  if (!raw) return;
+  sources.push({
+    kind,
+    name: kind === 'secret' ? secretName(raw) : asString(raw.name),
+    items: recordsOf(raw.items).map((item) => ({
+      key: asString(item.key),
+      path: asString(item.path),
+    })),
+  });
+}
+
+function triggerTemplateSpecOf(value: unknown): TriggerTemplateResource['spec'] {
+  const spec = asRecord(value) ?? {};
+  return {
+    params: recordsOf(spec.params).map(paramSpecOf),
+    resourcetemplates: recordsOf(spec.resourcetemplates),
   };
 }
 

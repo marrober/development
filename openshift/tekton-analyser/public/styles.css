@@ -840,6 +840,51 @@ button:disabled {
   font-weight: 600;
 }
 
+.finding.is-consolidation {
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(240, 180, 41, 0.55);
+  border-radius: 10px;
+  background: rgba(240, 180, 41, 0.1);
+}
+
+.finding-highlight {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(240, 180, 41, 0.22);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.consolidation-names {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.consolidation-names .finding-param {
+  margin-top: 0.2rem;
+}
+
+.unused-param {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  margin: 0.75rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--panel-border);
+}
+
+.unused-param .finding-param {
+  margin: 0;
+}
+
+.unused-source {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .finding ul {
   margin: 0.25rem 0 0;
   padding-left: 1.2rem;
@@ -847,6 +892,66 @@ button:disabled {
 
 .finding li {
   margin: 0.2rem 0;
+}
+
+.scope-card {
+  margin-bottom: 1rem;
+}
+
+.scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.8rem 1rem;
+}
+
+.scope-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1 1 12rem;
+  min-width: 10rem;
+  margin: 0;
+}
+
+.scope-field select,
+.refresh-auth input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.scope-field select:focus,
+.refresh-auth input:focus {
+  outline: 2px solid rgba(77, 163, 255, 0.35);
+  border-color: var(--accent);
+}
+
+.scope-field select:disabled {
+  opacity: 0.6;
+}
+
+.scope-refresh {
+  flex: 0 0 auto;
+}
+
+.refresh-auth {
+  max-width: 28rem;
+  margin-top: 0.8rem;
+}
+
+.refresh-auth .hint {
+  margin-bottom: 0.7rem;
+}
+
+.resource.is-selected {
+  border-radius: 8px;
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
 }
 
 @media (max-width: 640px) {

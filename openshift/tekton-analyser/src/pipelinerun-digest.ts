@@ -17,6 +17,12 @@ export interface RunWorkspace {
   notes: string[];
 }
 
+export interface WorkspaceSourceInput {
+  kind: 'secret' | 'configmap';
+  name?: string;
+  items: { key?: string; path?: string }[];
+}
+
 export interface PipelineRunDigest {
   name: string;
   pipeline?: string;
@@ -74,15 +80,52 @@ function pipelineRunsFrom(value: unknown): Record<string, unknown>[] {
 function workspaceFiles(raw: Record<string, unknown>, params: Map<string, string>): RunWorkspace[] {
   const name = asString(raw.name);
   if (!name) return [];
+  const sources: WorkspaceSourceInput[] = [];
+  pushSource(sources, asRecord(raw.secret), 'secret', secretLabel);
+  pushSource(sources, asRecord(raw.configMap), 'configmap', (source) => asString(source.name));
+  for (const source of recordsOf(asRecord(raw.projected)?.sources)) {
+    pushSource(sources, asRecord(source.secret), 'secret', secretLabel);
+    pushSource(sources, asRecord(source.configMap), 'configmap', (item) => asString(item.name));
+  }
+  return describeWorkspace(name, asString(raw.subPath), sources, params);
+}
+
+function pushSource(
+  sources: WorkspaceSourceInput[],
+  source: Record<string, unknown> | undefined,
+  kind: 'secret' | 'configmap',
+  labelOf: (source: Record<string, unknown>) => string | undefined,
+): void {
+  if (!source) return;
+  sources.push({
+    kind,
+    name: labelOf(source),
+    items: recordsOf(source.items).map((item) => ({
+      key: asString(item.key),
+      path: asString(item.path),
+    })),
+  });
+}
+
+export function describeWorkspace(
+  name: string,
+  subPath: string | undefined,
+  sources: WorkspaceSourceInput[],
+  params: Map<string, string>,
+): RunWorkspace[] {
+  if (!name) return [];
   const files: WorkspaceFile[] = [];
   const notes: string[] = [];
-  const subPath = asString(raw.subPath);
-  collectSource(asRecord(raw.secret), 'secret', secretLabel, files, notes);
-  collectSource(asRecord(raw.configMap), 'configmap', (source) => asString(source.name), files, notes);
-  const projected = asRecord(raw.projected);
-  for (const source of recordsOf(projected?.sources)) {
-    collectSource(asRecord(source.secret), 'secret', secretLabel, files, notes);
-    collectSource(asRecord(source.configMap), 'configmap', (item) => asString(item.name), files, notes);
+  for (const source of sources) {
+    const label = `${source.kind} ${source.name ?? source.kind}`;
+    if (source.items.length === 0) {
+      notes.push(`A file is created for each key in ${label}.`);
+      continue;
+    }
+    for (const item of source.items) {
+      const path = item.path ?? item.key;
+      if (path) files.push({ path, source: label });
+    }
   }
   if (files.length === 0 && notes.length === 0) return [];
   const prefix = subPath ? `${subPath.replace(/\/+$/, '')}/` : '';
@@ -91,27 +134,6 @@ function workspaceFiles(raw: Record<string, unknown>, params: Map<string, string
     files: files.map((file) => ({ ...file, path: applyParams(`${prefix}${file.path}`, params) })),
     notes: notes.map((note) => applyParams(subPath ? `${note} The workspace uses subpath ${subPath}.` : note, params)),
   }];
-}
-
-function collectSource(
-  source: Record<string, unknown> | undefined,
-  kind: 'secret' | 'configmap',
-  labelOf: (source: Record<string, unknown>) => string | undefined,
-  files: WorkspaceFile[],
-  notes: string[],
-): void {
-  if (!source) return;
-  const label = `${kind} ${labelOf(source) ?? kind}`;
-  const items = recordsOf(source.items);
-  if (items.length === 0) {
-    notes.push(`A file is created for each key in ${label}.`);
-    return;
-  }
-  for (const item of items) {
-    const key = asString(item.key);
-    const path = asString(item.path) ?? key;
-    if (path) files.push({ path, source: label });
-  }
 }
 
 function secretLabel(source: Record<string, unknown>): string | undefined {

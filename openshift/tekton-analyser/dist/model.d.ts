@@ -139,10 +139,29 @@ export interface PipelineSpec {
     finally: PipelineTask[];
     hasResources: boolean;
 }
+export interface WorkspaceSource {
+    kind: 'secret' | 'configmap';
+    name?: string;
+    items: {
+        key?: string;
+        path?: string;
+    }[];
+}
 export interface WorkspaceBinding {
     name: string;
     subPath?: string;
     kind: string;
+    sources: WorkspaceSource[];
+}
+export interface TriggerTemplateResource {
+    apiVersion: string;
+    kind: 'TriggerTemplate';
+    metadata: ObjectMeta;
+    source?: string;
+    spec: {
+        params: ParamSpec[];
+        resourcetemplates: Record<string, unknown>[];
+    };
 }
 export interface TaskRunSpecOverride {
     pipelineTaskName?: string;

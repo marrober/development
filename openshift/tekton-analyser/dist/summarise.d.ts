@@ -1,5 +1,6 @@
 import type { LoadResult } from './load.js';
 import { type TektonResource } from './model.js';
+import { type RunParam, type RunWorkspace } from './pipelinerun-digest.js';
 import type { Issue } from './types.js';
 export interface SummaryResource {
     name: string;
@@ -82,6 +83,17 @@ export interface PipelineRunView extends SummaryResource {
     phase: string;
     reason?: string;
     tasks: RunTaskView[];
+    params: RunParam[];
+    workspaces: RunWorkspace[];
+}
+export interface TriggerTemplateView extends SummaryResource {
+    params: {
+        name: string;
+        description?: string;
+        default?: string;
+    }[];
+    pipeline?: string;
+    bindings: RunParam[];
 }
 export interface Summary {
     repository: string;
@@ -91,11 +103,13 @@ export interface Summary {
         pipelines: number;
         pipelineRuns: number;
         taskRuns: number;
+        triggerTemplates: number;
     };
     tasks: TaskView[];
     pipelines: PipelineView[];
     pipelineRuns: PipelineRunView[];
     taskRuns: PipelineRunView[];
+    triggerTemplates: TriggerTemplateView[];
     issues: Issue[];
 }
 export declare function summarise(loaded: LoadResult, options: {

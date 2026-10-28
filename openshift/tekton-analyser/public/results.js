@@ -1,10 +1,15 @@
-import { RUN_KEY, SUMMARY_KEY, readJson, removeKey, writeJson } from './analysis-store.js';
+import { findResource, prepareAnalysis, resourceId } from './analysis-scope.js';
+import { RUN_KEY, SELECTION_KEY, SUMMARY_KEY, readJson, readSessionToken, removeKey, writeJson, writeSessionToken } from './analysis-store.js';
 import { resolveBoundParam } from './task-view.js';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 let resultsNode;
 let metaNode;
 let summaryData;
+let scopedSummary;
+let selection = { pipeline: '', pipelineRun: '', triggerTemplate: '' };
+let droppedDigest;
+let droppedLabel = '';
 let showData = false;
 let showParamValues = false;
 let showOutputs = false;
@@ -19,7 +24,8 @@ function boot() {
   if (!resultsNode || !metaNode) return;
 
   summaryData = readJson(SUMMARY_KEY);
-  runDigest = readJson(RUN_KEY) ?? undefined;
+  droppedDigest = readJson(RUN_KEY) ?? undefined;
+  selection = { pipeline: '', pipelineRun: '', triggerTemplate: '', ...(readJson(SELECTION_KEY) ?? {}) };
   const summary = summaryData;
 
   if (!summary) {
@@ -32,20 +38,23 @@ function boot() {
     resultsNode.append(empty);
   } else {
     renderSummary(summary);
-    if (runDigest) showRunDigest(runDigest, runDigest.name || 'PipelineRun');
   }
 }
 
 function renderSummary(summary) {
+  syncPrepared();
   const counts = summary.counts ?? {};
   metaNode.textContent = `${summary.repository} · ${summary.contextDir}`;
+  resultsNode.append(renderControls());
   resultsNode.append(renderRunDrop());
+  updateRunPresentation();
   const bar = el('div', 'summary-bar');
   bar.append(
     count(counts.tasks ?? 0, 'task', 'tasks'),
     count(counts.pipelines ?? 0, 'pipeline', 'pipelines'),
     count(counts.pipelineRuns ?? 0, 'pipeline run', 'pipeline runs'),
     count(counts.taskRuns ?? 0, 'task run', 'task runs'),
+    count(counts.triggerTemplates ?? summary.triggerTemplates?.length ?? 0, 'trigger template', 'trigger templates'),
   );
   resultsNode.append(bar);
 
@@ -57,11 +66,11 @@ function renderSummary(summary) {
     resultsNode.append(issues);
   }
 
-  resultsNode.append(renderPipelines(summary.pipelines ?? []));
-  resultsNode.append(renderWorkspaces(summary.pipelines ?? []));
-  resultsNode.append(renderTasks(summary.tasks ?? []));
-  resultsNode.append(renderRuns('Pipeline runs', summary.pipelineRuns ?? [], 'pipeline'));
-  resultsNode.append(renderRuns('Task runs', summary.taskRuns ?? [], 'task'));
+  resultsNode.append(renderPipelines(scopedSummary?.pipelines ?? []));
+  resultsNode.append(renderWorkspaces(scopedSummary?.pipelines ?? []));
+  resultsNode.append(renderTasks(tasksInScope()));
+  resultsNode.append(renderRuns('Pipeline runs', summary.pipelineRuns ?? [], 'pipeline', 'pipeline-runs'));
+  resultsNode.append(renderRuns('Task runs', summary.taskRuns ?? [], 'task', 'task-runs'));
 
   const total = (counts.tasks ?? 0) + (counts.pipelines ?? 0) + (counts.pipelineRuns ?? 0) + (counts.taskRuns ?? 0);
   if (total === 0 && !summary.issues?.length) {
@@ -141,82 +150,317 @@ async function readRunFile(file) {
       setRunStatus(body.error || 'Could not read that PipelineRun.');
       return;
     }
-    showRunDigest(body.digest, file.name);
+    droppedDigest = body.digest;
+    droppedLabel = file.name;
+    writeJson(RUN_KEY, droppedDigest);
+    selection.pipelineRun = '';
+    syncSelects();
+    applyScope();
   } catch {
     setRunStatus('Could not reach the analyser.');
   }
 }
 
 function setRunStatus(message) {
+  droppedDigest = undefined;
+  droppedLabel = '';
+  removeKey(RUN_KEY);
+  applyScope();
   const status = document.querySelector('#run-drop-status');
   if (status) status.textContent = message;
-  document.querySelector('#run-params')?.replaceChildren();
-  document.querySelector('#run-drop')?.classList.remove('is-loaded');
-  document.querySelector('#run-drop')?.classList.add('is-empty');
-  const summary = document.querySelector('#run-summary');
-  if (summary) summary.textContent = 'Drop a PipelineRun file';
-  runDigest = undefined;
-  selectedRunParams.clear();
-  removeKey(RUN_KEY);
-  refreshWorkspaces();
-  refreshPipelines();
-  refreshTasks();
 }
 
-function showRunDigest(digest, label) {
-  runDigest = digest;
-  selectedRunParams.clear();
-  writeJson(RUN_KEY, digest);
-  document.querySelector('#run-drop')?.classList.add('is-loaded');
-  document.querySelector('#run-drop')?.classList.remove('is-empty');
+function syncPrepared() {
+  const prepared = prepareAnalysis(summaryData, selection, droppedDigest);
+  selection = prepared.selection;
+  scopedSummary = prepared.summary ?? summaryData;
+  runDigest = prepared.digest;
+  writeJson(SELECTION_KEY, selection);
+}
+
+function applyScope() {
+  syncPrepared();
+  updateRunPresentation();
+  refreshPipelines();
+  refreshWorkspaces();
+  refreshTasks();
+  refreshRunLists();
+}
+
+function updateRunPresentation() {
+  const box = document.querySelector('#run-drop');
   const summary = document.querySelector('#run-summary');
-  if (summary) summary.textContent = 'Pipeline run parameters';
   const status = document.querySelector('#run-drop-status');
   const params = document.querySelector('#run-params');
-  if (status) {
-    status.textContent = digest.params?.length
-      ? label
-      : `${label} has no parameters.`;
+  if (!box || !summary || !status || !params) return;
+  const sourced = Boolean(selection.pipelineRun || selection.triggerTemplate || droppedDigest);
+  if (!sourced || !runDigest) {
+    box.classList.add('is-empty');
+    box.classList.remove('is-loaded');
+    summary.textContent = 'Drop a PipelineRun file';
+    status.textContent = 'YAML or JSON. Parameter values are read from the file, or choose a PipelineRun or trigger template above.';
+    params.replaceChildren();
+    selectedRunParams.clear();
+    return;
   }
-  params?.replaceChildren(...(digest.params ?? []).map((param) => {
+  box.classList.add('is-loaded');
+  box.classList.remove('is-empty');
+  summary.textContent = 'Pipeline parameters';
+  const label = parameterSourceLabel();
+  status.textContent = runDigest.params?.length ? label : `${label} has no parameters.`;
+  const previous = new Set(selectedRunParams);
+  selectedRunParams.clear();
+  params.replaceChildren(...(runDigest.params ?? []).map((param) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'run-param';
-    button.setAttribute('aria-pressed', 'false');
+    const selected = previous.has(param.name);
+    if (selected) selectedRunParams.add(param.name);
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
     button.append(el('span', 'run-param-name', param.name), el('span', 'run-param-value', param.value));
     button.addEventListener('click', () => {
-      const selected = !selectedRunParams.has(param.name);
-      if (selected) selectedRunParams.add(param.name);
+      const next = !selectedRunParams.has(param.name);
+      if (next) selectedRunParams.add(param.name);
       else selectedRunParams.delete(param.name);
-      button.classList.toggle('is-selected', selected);
-      button.setAttribute('aria-pressed', String(selected));
+      button.classList.toggle('is-selected', next);
+      button.setAttribute('aria-pressed', String(next));
       refreshPipelines();
     });
     return button;
   }));
-  refreshWorkspaces();
-  refreshPipelines();
-  refreshTasks();
+}
+
+function parameterSourceLabel() {
+  const parts = [];
+  const run = findResource(summaryData?.pipelineRuns, selection.pipelineRun);
+  const template = findResource(summaryData?.triggerTemplates, selection.triggerTemplate);
+  if (run) parts.push(`PipelineRun ${titled(run.namespace, run.name)}`);
+  if (template) parts.push(`trigger template ${titled(template.namespace, template.name)}`);
+  if (!run && droppedDigest) parts.push(droppedLabel || droppedDigest.name || 'PipelineRun file');
+  return parts.join(' · ') || 'Parameter values';
+}
+
+function renderControls() {
+  const section = el('section', 'card scope-card');
+  section.append(el('h2', null, 'Analysis scope'));
+  const row = el('div', 'scope-row');
+  const refresh = document.createElement('button');
+  refresh.type = 'button';
+  refresh.id = 'refresh-analysis';
+  refresh.className = 'scope-refresh';
+  refresh.textContent = 'Refresh from repository';
+  refresh.disabled = !summaryData?.repository;
+  refresh.addEventListener('click', () => { void refreshAnalysis(); });
+  row.append(
+    refresh,
+    scopeSelect('scope-pipeline', 'Pipeline', summaryData?.pipelines ?? [], selection.pipeline, 'All pipelines', 'pipeline'),
+    scopeSelect('scope-pipelinerun', 'PipelineRun', summaryData?.pipelineRuns ?? [], selection.pipelineRun, 'No PipelineRun', 'pipelineRun'),
+    scopeSelect('scope-trigger', 'Trigger template', summaryData?.triggerTemplates ?? [], selection.triggerTemplate, 'No trigger template', 'triggerTemplate'),
+  );
+  const status = el('p', 'status');
+  status.id = 'refresh-status';
+  status.hidden = true;
+  const error = el('p', 'error');
+  error.id = 'refresh-error';
+  error.hidden = true;
+  error.setAttribute('role', 'alert');
+  const auth = el('div', 'refresh-auth');
+  auth.id = 'refresh-auth';
+  auth.hidden = true;
+  const tokenLabel = el('label', 'scope-field');
+  tokenLabel.htmlFor = 'refresh-token';
+  tokenLabel.append(document.createTextNode('Git token'));
+  const token = document.createElement('input');
+  token.id = 'refresh-token';
+  token.type = 'password';
+  token.maxLength = 4096;
+  token.autocomplete = 'new-password';
+  token.spellcheck = false;
+  tokenLabel.append(token);
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.id = 'refresh-retry';
+  retry.textContent = 'Refresh with token';
+  retry.addEventListener('click', () => { void refreshAnalysis(); });
+  auth.append(tokenLabel, el('p', 'hint', 'Replaces the token kept for this browser session. It is not saved permanently or put in a cookie.'), retry);
+  section.append(
+    row,
+    el('p', 'hint', 'The selected pipeline and PipelineRun are used for this analysis. A trigger template fills in parameters that the PipelineRun does not set.'),
+    status,
+    error,
+    auth,
+  );
+  return section;
+}
+
+function scopeSelect(id, label, resources, value, emptyLabel, key) {
+  const field = el('label', 'scope-field');
+  field.append(document.createTextNode(label));
+  const select = document.createElement('select');
+  select.id = id;
+  select.dataset.scope = key;
+  if (!resources.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'None in this repository';
+    select.append(option);
+    select.disabled = true;
+  } else {
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = emptyLabel;
+    select.append(empty);
+    for (const resource of resources) {
+      const option = document.createElement('option');
+      option.value = resourceId(resource);
+      option.textContent = titled(resource.namespace, resource.name);
+      select.append(option);
+    }
+    select.value = [...select.options].some((option) => option.value === value) ? value : '';
+    select.addEventListener('change', () => {
+      selection[key] = select.value;
+      if (key === 'pipelineRun' && select.value) {
+        droppedDigest = undefined;
+        droppedLabel = '';
+        removeKey(RUN_KEY);
+      }
+      applyScope();
+    });
+  }
+  field.append(select);
+  return field;
+}
+
+function syncSelects() {
+  for (const [id, value] of [
+    ['scope-pipeline', selection.pipeline],
+    ['scope-pipelinerun', selection.pipelineRun],
+    ['scope-trigger', selection.triggerTemplate],
+  ]) {
+    const select = document.querySelector(`#${id}`);
+    if (select && [...select.options].some((option) => option.value === value)) select.value = value;
+  }
+}
+
+async function refreshAnalysis() {
+  if (!summaryData?.repository) return;
+  const status = document.querySelector('#refresh-status');
+  const error = document.querySelector('#refresh-error');
+  const auth = document.querySelector('#refresh-auth');
+  const tokenInput = document.querySelector('#refresh-token');
+  const button = document.querySelector('#refresh-analysis');
+  const retry = document.querySelector('#refresh-retry');
+  if (error) {
+    error.hidden = true;
+    error.textContent = '';
+  }
+  if (status) {
+    status.hidden = false;
+    status.textContent = 'Cloning repository…';
+  }
+  if (button) button.disabled = true;
+  if (retry) retry.disabled = true;
+  const typedToken = auth && !auth.hidden ? (tokenInput?.value ?? '') : '';
+  if (typedToken) writeSessionToken(typedToken);
+  const token = typedToken || readSessionToken();
+  try {
+    const response = await fetch('/api/analyse', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        repository: summaryData.repository,
+        contextDir: summaryData.contextDir === '.' ? '' : (summaryData.contextDir ?? ''),
+        token,
+      }),
+    });
+    const body = await response.json();
+    if (!response.ok || !body.ok) {
+      showRefreshError(body.error || 'Could not refresh that repository.');
+      return;
+    }
+    if (tokenInput) tokenInput.value = '';
+    summaryData = body.summary;
+    writeJson(SUMMARY_KEY, summaryData);
+    selection = retainSelection(selection, summaryData);
+    writeJson(SELECTION_KEY, selection);
+    rerender();
+    const nextStatus = document.querySelector('#refresh-status');
+    if (nextStatus) {
+      nextStatus.hidden = false;
+      nextStatus.textContent = 'Reloaded from the repository.';
+    }
+  } catch {
+    showRefreshError('Could not reach the analyser.');
+  } finally {
+    const nextButton = document.querySelector('#refresh-analysis');
+    if (nextButton) nextButton.disabled = !summaryData?.repository;
+    const nextRetry = document.querySelector('#refresh-retry');
+    if (nextRetry) nextRetry.disabled = false;
+  }
+}
+
+function showRefreshError(message) {
+  const status = document.querySelector('#refresh-status');
+  const error = document.querySelector('#refresh-error');
+  const auth = document.querySelector('#refresh-auth');
+  if (status) status.hidden = true;
+  if (error) {
+    error.hidden = false;
+    error.textContent = message;
+  }
+  if (auth) auth.hidden = false;
+}
+
+function retainSelection(current, summary) {
+  return {
+    pipeline: findResource(summary?.pipelines, current.pipeline) ? current.pipeline : '',
+    pipelineRun: findResource(summary?.pipelineRuns, current.pipelineRun) ? current.pipelineRun : '',
+    triggerTemplate: findResource(summary?.triggerTemplates, current.triggerTemplate) ? current.triggerTemplate : '',
+  };
+}
+
+function rerender() {
+  if (!resultsNode || !metaNode) return;
+  resultsNode.replaceChildren();
+  renderSummary(summaryData);
+}
+
+function scopeIsActive() {
+  return Boolean(selection.pipeline || selection.pipelineRun || selection.triggerTemplate);
+}
+
+function tasksInScope() {
+  const tasks = summaryData?.tasks ?? [];
+  if (!scopeIsActive()) return tasks;
+  return tasks.filter((task) => pipelineTaskUses(scopedSummary, runDigest, task).length);
+}
+
+function refreshRunLists() {
+  const pipelines = document.querySelector('#pipeline-runs');
+  if (pipelines && summaryData) pipelines.replaceWith(renderRuns('Pipeline runs', summaryData.pipelineRuns ?? [], 'pipeline', 'pipeline-runs'));
+  const taskRuns = document.querySelector('#task-runs');
+  if (taskRuns && summaryData) taskRuns.replaceWith(renderRuns('Task runs', summaryData.taskRuns ?? [], 'task', 'task-runs'));
 }
 
 function refreshPipelines() {
   const current = document.querySelector('#pipelines');
   if (!current || !summaryData) return;
-  current.replaceWith(renderPipelines(summaryData.pipelines ?? []));
+  current.replaceWith(renderPipelines(scopedSummary?.pipelines ?? []));
 }
 
 function refreshWorkspaces() {
   const current = document.querySelector('#workspaces');
   if (!current || !summaryData) return;
   const open = current.querySelector('details')?.open ?? true;
-  current.replaceWith(renderWorkspaces(summaryData.pipelines ?? [], open));
+  current.replaceWith(renderWorkspaces(scopedSummary?.pipelines ?? [], open));
 }
 
 function refreshTasks() {
   const current = document.querySelector('#tasks');
   if (!current || !summaryData) return;
   const open = current.querySelector('details')?.open ?? true;
-  current.replaceWith(renderTasks(summaryData.tasks ?? [], open));
+  current.replaceWith(renderTasks(tasksInScope(), open));
 }
 
 function renderPipelines(pipelines) {
@@ -864,7 +1108,10 @@ function renderTasks(tasks, open = true) {
   details.append(summary);
   const body = el('div', 'collapsible-body');
   if (!tasks.length) {
-    body.append(el('p', 'empty', 'No tasks in this directory.'));
+    const narrowed = scopeIsActive() && (summaryData?.tasks?.length ?? 0) > 0;
+    body.append(el('p', 'empty', narrowed
+      ? 'No tasks in the repository match the selected pipeline.'
+      : 'No tasks in this directory.'));
   } else {
     body.append(taskParametersSwitch(section));
     for (const task of tasks) body.append(renderTaskBlock(task));
@@ -918,7 +1165,7 @@ function renderTaskBlock(task) {
   const block = el('article', 'resource');
   block.append(headingLine('h3', 'task-heading', 'Task name : ', titled(task.namespace, task.name)));
   if (task.description) block.append(labeledLine('task-description', 'Description : ', task.description));
-  const uses = pipelineTaskUses(summaryData, runDigest, task);
+  const uses = pipelineTaskUses(scopedSummary ?? summaryData, runDigest, task);
   const shared = renderStepList(task);
   if (uses.length) shared.classList.add('task-steps-shared');
   if (shared.childElementCount) block.append(shared);
@@ -1012,7 +1259,7 @@ function taskShapeMatches(item, task) {
 function stepParameters(task, step) {
   if (typeof step !== 'string' && step.params?.length) return step.params;
   const name = typeof step === 'string' ? step : step.name;
-  for (const match of pipelineTasksFor(summaryData, task)) {
+  for (const match of pipelineTasksFor(scopedSummary ?? summaryData, task)) {
     const contentStep = (match.item.content?.steps ?? []).find((candidate) => candidate.name === name && !candidate.sidecar);
     const params = paramsInStep(contentStep, task.params ?? []);
     if (params.length) return params;
@@ -1062,14 +1309,16 @@ function labeledLine(className, label, text) {
   return line;
 }
 
-function renderRuns(title, runs, refLabel) {
+function renderRuns(title, runs, refLabel, id) {
   const section = card(title);
+  if (id) section.id = id;
   if (!runs.length) {
     section.append(el('p', 'empty', `No ${title.toLowerCase()} in this directory.`));
     return section;
   }
   for (const run of runs) {
-    const block = el('article', 'resource');
+    const selected = id === 'pipeline-runs' && resourceId(run) === selection.pipelineRun;
+    const block = el('article', selected ? 'resource is-selected' : 'resource');
     const heading = el('h3', null, titled(run.namespace, run.name));
     heading.append(el('span', 'phase', run.phase));
     block.append(heading);

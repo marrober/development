@@ -1,4 +1,4 @@
-import { RUN_KEY, SUMMARY_KEY, removeKey, writeJson } from './analysis-store.js';
+import { RUN_KEY, SUMMARY_KEY, readSessionToken, removeKey, writeJson, writeSessionToken } from './analysis-store.js';
 const form = document.querySelector('#source-form');
 const repositoryInput = document.querySelector('#repository');
 const contextInput = document.querySelector('#context-dir');
@@ -36,10 +36,12 @@ async function analyse() {
   hide(errorNode);
   setBusy(true, 'Cloning repository…');
 
+  const typedToken = tokenInput.value;
+  if (typedToken) writeSessionToken(typedToken);
   const payload = {
     repository: repositoryInput.value.trim(),
     contextDir: contextInput.value.trim(),
-    token: tokenInput.value,
+    token: typedToken || readSessionToken(),
   };
 
   try {

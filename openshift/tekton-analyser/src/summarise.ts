@@ -1,11 +1,12 @@
 import path from 'node:path';
 import { buildTaskGraph } from './graph.js';
 import type { LoadResult } from './load.js';
-import { resourceName, type PipelineResource, type PipelineRunResource, type PipelineTask, type TaskResource, type TaskRunResource, type TektonResource } from './model.js';
+import { resourceName, type Param, type PipelineResource, type PipelineRunResource, type PipelineTask, type TaskResource, type TaskRunResource, type TektonResource, type TriggerTemplateResource } from './model.js';
+import { describeWorkspace, type RunParam, type RunWorkspace } from './pipelinerun-digest.js';
 import { isPipeline, isPipelineRun, isTask, isTaskRun } from './parse.js';
 import { extractSubstitutions } from './substitutions.js';
 import type { Issue } from './types.js';
-import { collectStrings, formatInline } from './util.js';
+import { asRecord, asString, collectStrings, formatInline, recordsOf } from './util.js';
 
 export interface SummaryResource {
   name: string;
@@ -70,6 +71,14 @@ export interface PipelineRunView extends SummaryResource {
   phase: string;
   reason?: string;
   tasks: RunTaskView[];
+  params: RunParam[];
+  workspaces: RunWorkspace[];
+}
+
+export interface TriggerTemplateView extends SummaryResource {
+  params: { name: string; description?: string; default?: string }[];
+  pipeline?: string;
+  bindings: RunParam[];
 }
 
 export interface Summary {
@@ -80,11 +89,13 @@ export interface Summary {
     pipelines: number;
     pipelineRuns: number;
     taskRuns: number;
+    triggerTemplates: number;
   };
   tasks: TaskView[];
   pipelines: PipelineView[];
   pipelineRuns: PipelineRunView[];
   taskRuns: PipelineRunView[];
+  triggerTemplates: TriggerTemplateView[];
   issues: Issue[];
 }
 
@@ -94,6 +105,7 @@ export function summarise(loaded: LoadResult, options: { root: string; repositor
   const pipelines = loaded.resources.filter(isPipeline).map((pipeline) => pipelineView(pipeline, options.root, taskResources));
   const pipelineRuns = loaded.resources.filter(isPipelineRun).map((run) => pipelineRunView(run, options.root));
   const taskRuns = loaded.resources.filter(isTaskRun).map((run) => taskRunView(run, options.root));
+  const triggerTemplates = (loaded.triggerTemplates ?? []).map((template) => triggerTemplateView(template, options.root));
   const issues = loaded.issues.map((issue) => ({
     ...issue,
     message: scrubPath(issue.message, options.root),
@@ -108,11 +120,13 @@ export function summarise(loaded: LoadResult, options: { root: string; repositor
       pipelines: pipelines.length,
       pipelineRuns: pipelineRuns.length,
       taskRuns: taskRuns.length,
+      triggerTemplates: triggerTemplates.length,
     },
     tasks,
     pipelines,
     pipelineRuns,
     taskRuns,
+    triggerTemplates,
     issues,
   };
 }
@@ -339,6 +353,7 @@ function pipelineRunView(run: PipelineRunResource, root: string): PipelineRunVie
     : [...phases.keys()];
   const tasks = orderedNames.map((name) => phases.get(name) ?? { name, phase: observed.phase === 'Pending' ? 'Pending' : 'NotRun' });
 
+  const params = runParams(run.spec.params);
   return {
     name: resourceName(run.metadata),
     namespace: run.metadata.namespace,
@@ -347,6 +362,46 @@ function pipelineRunView(run: PipelineRunResource, root: string): PipelineRunVie
     phase: observed.phase,
     reason: observed.reason,
     tasks,
+    params,
+    workspaces: run.spec.workspaces.flatMap((workspace) => describeWorkspace(
+      workspace.name,
+      workspace.subPath,
+      workspace.sources ?? [],
+      new Map(params.map((param) => [param.name, param.value])),
+    )),
+  };
+}
+
+function runParams(params: Param[]): RunParam[] {
+  return params
+    .filter((param) => param.name && param.hasValue)
+    .map((param) => ({ name: param.name, value: formatInline(param.value) }));
+}
+
+function triggerTemplateView(template: TriggerTemplateResource, root: string): TriggerTemplateView {
+  let pipeline: string | undefined;
+  const bindings = new Map<string, string>();
+  for (const resource of template.spec.resourcetemplates) {
+    if (asString(resource.kind) !== 'PipelineRun') continue;
+    const spec = asRecord(resource.spec) ?? {};
+    const ref = asRecord(spec.pipelineRef);
+    pipeline ??= asString(ref?.name) ?? (spec.pipelineSpec == null ? undefined : '(inline)');
+    for (const param of recordsOf(spec.params)) {
+      const name = asString(param.name);
+      if (name) bindings.set(name, formatInline(param.value));
+    }
+  }
+  return {
+    name: resourceName(template.metadata),
+    namespace: template.metadata.namespace,
+    source: displaySource(template.source, root),
+    params: template.spec.params.filter((param) => param.name).map((param) => ({
+      name: param.name,
+      description: param.description,
+      default: param.hasDefault ? formatInline(param.default) : undefined,
+    })),
+    pipeline,
+    bindings: [...bindings.entries()].map(([name, value]) => ({ name, value })),
   };
 }
 
@@ -359,6 +414,8 @@ function taskRunView(run: TaskRunResource, root: string): PipelineRunView {
     pipeline: run.spec.taskRef?.name,
     phase: observed.phase,
     reason: observed.reason,
+    params: runParams(run.spec.params),
+    workspaces: [],
     tasks: run.status?.steps.map((step, index) => ({
       name: step.name || `step-${index + 1}`,
       phase: step.terminated ? (step.terminated.exitCode === 0 ? 'Succeeded' : 'Failed') : step.running ? 'Running' : 'Pending',
@@ -404,5 +461,6 @@ export function resourceCounts(resources: TektonResource[]): Summary['counts'] {
     pipelines: resources.filter(isPipeline).length,
     pipelineRuns: resources.filter(isPipelineRun).length,
     taskRuns: resources.filter(isTaskRun).length,
+    triggerTemplates: 0,
   };
 }

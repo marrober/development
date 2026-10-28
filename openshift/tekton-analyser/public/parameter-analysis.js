@@ -1,6 +1,13 @@
+import { parameterUses } from './task-view.js';
+
 export function analyseParameters(summary, runDigest) {
   const sites = collectSites(summary, runDigest);
-  return [...duplicationFindings(sites, runDigest), ...embeddingFindings(sites)];
+  const pipelineSites = sites.filter((item) => item.scope !== 'PipelineRun');
+  return [
+    ...consolidationFindings(sites),
+    ...unusedFindings(summary, runDigest),
+    ...embeddingFindings(pipelineSites),
+  ];
 }
 
 function collectSites(summary, runDigest) {
@@ -45,44 +52,64 @@ function site(pipeline, task, name, scope, raw) {
   };
 }
 
-function duplicationFindings(sites, runDigest) {
+function consolidationFindings(sites) {
   const groups = new Map();
   for (const item of sites) {
-    if (!item.literal || skipLiteral(item.literal)) continue;
+    if (item.scope !== 'PipelineRun' || !item.literal || skipLiteral(item.literal)) continue;
     const group = groups.get(item.literal) ?? [];
-    group.push(item);
+    if (!group.some((other) => other.name === item.name)) group.push(item);
     groups.set(item.literal, group);
   }
   const findings = [];
   for (const [literal, group] of groups) {
-    const distinct = group.filter((item, index) => group.findIndex((other) => samePlace(item, other)) === index);
-    const copies = distinct.filter((item) => item.scope !== 'PipelineRun' || !distinct.some((other) => sameParameter(item, other)));
-    const meaningful = copies.filter((item, index) => copies.some((other, otherIndex) => otherIndex !== index && !sameParameter(item, other)));
-    if (meaningful.length < 2) continue;
-    findings.push(duplicationFinding(literal, meaningful, runDigest));
+    if (group.length < 2) continue;
+    findings.push({
+      type: 'consolidation',
+      value: literal,
+      parameters: group.map((item) => ({ name: item.name, value: item.literal })),
+    });
   }
   return findings;
 }
 
-function duplicationFinding(literal, group, runDigest) {
-  return {
-    type: 'duplication',
-    value: literal,
-    parameters: duplicationParameters(group, runDigest),
-    places: group.map(describePlace),
+function unusedFindings(summary, runDigest) {
+  const pipelines = summary?.pipelines ?? [];
+  const runParams = runDigest?.params ?? [];
+  const runNames = new Set(runParams.map((param) => param.name).filter(Boolean));
+  const findings = [];
+  const seen = new Set();
+  const add = (name, value, sources) => {
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    findings.push({ type: 'unused', name, value: value ?? '', sources });
   };
+  for (const pipeline of pipelines) {
+    for (const name of declaredPipelineParams(pipeline)) {
+      if (passedToTask([pipeline], name)) continue;
+      const provided = runParams.find((param) => param.name === name && param.value !== '');
+      const fallback = (pipeline.paramDefaults ?? []).find((param) => param.name === name);
+      const sources = [`pipeline ${pipeline.name}`];
+      if (runNames.has(name)) sources.unshift('PipelineRun');
+      add(name, provided ? provided.value : (fallback?.default ?? ''), sources);
+    }
+  }
+  for (const param of runParams) {
+    if (!param?.name || seen.has(param.name) || passedToTask(pipelines, param.name)) continue;
+    add(param.name, param.value ?? '', ['PipelineRun']);
+  }
+  return findings;
 }
 
-function duplicationParameters(group, runDigest) {
-  const seen = new Set();
-  const parameters = [];
-  for (const item of group) {
-    if (seen.has(item.name)) continue;
-    seen.add(item.name);
-    const provided = (runDigest?.params ?? []).find((param) => param.name === item.name && param.value !== '');
-    parameters.push({ name: item.name, value: provided ? provided.value : item.literal });
-  }
-  return parameters;
+function declaredPipelineParams(pipeline) {
+  return [...new Set([
+    ...(pipeline.params ?? []),
+    ...((pipeline.paramDefaults ?? []).map((param) => param.name)),
+  ].filter(Boolean))];
+}
+
+function passedToTask(pipelines, name) {
+  if (!name || !pipelines.length) return false;
+  return parameterUses(pipelines, [{ name, value: '' }]).some((item) => item.uses.length > 0);
 }
 
 function embeddingFindings(sites) {
@@ -112,17 +139,6 @@ function describePlace(item) {
   if (item.scope === 'pipeline default') return `pipeline ${item.pipeline}${file}, parameter ${item.name} default`;
   if (item.scope === 'task default') return `pipeline ${item.pipeline}${file}, task ${item.task}, parameter ${item.name} default`;
   return `pipeline ${item.pipeline}${file}, task ${item.task}, parameter ${item.name}`;
-}
-
-function samePlace(a, b) {
-  return a.scope === b.scope && a.pipeline === b.pipeline && a.task === b.task && a.name === b.name && a.raw === b.raw;
-}
-
-function sameParameter(a, b) {
-  if (a.name !== b.name) return false;
-  const scopes = new Set([a.scope, b.scope]);
-  if (!(scopes.has('PipelineRun') && scopes.has('pipeline default'))) return false;
-  return !a.pipeline || !b.pipeline || a.pipeline === b.pipeline;
 }
 
 function referencesParam(text, name) {

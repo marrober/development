@@ -11,6 +11,14 @@ export interface RunWorkspace {
     files: WorkspaceFile[];
     notes: string[];
 }
+export interface WorkspaceSourceInput {
+    kind: 'secret' | 'configmap';
+    name?: string;
+    items: {
+        key?: string;
+        path?: string;
+    }[];
+}
 export interface PipelineRunDigest {
     name: string;
     pipeline?: string;
@@ -18,3 +26,4 @@ export interface PipelineRunDigest {
     workspaces: RunWorkspace[];
 }
 export declare function digestPipelineRun(text: string): PipelineRunDigest;
+export declare function describeWorkspace(name: string, subPath: string | undefined, sources: WorkspaceSourceInput[], params: Map<string, string>): RunWorkspace[];
