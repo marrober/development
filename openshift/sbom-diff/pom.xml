@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <!-- Older Spring Boot line used so the demo starts from a CVE-rich baseline -->
+        <version>2.5.15</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>sbom-diff</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>sbom-diff</name>
+    <description>SBOM viewer demo with intentionally vulnerable library versions</description>
+
+    <properties>
+        <java.version>11</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!--
+          Intentionally vulnerable versions for CVE demo / upgrade walkthrough.
+          See DEPENDENCY_UPGRADE.md for the safer target versions.
+        -->
+        <log4j2.version>2.14.1</log4j2.version>
+        <!-- 2.12.5 works with Spring Boot 2.5 and still carries CVE-2020-36518 -->
+        <jackson.version>2.12.5</jackson.version>
+        <snakeyaml.version>1.27</snakeyaml.version>
+        <commons-text.version>1.8</commons-text.version>
+        <commons-collections.version>3.2.1</commons-collections.version>
+        <commons-io.version>2.6</commons-io.version>
+        <guava.version>24.1.1-jre</guava.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <!-- Force Log4j2 instead of Logback so the pinned log4j2.version is on the classpath -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-log4j2</artifactId>
+        </dependency>
+
+        <!-- CVE-2021-44228 (Log4Shell) and related — log4j-core 2.14.1 -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>${log4j2.version}</version>
+        </dependency>
+
+        <!--
+          jackson.version property above overrides Spring Boot's Jackson BOM.
+          CVE-2020-36518 affects jackson-databind before 2.12.6.1 / 2.13.2.1.
+        -->
+
+        <!-- CVE-2022-1471 — SnakeYAML constructor deserialization -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>${snakeyaml.version}</version>
+        </dependency>
+
+        <!-- CVE-2022-42889 (Text4Shell) — commons-text 1.8 / 1.9 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>${commons-text.version}</version>
+        </dependency>
+
+        <!-- CVE-2015-6420 / CVE-2015-7501 — unsafe deserialization gadgets -->
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+            <version>${commons-collections.version}</version>
+        </dependency>
+
+        <!-- CVE-2021-29425 — path traversal in commons-io -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons-io.version}</version>
+        </dependency>
+
+        <!-- CVE-2018-10237 — unbounded memory allocation in Guava -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

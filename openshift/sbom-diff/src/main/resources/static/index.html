@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SBOM Viewer</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div>
+        <p class="eyebrow">sbom-diff</p>
+        <h1>SBOM Viewer</h1>
+        <p class="lede">Drop a CycloneDX or SPDX JSON SBOM to inspect components, licenses, and reported vulnerabilities.</p>
+      </div>
+      <div class="header-meta">
+        <span class="pill">Maven / Spring Boot</span>
+        <span class="pill warn">Demo deps include known CVEs</span>
+      </div>
+    </header>
+
+    <section id="drop-zone" class="drop-zone" tabindex="0" aria-label="SBOM drop panel">
+      <div class="drop-zone-inner">
+        <div class="drop-icon" aria-hidden="true">↓</div>
+        <h2>Drop an SBOM here</h2>
+        <p>Accepts <code>.json</code> CycloneDX or SPDX documents</p>
+        <label class="file-button">
+          Choose file
+          <input id="file-input" type="file" accept=".json,application/json" hidden>
+        </label>
+      </div>
+    </section>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+
+    <section id="results" class="results hidden">
+      <div class="summary-grid" id="summary-grid"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Components</h2>
+          <input id="component-filter" type="search" placeholder="Filter components…">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Version</th>
+                <th>Type</th>
+                <th>License</th>
+                <th>PURL</th>
+              </tr>
+            </thead>
+            <tbody id="components-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Vulnerabilities</h2>
+          <span id="vuln-count" class="muted"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Severity</th>
+                <th>Source</th>
+                <th>Affects</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody id="vulnerabilities-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
