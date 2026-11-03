@@ -5,7 +5,7 @@ import { errorMessage } from './util.js';
 const SKIP_DIRECTORIES = new Set(['node_modules', 'dist', 'coverage']);
 const MANIFEST_EXTENSIONS = new Set(['.yaml', '.yml', '.json']);
 export async function loadResources(paths) {
-    const loaded = { resources: [], others: [], issues: [] };
+    const loaded = { resources: [], others: [], triggerTemplates: [], issues: [] };
     for (const input of paths) {
         if (input === '-') {
             const text = await readStdin();
@@ -65,6 +65,7 @@ async function collectFiles(input) {
 function merge(target, parsed) {
     target.resources.push(...parsed.resources);
     target.others.push(...parsed.others);
+    target.triggerTemplates.push(...parsed.triggerTemplates);
     target.issues.push(...parsed.issues);
 }
 async function readStdin() {

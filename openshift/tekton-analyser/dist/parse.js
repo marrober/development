@@ -1,5 +1,8 @@
 import { parseAllDocuments } from 'yaml';
 import { asBoolean, asDuration, asNumber, asRecord, asString, asStringMap, hasOwn, recordsOf } from './util.js';
+function blankParse() {
+    return { resources: [], others: [], triggerTemplates: [], issues: [] };
+}
 export function parseManifest(text, source, format) {
     if (format === 'json') {
         try {
@@ -7,8 +10,7 @@ export function parseManifest(text, source, format) {
         }
         catch (error) {
             return {
-                resources: [],
-                others: [],
+                ...blankParse(),
                 issues: [loadIssue('invalid-json', error instanceof Error ? error.message : String(error), source)],
             };
         }
@@ -19,12 +21,11 @@ export function parseManifest(text, source, format) {
     }
     catch (error) {
         return {
-            resources: [],
-            others: [],
+            ...blankParse(),
             issues: [loadIssue('invalid-yaml', error instanceof Error ? error.message : String(error), source)],
         };
     }
-    const result = { resources: [], others: [], issues: [] };
+    const result = blankParse();
     documents.forEach((document, index) => {
         const docSource = documents.length > 1 ? `${source}#${index + 1}` : source;
         if (document.errors.length > 0) {
@@ -37,12 +38,13 @@ export function parseManifest(text, source, format) {
         const parsed = flattenDocuments(data, docSource);
         result.resources.push(...parsed.resources);
         result.others.push(...parsed.others);
+        result.triggerTemplates.push(...parsed.triggerTemplates);
         result.issues.push(...parsed.issues);
     });
     return result;
 }
 function flattenDocuments(data, source) {
-    const result = { resources: [], others: [], issues: [] };
+    const result = blankParse();
     const items = unwrap(data, source, result.issues);
     for (const item of items) {
         const record = asRecord(item);
@@ -74,6 +76,16 @@ function classify(record, source, result) {
     const apiVersion = asString(record.apiVersion) ?? '';
     const kind = asString(record.kind) ?? '';
     const metadata = metadataOf(record.metadata);
+    if (apiVersion.startsWith('triggers.tekton.dev/') && kind === 'TriggerTemplate') {
+        result.triggerTemplates.push({
+            apiVersion,
+            kind: 'TriggerTemplate',
+            metadata,
+            source,
+            spec: triggerTemplateSpecOf(record.spec),
+        });
+        return;
+    }
     if (!apiVersion.startsWith('tekton.dev/')) {
         result.others.push({ apiVersion, kind: kind || 'Unknown', name: metadata.name, namespace: metadata.namespace, source, tekton: false });
         return;
@@ -320,10 +332,37 @@ function volumeKind(raw) {
     return kinds.find((kind) => raw[kind] != null) ?? 'unknown';
 }
 function workspaceVolumeOf(raw) {
+    const sources = [];
+    collectWorkspaceSource(sources, asRecord(raw.secret), 'secret');
+    collectWorkspaceSource(sources, asRecord(raw.configMap), 'configmap');
+    for (const source of recordsOf(asRecord(raw.projected)?.sources)) {
+        collectWorkspaceSource(sources, asRecord(source.secret), 'secret');
+        collectWorkspaceSource(sources, asRecord(source.configMap), 'configmap');
+    }
     return {
         name: asString(raw.name) ?? '',
         subPath: asString(raw.subPath),
         kind: volumeKind(raw),
+        sources,
+    };
+}
+function collectWorkspaceSource(sources, raw, kind) {
+    if (!raw)
+        return;
+    sources.push({
+        kind,
+        name: kind === 'secret' ? secretName(raw) : asString(raw.name),
+        items: recordsOf(raw.items).map((item) => ({
+            key: asString(item.key),
+            path: asString(item.path),
+        })),
+    });
+}
+function triggerTemplateSpecOf(value) {
+    const spec = asRecord(value) ?? {};
+    return {
+        params: recordsOf(spec.params).map(paramSpecOf),
+        resourcetemplates: recordsOf(spec.resourcetemplates),
     };
 }
 function pipelineRunSpecOf(value) {

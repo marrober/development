@@ -1,15 +1,17 @@
 import path from 'node:path';
 import { buildTaskGraph } from './graph.js';
 import { resourceName } from './model.js';
+import { describeWorkspace } from './pipelinerun-digest.js';
 import { isPipeline, isPipelineRun, isTask, isTaskRun } from './parse.js';
 import { extractSubstitutions } from './substitutions.js';
-import { collectStrings, formatInline } from './util.js';
+import { asRecord, asString, collectStrings, formatInline, recordsOf } from './util.js';
 export function summarise(loaded, options) {
     const taskResources = loaded.resources.filter(isTask);
     const tasks = taskResources.map((task) => taskView(task, options.root));
     const pipelines = loaded.resources.filter(isPipeline).map((pipeline) => pipelineView(pipeline, options.root, taskResources));
     const pipelineRuns = loaded.resources.filter(isPipelineRun).map((run) => pipelineRunView(run, options.root));
     const taskRuns = loaded.resources.filter(isTaskRun).map((run) => taskRunView(run, options.root));
+    const triggerTemplates = (loaded.triggerTemplates ?? []).map((template) => triggerTemplateView(template, options.root));
     const issues = loaded.issues.map((issue) => ({
         ...issue,
         message: scrubPath(issue.message, options.root),
@@ -23,11 +25,13 @@ export function summarise(loaded, options) {
             pipelines: pipelines.length,
             pipelineRuns: pipelineRuns.length,
             taskRuns: taskRuns.length,
+            triggerTemplates: triggerTemplates.length,
         },
         tasks,
         pipelines,
         pipelineRuns,
         taskRuns,
+        triggerTemplates,
         issues,
     };
 }
@@ -258,6 +262,7 @@ function pipelineRunView(run, root) {
         ? [...spec.tasks.map((task) => task.name), ...spec.finally.map((task) => task.name)]
         : [...phases.keys()];
     const tasks = orderedNames.map((name) => phases.get(name) ?? { name, phase: observed.phase === 'Pending' ? 'Pending' : 'NotRun' });
+    const params = runParams(run.spec.params);
     return {
         name: resourceName(run.metadata),
         namespace: run.metadata.namespace,
@@ -266,6 +271,41 @@ function pipelineRunView(run, root) {
         phase: observed.phase,
         reason: observed.reason,
         tasks,
+        params,
+        workspaces: run.spec.workspaces.flatMap((workspace) => describeWorkspace(workspace.name, workspace.subPath, workspace.sources ?? [], new Map(params.map((param) => [param.name, param.value])))),
+    };
+}
+function runParams(params) {
+    return params
+        .filter((param) => param.name && param.hasValue)
+        .map((param) => ({ name: param.name, value: formatInline(param.value) }));
+}
+function triggerTemplateView(template, root) {
+    let pipeline;
+    const bindings = new Map();
+    for (const resource of template.spec.resourcetemplates) {
+        if (asString(resource.kind) !== 'PipelineRun')
+            continue;
+        const spec = asRecord(resource.spec) ?? {};
+        const ref = asRecord(spec.pipelineRef);
+        pipeline ??= asString(ref?.name) ?? (spec.pipelineSpec == null ? undefined : '(inline)');
+        for (const param of recordsOf(spec.params)) {
+            const name = asString(param.name);
+            if (name)
+                bindings.set(name, formatInline(param.value));
+        }
+    }
+    return {
+        name: resourceName(template.metadata),
+        namespace: template.metadata.namespace,
+        source: displaySource(template.source, root),
+        params: template.spec.params.filter((param) => param.name).map((param) => ({
+            name: param.name,
+            description: param.description,
+            default: param.hasDefault ? formatInline(param.default) : undefined,
+        })),
+        pipeline,
+        bindings: [...bindings.entries()].map(([name, value]) => ({ name, value })),
     };
 }
 function taskRunView(run, root) {
@@ -277,6 +317,8 @@ function taskRunView(run, root) {
         pipeline: run.spec.taskRef?.name,
         phase: observed.phase,
         reason: observed.reason,
+        params: runParams(run.spec.params),
+        workspaces: [],
         tasks: run.status?.steps.map((step, index) => ({
             name: step.name || `step-${index + 1}`,
             phase: step.terminated ? (step.terminated.exitCode === 0 ? 'Succeeded' : 'Failed') : step.running ? 'Running' : 'Pending',
@@ -325,6 +367,7 @@ export function resourceCounts(resources) {
         pipelines: resources.filter(isPipeline).length,
         pipelineRuns: resources.filter(isPipelineRun).length,
         taskRuns: resources.filter(isTaskRun).length,
+        triggerTemplates: 0,
     };
 }
 //# sourceMappingURL=summarise.js.map

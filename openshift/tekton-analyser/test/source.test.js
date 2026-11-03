@@ -5,11 +5,14 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { arrangeTasks, pipelineTaskUses, valuesForTaskParam, workspaceOutputs } from '../public/results.js';
+import { TOKEN_KEY, readSessionToken, writeSessionToken } from '../public/analysis-store.js';
+import { prepareAnalysis } from '../public/analysis-scope.js';
 import { analyseParameters } from '../public/parameter-analysis.js';
 import { describeEnvVar, describeReference, describeShellParam, parameterUses, resolveBoundParam } from '../public/task-view.js';
 import { digestPipelineRun } from '../dist/pipelinerun-digest.js';
 import { parseRepositoryUrl, redactSecret, resolveContextDir } from '../dist/git-source.js';
 import { loadResources } from '../dist/load.js';
+import { parseManifest } from '../dist/parse.js';
 import { createApp } from '../dist/server.js';
 import { summarise } from '../dist/summarise.js';
 
@@ -200,6 +203,43 @@ test('analysis does not reveal the temporary checkout path', async () => {
   }
 });
 
+test('the git token is kept for the browser session only', () => {
+  const session = new Map();
+  const durable = new Map();
+  const previousSession = globalThis.sessionStorage;
+  const previousLocal = globalThis.localStorage;
+  globalThis.sessionStorage = mapStorage(session);
+  globalThis.localStorage = mapStorage(durable);
+  try {
+    writeSessionToken('ghp_session_only');
+    assert.equal(session.get(TOKEN_KEY), 'ghp_session_only');
+    assert.equal(durable.has(TOKEN_KEY), false);
+    durable.set(TOKEN_KEY, 'ghp_session_only');
+    assert.equal(readSessionToken(), 'ghp_session_only');
+    assert.equal(durable.has(TOKEN_KEY), false);
+    writeSessionToken('');
+    assert.equal(readSessionToken(), '');
+    assert.equal(session.has(TOKEN_KEY), false);
+  } finally {
+    globalThis.sessionStorage = previousSession;
+    globalThis.localStorage = previousLocal;
+  }
+});
+
+function mapStorage(memory) {
+  return {
+    getItem(key) {
+      return memory.has(key) ? memory.get(key) : null;
+    },
+    setItem(key, value) {
+      memory.set(key, String(value));
+    },
+    removeItem(key) {
+      memory.delete(key);
+    },
+  };
+}
+
 test('the main page starts with repository, context directory, and a masked token', async () => {
   const server = createApp();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -288,14 +328,18 @@ test('parameter analysis reports duplicates and hard-coded values', () => {
     pipelines: [{
       name: 'build',
       source: 'ci/pipeline.yaml',
-      params: ['GIT_REPO', 'IMAGE'],
+      params: ['GIT_REPO', 'IMAGE', 'UNUSED_FLAG'],
       paramDefaults: [
         { name: 'GIT_REPO', default: 'https://github.com/org/app' },
         { name: 'IMAGE', default: 'https://github.com/org/app/image:latest' },
       ],
       tasks: [{
         name: 'fetch',
-        content: { params: [{ name: 'url', value: 'https://github.com/org/app' }, { name: 'revision', value: 'main' }] },
+        content: { params: [
+          { name: 'url', value: 'https://github.com/org/app' },
+          { name: 'repo', value: '$(params.GIT_REPO)' },
+          { name: 'revision', value: 'main' },
+        ] },
       }, {
         name: 'compile',
         content: { params: [{ name: 'revision', value: 'main' }] },
@@ -305,21 +349,31 @@ test('parameter analysis reports duplicates and hard-coded values', () => {
       }],
       finally: [],
     }],
-  }, { params: [{ name: 'GIT_REPO', value: 'https://github.com/org/app' }] });
+  }, {
+    pipeline: 'build',
+    params: [
+      { name: 'GIT_REPO', value: 'https://github.com/org/app' },
+      { name: 'GIT_REPO_NAME', value: 'pacman' },
+      { name: 'quay-repository', value: 'pacman' },
+      { name: 'component_id', value: 'pacman' },
+      { name: 'UNUSED_FLAG', value: 'keep' },
+    ],
+  });
 
-  const duplicated = findings.filter((item) => item.type === 'duplication');
-  const repo = duplicated.find((item) => item.value === 'https://github.com/org/app');
-  const revision = duplicated.find((item) => item.value === 'main');
-  assert.ok(repo);
-  assert.deepEqual(repo.parameters.map((param) => param.name), ['GIT_REPO', 'url']);
-  assert.equal(repo.parameters.find((param) => param.name === 'GIT_REPO').value, 'https://github.com/org/app');
-  assert.equal(repo.parameters.find((param) => param.name === 'url').value, 'https://github.com/org/app');
-  assert.ok(repo.places.some((place) => place.includes('parameter GIT_REPO default')));
-  assert.ok(repo.places.some((place) => place.includes('task fetch, parameter url')));
-  assert.equal(repo.places.some((place) => place.startsWith('PipelineRun parameter')), false);
-  assert.ok(revision);
-  assert.ok(revision.places.some((place) => place.includes('task fetch, parameter revision')));
-  assert.ok(revision.places.some((place) => place.includes('task compile, parameter revision')));
+  const consolidated = findings.filter((item) => item.type === 'consolidation');
+  const shared = consolidated.find((item) => item.value === 'pacman');
+  assert.ok(shared);
+  assert.deepEqual(shared.parameters.map((param) => param.name), ['GIT_REPO_NAME', 'quay-repository', 'component_id']);
+  assert.equal(consolidated.some((item) => item.value === 'https://github.com/org/app'), false);
+
+  const unused = findings.filter((item) => item.type === 'unused');
+  const unusedFlag = unused.find((item) => item.name === 'UNUSED_FLAG');
+  assert.ok(unusedFlag);
+  assert.equal(unusedFlag.value, 'keep');
+  assert.deepEqual(unusedFlag.sources, ['PipelineRun', 'pipeline build']);
+  assert.ok(unused.some((item) => item.name === 'IMAGE'));
+  assert.ok(unused.some((item) => item.name === 'GIT_REPO_NAME' && item.sources.includes('PipelineRun')));
+  assert.equal(unused.some((item) => item.name === 'GIT_REPO'), false);
 
   const embedded = findings.filter((item) => item.type === 'embedded');
   const imageDefault = embedded.find((item) => item.places[0].includes('parameter IMAGE default'));
@@ -330,6 +384,7 @@ test('parameter analysis reports duplicates and hard-coded values', () => {
   assert.ok(publish);
   assert.equal(publish.value, 'https://github.com/org/app/image:latest');
   assert.ok(publish.places.some((place) => place.includes('parameter GIT_REPO default')));
+  assert.equal(embedded.some((item) => item.places.some((place) => place.startsWith('PipelineRun'))), false);
 });
 
 test('task parameter values follow the PipelineRun for the selected pipeline', () => {
@@ -408,4 +463,134 @@ test('workspace outputs include the directory and file name', () => {
     { location: '/workspace/source/bin', name: 'app' },
     { location: '/workspace/source/config', name: 'app.yaml' },
   ]);
+});
+
+test('a repository PipelineRun and trigger template drive the analysis', () => {
+  const parsed = parseManifest(`
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: other
+  namespace: ci
+spec:
+  tasks:
+    - name: noop
+      taskRef:
+        name: noop
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: build
+  namespace: ci
+spec:
+  params:
+    - name: revision
+      default: main
+    - name: url
+    - name: image
+      default: quay.io/org/app:latest
+  tasks:
+    - name: fetch
+      taskRef:
+        name: git-clone
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: build-run
+  namespace: ci
+spec:
+  pipelineRef:
+    name: build
+  params:
+    - name: revision
+      value: abc123
+  workspaces:
+    - name: shared
+      secret:
+        secretName: git-auth
+        items:
+          - key: config
+            path: $(params.revision)
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: build-template
+  namespace: ci
+spec:
+  params:
+    - name: revision
+      default: main
+    - name: url
+      default: https://example.com/app.git
+    - name: image
+      default: quay.io/org/app:latest
+    - name: org
+      default: org
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: build-
+      spec:
+        pipelineRef:
+          name: build
+        params:
+          - name: revision
+            value: $(tt.params.revision)
+          - name: url
+            value: $(tt.params.url)
+          - name: image
+            value: quay.io/$(tt.params.org)/app:$(tt.params.revision)
+`, 'ci/resources.yaml', 'yaml');
+
+  assert.equal(parsed.triggerTemplates.length, 1);
+  assert.equal(parsed.others.some((item) => item.kind === 'TriggerTemplate'), false);
+  const summary = summarise({
+    resources: parsed.resources,
+    others: parsed.others,
+    triggerTemplates: parsed.triggerTemplates,
+    issues: parsed.issues,
+  }, { root: '/repo', repository: 'https://example.com/repo.git', contextDir: 'ci' });
+
+  assert.equal(summary.counts.triggerTemplates, 1);
+  assert.equal(summary.pipelineRuns[0].pipeline, 'build');
+  assert.deepEqual(summary.pipelineRuns[0].params, [{ name: 'revision', value: 'abc123' }]);
+  assert.deepEqual(summary.pipelineRuns[0].workspaces, [{
+    name: 'shared',
+    files: [{ path: 'abc123', source: 'secret git-auth' }],
+    notes: [],
+  }]);
+  assert.equal(summary.triggerTemplates[0].pipeline, 'build');
+  assert.equal(summary.triggerTemplates[0].bindings.find((binding) => binding.name === 'url').value, '$(tt.params.url)');
+
+  const prepared = prepareAnalysis(summary, {
+    pipeline: 'ci/build',
+    pipelineRun: 'ci/build-run',
+    triggerTemplate: 'ci/build-template',
+  });
+  assert.deepEqual(prepared.summary.pipelines.map((pipeline) => pipeline.name), ['build']);
+  assert.equal(prepared.digest.pipeline, 'build');
+  assert.equal(prepared.digest.name, 'build-run');
+  const values = Object.fromEntries(prepared.digest.params.map((param) => [param.name, param.value]));
+  assert.equal(values.revision, 'abc123');
+  assert.equal(values.url, 'https://example.com/app.git');
+  assert.equal(values.image, 'quay.io/org/app:main');
+
+  const fromTemplate = prepareAnalysis(summary, { triggerTemplate: 'ci/build-template' });
+  assert.deepEqual(fromTemplate.summary.pipelines.map((pipeline) => pipeline.name), ['other', 'build']);
+  assert.equal(fromTemplate.digest.params.find((param) => param.name === 'revision').value, 'main');
+  assert.equal(fromTemplate.digest.params.find((param) => param.name === 'image').value, 'quay.io/org/app:main');
+
+  const dropped = prepareAnalysis(summary, {}, {
+    name: 'dropped',
+    pipeline: 'build',
+    params: [{ name: 'revision', value: 'from-file' }],
+    workspaces: [],
+  });
+  assert.equal(dropped.digest.name, 'dropped');
+  assert.equal(dropped.digest.params.find((param) => param.name === 'revision').value, 'from-file');
+  assert.equal(dropped.summary.pipelines.length, summary.pipelines.length);
 });

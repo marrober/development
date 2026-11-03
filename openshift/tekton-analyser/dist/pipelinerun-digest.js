@@ -53,15 +53,43 @@ function workspaceFiles(raw, params) {
     const name = asString(raw.name);
     if (!name)
         return [];
+    const sources = [];
+    pushSource(sources, asRecord(raw.secret), 'secret', secretLabel);
+    pushSource(sources, asRecord(raw.configMap), 'configmap', (source) => asString(source.name));
+    for (const source of recordsOf(asRecord(raw.projected)?.sources)) {
+        pushSource(sources, asRecord(source.secret), 'secret', secretLabel);
+        pushSource(sources, asRecord(source.configMap), 'configmap', (item) => asString(item.name));
+    }
+    return describeWorkspace(name, asString(raw.subPath), sources, params);
+}
+function pushSource(sources, source, kind, labelOf) {
+    if (!source)
+        return;
+    sources.push({
+        kind,
+        name: labelOf(source),
+        items: recordsOf(source.items).map((item) => ({
+            key: asString(item.key),
+            path: asString(item.path),
+        })),
+    });
+}
+export function describeWorkspace(name, subPath, sources, params) {
+    if (!name)
+        return [];
     const files = [];
     const notes = [];
-    const subPath = asString(raw.subPath);
-    collectSource(asRecord(raw.secret), 'secret', secretLabel, files, notes);
-    collectSource(asRecord(raw.configMap), 'configmap', (source) => asString(source.name), files, notes);
-    const projected = asRecord(raw.projected);
-    for (const source of recordsOf(projected?.sources)) {
-        collectSource(asRecord(source.secret), 'secret', secretLabel, files, notes);
-        collectSource(asRecord(source.configMap), 'configmap', (item) => asString(item.name), files, notes);
+    for (const source of sources) {
+        const label = `${source.kind} ${source.name ?? source.kind}`;
+        if (source.items.length === 0) {
+            notes.push(`A file is created for each key in ${label}.`);
+            continue;
+        }
+        for (const item of source.items) {
+            const path = item.path ?? item.key;
+            if (path)
+                files.push({ path, source: label });
+        }
     }
     if (files.length === 0 && notes.length === 0)
         return [];
@@ -71,22 +99,6 @@ function workspaceFiles(raw, params) {
             files: files.map((file) => ({ ...file, path: applyParams(`${prefix}${file.path}`, params) })),
             notes: notes.map((note) => applyParams(subPath ? `${note} The workspace uses subpath ${subPath}.` : note, params)),
         }];
-}
-function collectSource(source, kind, labelOf, files, notes) {
-    if (!source)
-        return;
-    const label = `${kind} ${labelOf(source) ?? kind}`;
-    const items = recordsOf(source.items);
-    if (items.length === 0) {
-        notes.push(`A file is created for each key in ${label}.`);
-        return;
-    }
-    for (const item of items) {
-        const key = asString(item.key);
-        const path = asString(item.path) ?? key;
-        if (path)
-            files.push({ path, source: label });
-    }
 }
 function secretLabel(source) {
     return asString(source.secretName) ?? asString(source.name);

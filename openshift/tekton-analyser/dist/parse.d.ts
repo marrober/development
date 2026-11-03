@@ -1,8 +1,9 @@
-import type { PipelineResource, PipelineRunResource, TaskResource, TaskRunResource, TektonResource } from './model.js';
+import type { PipelineResource, PipelineRunResource, TaskResource, TaskRunResource, TektonResource, TriggerTemplateResource } from './model.js';
 import type { Issue, OtherResource } from './types.js';
 export interface ParseResult {
     resources: TektonResource[];
     others: OtherResource[];
+    triggerTemplates: TriggerTemplateResource[];
     issues: Issue[];
 }
 export declare function parseManifest(text: string, source: string, format: 'yaml' | 'json'): ParseResult;

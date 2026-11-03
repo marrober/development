@@ -1,6 +1,6 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import type { TektonResource } from './model.js';
+import type { TektonResource, TriggerTemplateResource } from './model.js';
 import { parseManifest, type ParseResult } from './parse.js';
 import type { Issue, OtherResource } from './types.js';
 import { errorMessage } from './util.js';
@@ -11,11 +11,12 @@ const MANIFEST_EXTENSIONS = new Set(['.yaml', '.yml', '.json']);
 export interface LoadResult {
   resources: TektonResource[];
   others: OtherResource[];
+  triggerTemplates: TriggerTemplateResource[];
   issues: Issue[];
 }
 
 export async function loadResources(paths: string[]): Promise<LoadResult> {
-  const loaded: LoadResult = { resources: [], others: [], issues: [] };
+  const loaded: LoadResult = { resources: [], others: [], triggerTemplates: [], issues: [] };
   for (const input of paths) {
     if (input === '-') {
       const text = await readStdin();
@@ -71,6 +72,7 @@ async function collectFiles(input: string): Promise<string[]> {
 function merge(target: LoadResult, parsed: ParseResult): void {
   target.resources.push(...parsed.resources);
   target.others.push(...parsed.others);
+  target.triggerTemplates.push(...parsed.triggerTemplates);
   target.issues.push(...parsed.issues);
 }
 
