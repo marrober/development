@@ -1,4 +1,4 @@
-FROM quay.io/buildah/stable:v1.43.5
+FROM quay.io/buildah/stable:v1.45.1
 
 USER root
 
@@ -64,6 +64,12 @@ RUN  dnf update -y
 # Install jq
 #
 RUN dnf -y install jq container-selinux
+##----------------------------------
+
+##----------------------------------
+# Install gitsign
+#
+RUN dnf -y install jq gitsign
 ##----------------------------------
 
 ##----------------------------------
