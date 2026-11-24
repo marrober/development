@@ -56,11 +56,6 @@ mv /tmp/yq_linux_386 /usr/local/bin/yq && \
 chmod +x /usr/local/bin/yq
 
 ##----------------------------------
-# Update all packages
-RUN  dnf update -y
-##----------------------------------
-
-##----------------------------------
 # Install jq
 #
 RUN dnf -y install jq container-selinux
@@ -78,6 +73,20 @@ chmod +x /usr/local/bin/gitsign
 # Install syft
 #
 RUN curl -sSfL https://get.anchore.io/syft | sudo sh -s -- -b /usr/local/bin
+##----------------------------------
+
+##----------------------------------
+# Install Kustomize command line
+#
+RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" >> kustomize.sh
+RUN chmod u+x kustomize.sh
+RUN ./kustomize.sh 
+RUN mv kustomize /usr/local/bin/kustomize
+##----------------------------------
+
+##----------------------------------
+# Update all packages
+RUN  dnf update -y
 ##----------------------------------
 
 WORKDIR /home/build
