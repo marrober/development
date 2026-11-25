@@ -85,6 +85,12 @@ RUN mv kustomize /usr/local/bin/kustomize
 ##----------------------------------
 
 ##----------------------------------
+# Install Kustomize command line
+#
+RUN dnf -y install skopeo container-selinux
+##----------------------------------
+
+##----------------------------------
 # Update all packages
 RUN  dnf update -y
 ##----------------------------------
