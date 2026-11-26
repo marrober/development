@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tekton-analyzer
+  name: tekton-analyzer-app
   namespace: openshift-gitops
 spec:
   project: tekton-analyzer
