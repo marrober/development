@@ -2,7 +2,7 @@ kind: ImageStream
 apiVersion: image.openshift.io/v1
 metadata:
   name: ose-cli
-  namespace: tekton-analyzer
+  namespace: tekton-analyser
 spec:
   lookupPolicy:
     local: false

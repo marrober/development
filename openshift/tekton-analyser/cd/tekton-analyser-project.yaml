@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: tekton-analyzer
+  name: tekton-analyser
   namespace: openshift-gitops
 spec:
-  description: Applications related to tekton-analyzer
+  description: Applications related to tekton-analyser
 
   sourceRepos:
   - '*'
@@ -33,5 +33,5 @@ spec:
     groups:
     - developers
     policies:
-    - p, proj:tekton-analyzer:developer, applications, get, *, allow
-    - p, proj:tekton-analyzer:developer, applications, sync, *, allow  
+    - p, proj:tekton-analyser:developer, applications, get, *, allow
+    - p, proj:tekton-analyser:developer, applications, sync, *, allow  

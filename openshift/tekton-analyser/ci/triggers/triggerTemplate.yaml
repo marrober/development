@@ -1,7 +1,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
-  name: tekton-analyzer-template
+  name: tekton-analyser-template
 spec:
   params:
   - name: gitrepository.url
@@ -11,11 +11,11 @@ spec:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
     metadata:
-      generateName: tekton-analyzer-
+      generateName: tekton-analyser-
     spec:
       serviceAccountName: pipeline
       pipelineRef:
-        name: tekton-analyzer
+        name: tekton-analyser
       params:
         - name: GIT_REPO
           value: $(tt.params.gitrepository.url)
@@ -24,7 +24,7 @@ spec:
         - name: GIT_REPO_NAME
           value: development
         - name: app-dir
-          value: development/openshift/tekton-analyzer/app
+          value: development/openshift/tekton-analyser/app
         - name: dockerfile
           value: Dockerfile
         - name: image-short-name
@@ -39,7 +39,7 @@ spec:
         - name: cd-git-repo-name
           value: development
         - name: cd-git-repo-path-to-content-development
-          value: openshift/tekton-analyzer/deploy
+          value: openshift/tekton-analyser/deploy
         - name: cd-git-commit-comment-dev
           value: "Update from ci process - dev"
         - name: cd-git-user-name
@@ -51,7 +51,7 @@ spec:
         - name: quay-account
           value: "marrober"
         - name: quay-repository
-          value: "tekton-analyzer" 
+          value: "tekton-analyser" 
 
 
 

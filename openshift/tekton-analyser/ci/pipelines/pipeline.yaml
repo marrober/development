@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: tekton-analyzer
+  name: tekton-analyser
 spec:
   params:
       # Buildah step configuration parameters - storage driver and TLS settings.

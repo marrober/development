@@ -1,7 +1,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
-  name: tekton-analyzer-binding
+  name: tekton-analyser-binding
 spec:
   params:
   - name: gitrepository.url

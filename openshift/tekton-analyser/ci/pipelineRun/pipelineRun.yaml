@@ -1,10 +1,10 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  generateName: tekton-analyzer-pr-
+  generateName: tekton-analyser-pr-
 spec:
   pipelineRef:
-    name: tekton-analyzer
+    name: tekton-analyser
   params:
     - name: GIT_REPO
       value: https://github.com/marrober/development.git
@@ -13,13 +13,13 @@ spec:
     - name: GIT_REPO_NAME
       value: development
     - name: app-dir
-      value: development/openshift/tekton-analyzer/app
+      value: development/openshift/tekton-analyser/app
     - name: dockerfile
       value: Dockerfile
     - name: image-short-name
       value: tekton-analyser
     - name: imagestream-url
-      value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/tekton-analyzer
+      value: default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/$(context.taskRun.namespace)/tekton-analyser
       ## Update Kustomize file for the deployment of the application to development      
     - name: repo_type
       value: github.com
@@ -28,7 +28,7 @@ spec:
     - name: cd-git-repo-name
       value: development
     - name: cd-git-repo-path-to-content-development
-      value: openshift/tekton-analyzer/deploy
+      value: openshift/tekton-analyser/deploy
     - name: cd-git-commit-comment-dev
       value: "Update from ci process - dev"
     - name: cd-git-user-name
@@ -40,7 +40,7 @@ spec:
     - name: quay-account
       value: "marrober"
     - name: quay-repository
-      value: "tekton-analyzer" 
+      value: "tekton-analyser" 
   workspaces:
   - name: files
     volumeClaimTemplate:

@@ -1,7 +1,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: tekton-analyzer-listener-interceptor
+  name: tekton-analyser-listener-interceptor
 spec:
   serviceAccountName: pipeline
   triggers:
@@ -19,12 +19,12 @@ spec:
         name: cel
       params:
       - name: "filter"
-        value: 'body["ref"].contains("main") && header.match("X-GitHub-Event", "push") && extensions.changed_files.matches("tekton-analyzer/app")'
+        value: 'body["ref"].contains("main") && header.match("X-GitHub-Event", "push") && extensions.changed_files.matches("tekton-analyser/app")'
       - name: "overlays"
         value:
         - key: branch
           expression: "body.ref.split('/')[2]"
     bindings:
-      - ref: tekton-analyzer-binding
+      - ref: tekton-analyser-binding
     template:
-      ref: tekton-analyzer-template
+      ref: tekton-analyser-template

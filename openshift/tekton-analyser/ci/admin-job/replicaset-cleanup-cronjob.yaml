@@ -2,7 +2,7 @@ kind: CronJob
 apiVersion: batch/v1
 metadata:
   name: remove-stale-replicasets
-  namespace: tekton-analyzer
+  namespace: tekton-analyser
   labels:
     app.kubernetes.io/part-of: Triggers
 spec:
@@ -19,7 +19,7 @@ spec:
         spec:
           containers:
             - name: terminal
-              image: 'default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/tekton-analyzer/terminal:latest'
+              image: 'default-route-openshift-image-registry.apps.ocp4.mr-openshift.co.uk/tekton-analyser/terminal:latest'
               command:
                 - /bin/sh
               args:

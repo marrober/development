@@ -1,12 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tekton-analyzer-deploy
+  name: tekton-analyser-ci
   namespace: openshift-gitops
 spec:
-  project: tekton-analyzer
+  project: tekton-analyser
   destination:
-    namespace: tekton-analyzer
+    namespace: tekton-analyser
     server: https://kubernetes.default.svc
   ignoreDifferences:
   - group: image.openshift.io
@@ -35,7 +35,7 @@ spec:
     - /spec/host
     kind: Route
   source:
-    path: openshift/tekton-analyzer/deploy
+    path: openshift/tekton-analyser/ci/
     targetRevision: main
     repoURL: https://github.com/marrober/development.git
   syncPolicy:

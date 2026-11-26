@@ -2,7 +2,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: delete-replicaset
-  namespace: tekton-analyzer
+  namespace: tekton-analyser
 rules:
   - apiGroups:
       - apps
@@ -17,11 +17,11 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: deployer-delete-replicaset
-  namespace: tekton-analyzer
+  namespace: tekton-analyser
 subjects:
   - kind: ServiceAccount
     name: deployer
-    namespace: tekton-analyzer
+    namespace: tekton-analyser
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
