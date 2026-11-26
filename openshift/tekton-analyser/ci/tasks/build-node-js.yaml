@@ -1,0 +1,173 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-node-js
+spec:
+  params:
+    - name: TLSVERIFY
+      default: "false"
+      description: Verify the TLS on the registry endpoint
+      type: string
+    - name: STORAGE_DRIVER
+      description: The Buildah storage STORAGE_DRIVER
+      type: string
+    - name: app-dir
+      type: string
+    - name: node_js_image_repo
+      type: string
+    - name: node_js_image_name
+      type: string
+    - name: node_js_image_tag
+      type: string
+    - name: image-short-name
+      type: string
+  stepTemplate:
+    env:
+      - name: "HOME"
+        value: "/tekton/home"
+  steps:
+    - name: package-node-app
+      command:
+      - /bin/sh
+      - -c
+      args:
+      - |-
+        pwd
+        npm install --omit=dev
+        ls -al
+      image: $(params.node_js_image_repo)/$(params.node_js_image_name):$(params.node_js_image_tag)
+      resources:
+        limits:
+          memory: 500Mi
+          cpu: 500m
+        requests:
+          memory: 250Mi
+          cpu: 150m
+      workingDir: /resources/$(params.app-dir)
+    - name: update-dockerfile
+      script: >-
+        #!/usr/bin/env bash
+
+        set +x
+
+        # NODE_IMAGE_URL=$(oc get is/$(params.node_js_image_name) -o jsonpath='{.status.publicDockerImageRepository}')
+
+         NODE_IMAGE_URL=$(params.node_js_image_repo)/$(params.node_js_image_name):$(params.node_js_image_tag)
+        
+        echo $NODE_IMAGE_URL
+
+        sed -e "s|source-image|$NODE_IMAGE_URL|g" dockerfile > new-dockerfile
+
+        cat new-dockerfile
+
+      image: image-registry.openshift-image-registry.svc:5000/$(context.taskRun.namespace)/ose-cli:latest
+      resources:
+        limits:
+          memory: 500Mi
+          cpu: 500m
+        requests:
+          memory: 250Mi
+          cpu: 150m
+      workingDir: /resources/$(params.app-dir)
+    - name: build
+      command:
+      - buildah
+      - bud
+      - --tls-verify=$(params.TLSVERIFY)
+      - --storage-driver=$(params.STORAGE_DRIVER)
+      - --root
+      - /files/buildah-containers
+      - --layers
+      - -f
+      - ./new-dockerfile
+      - --no-cache
+      - -t
+      - $(params.image-short-name)
+      - .
+      image: image-registry.openshift-image-registry.svc:5000/$(context.taskRun.namespace)/buildah:latest
+      resources: {}
+      securityContext:
+        capabilities:
+          add:
+          - SETFCAP
+      workingDir: /resources/$(params.app-dir)
+
+    - name: list-images
+      command:
+      - buildah
+      - images
+      - --storage-driver=$(params.STORAGE_DRIVER)
+      - --root
+      - /files/buildah-containers
+      image: image-registry.openshift-image-registry.svc:5000/$(context.taskRun.namespace)/buildah:latest
+      resources:
+        limits:
+          memory: 500Mi
+          cpu: 500m
+        requests:
+          memory: 250Mi
+          cpu: 150m
+      securityContext:
+        capabilities:
+          add:
+          - SETFCAP
+      workingDir: /
+
+#    - name: mount-container
+#      image: image-registry.openshift-image-registry.svc:5000/$(context.taskRun.namespace)/buildah:latest
+#      script: |
+#        container=$(buildah --storage-driver=$(params.STORAGE_DRIVER) --root /files/buildah-containers from --pull-never localhost/my-container-image:latest)
+#        buildah mount --storage-driver=$(params.STORAGE_DRIVER) --root /files/buildah-containers $container | tee /workspace/container_path
+#        echo $container > /workspace/container_name
+#      securityContext:
+#        capabilities:
+#          add:
+#            - SETFCAP
+#      resources:
+#        limits:
+#          memory: 500Mi
+#          cpu: 500m
+#        requests:
+#          memory: 250Mi
+#          cpu: 150m
+
+#    - name: sbom-syft-generate
+#      image: quay.io/redhat-appstudio/syft:v0.94.0
+#      script: |
+
+#        syft dir:$(workspaces.resources.path)/$(params.app-dir) --output cyclonedx-json=$(workspaces.resources.path)/sbom-source.json
+#        if [ -f "/workspace/container_path" ]; then
+#            CONTAINER_PATH=$(cat /workspace/container_path)
+
+#            if [ -d "$CONTAINER_PATH" ]; then
+#                find "$CONTAINER_PATH" -xtype l -delete
+#                syft dir:"$CONTAINER_PATH" --output cyclonedx-json=$(workspaces.resources.path)/sbom-image.json
+#            else
+#                echo "Directory inside container_path does not exist: $CONTAINER_PATH"
+#                exit 1
+#            fi
+#        fi
+
+#        IMAGE_SBOM="$(workspaces.resources.path)/sbom-image.json"
+#        if [ -f "$IMAGE_SBOM" ]; then
+#            echo "=== Previewing top 50 lines of sbom-image.json ==="
+#            head -n 50 "$IMAGE_SBOM"
+#        else
+#            echo "=== Finished: No image SBOM file was generated to preview ==="
+#        fi
+#      resources:
+#        limits:
+#          memory: 500Mi
+#          cpu: 500m
+#        requests:
+#          memory: 250Mi
+#          cpu: 150m
+  volumes:
+    - emptyDir: {}
+      name: envparams
+  workspaces:
+    - mountPath: /files
+      name: files
+    - mountPath: /resources
+      name: resources
+

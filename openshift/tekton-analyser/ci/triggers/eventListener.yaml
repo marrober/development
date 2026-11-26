@@ -1,0 +1,30 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: tekton-analyzer-listener-interceptor
+spec:
+  serviceAccountName: pipeline
+  triggers:
+  - name: github-listener
+    interceptors:
+    - ref:
+        name: "github"
+        kind: ClusterInterceptor
+        apiVersion: triggers.tekton.dev
+      params:
+      - name: "addChangedFiles"
+        value:
+          enabled: true
+    - ref:
+        name: cel
+      params:
+      - name: "filter"
+        value: 'body["ref"].contains("main") && header.match("X-GitHub-Event", "push") && extensions.changed_files.matches("tekton-analyzer/app")'
+      - name: "overlays"
+        value:
+        - key: branch
+          expression: "body.ref.split('/')[2]"
+    bindings:
+      - ref: tekton-analyzer-binding
+    template:
+      ref: tekton-analyzer-template
